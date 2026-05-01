@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TWIN SHADOW</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+    
+    :root {
+      --pink: #ff00ff;
+      --cyan: #00ffff;
+      --purple: #aa00ff;
+      --yellow: #ffff00;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      background: #0a0a0a;
+      color: #00ffcc;
+      font-family: 'Press Start 2P', system-ui;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .hero {
+      height: 38vh;
+      background: linear-gradient(180deg, #1a0033, #000);
+      position: relative;
+      border-bottom: 5px solid var(--pink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url('https://files.catbox.moe/8vPJu.jpg') center/cover; /* Magician behind letters */
+      opacity: 0.85;
+      filter: brightness(1.1) contrast(1.2);
+      z-index: 1;
+    }
+
+    .title {
+      font-size: 3.2rem;
+      font-weight: bold;
+      text-align: center;
+      color: transparent;
+      -webkit-text-stroke: 4px #00ffff;
+      text-shadow: 
+        0 0 20px var(--pink),
+        0 0 40px var(--cyan),
+        0 0 70px var(--purple);
+      z-index: 2;
+      position: relative;
+      line-height: 0.9;
+    }
+
+    .container {
+      display: flex;
+      height: calc(100vh - 38vh);
+    }
+
+    .sidebar {
+      width: 210px;
+      background: rgba(10,10,25,0.98);
+      border-right: 4px solid var(--cyan);
+      padding: 20px 10px;
+      overflow-y: auto;
+    }
+
+    .menu-item {
+      padding: 16px 12px;
+      margin: 8px 0;
+      color: var(--yellow);
+      border: 2px solid transparent;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+
+    .menu-item:hover {
+      border-color: var(--pink);
+      background: rgba(255,0,255,0.12);
+      color: white;
+    }
+
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #000;
+    }
+
+    .terminal-header {
+      background: #111;
+      padding: 12px 16px;
+      border-bottom: 4px solid var(--cyan);
+      color: var(--cyan);
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .chat-window {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      background: repeating-linear-gradient(#001100 0px, #001100 4px, transparent 4px, transparent 8px);
+    }
+
+    .message {
+      margin: 18px 0;
+      padding: 14px 18px;
+      border-left: 6px solid var(--pink);
+      background: rgba(255,0,255,0.08);
+    }
+
+    .input-bar {
+      padding: 16px;
+      background: #111;
+      border-top: 4px solid var(--cyan);
+      display: flex;
+      align-items: center;
+    }
+
+    input {
+      flex: 1;
+      background: #000;
+      border: 3px solid var(--cyan);
+      color: #00ffcc;
+      padding: 16px;
+      font-family: inherit;
+      font-size: 1rem;
+    }
+
+    .cursor { animation: blink 0.7s infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+  </style>
+</head>
+<body>
+
+  <div class="hero">
+    <div class="title">TWIN<br>SHADOW</div>
+  </div>
+
+  <div class="container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="menu-item">[2] VIDEOLAB ></div>
+      <div class="menu-item">[3] CODELAB ></div>
+      <div class="menu-item">[4] PROJECTS ></div>
+      <div class="menu-item">[5] INSTRUCTIONS & TUTORIALS ></div>
+      <div class="menu-item">[6] SETTINGS ></div>
+      <div class="menu-item">[7] ABOUT ></div>
+    </div>
+
+    <!-- Chat -->
+    <div class="chat-area">
+      <div class="terminal-header">
+        <span>TWIN SHADOW TERMINAL v0.8.8 — DARK MAGUS ONLINE</span>
+      </div>
+      
+      <div class="chat-window" id="chat">
+        <div class="message">
+          <strong>DARK MAGUS:</strong><br>
+          The wires hum. The veil is thin.<br>
+          What do you wish to conjure?
+        </div>
+      </div>
+
+      <div class="input-bar">
+        <span style="color:#00ffff; margin-right:12px; font-size:1.2rem;">></span>
+        <input type="text" placeholder="ENTER YOUR COMMAND..." id="input" autofocus>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const input = document.getElementById('input');
+    const chat = document.getElementById('chat');
+
+    input.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter' && this.value.trim()) {
+        const userMsg = document.createElement('div');
+        userMsg.className = 'message';
+        userMsg.style.borderColor = '#00ffff';
+        userMsg.innerHTML = `<strong>YOU:</strong><br>${this.value}`;
+        chat.appendChild(userMsg);
+
+        setTimeout(() => {
+          const reply = document.createElement('div');
+          reply.className = 'message';
+          reply.innerHTML = `<strong>DARK MAGUS:</strong><br>The circuit bends to your will.`;
+          chat.appendChild(reply);
+          chat.scrollTop = chat.scrollHeight;
+        }, 700);
+
+        this.value = '';
+        chat.scrollTop = chat.scrollHeight;
+      }
+    });
+  </script>
+</body>
+</html>
