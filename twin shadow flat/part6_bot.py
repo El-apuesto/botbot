@@ -347,6 +347,231 @@ def api_audio_list():
 def api_transcripts_list():
     return jsonify(_sb.list_transcripts(50))
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# SMART EDITOR — /api/lab/transcribe|highlights|cut|metadata|reformat|thumbnail
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@_flask.route("/api/lab/transcribe", methods=["POST"])
+def api_lab_transcribe():
+    from part4_video import extract_audio
+    import mimetypes, requests as _req
+    data      = request.json or {}
+    file_path = data.get("path", "").strip()
+    if not file_path or not Path(file_path).exists():
+        return jsonify({"error": "File not found"}), 400
+
+    groq_key = (os.environ.get("GROQ_API_KEY_1") or
+                os.environ.get("GROQ_API_KEY_2") or
+                os.environ.get("GROQ_API_KEY_3") or "")
+    if not groq_key:
+        return jsonify({"error": "No Groq API key configured"}), 500
+
+    send_path = file_path
+    tmp_audio = None
+    video_exts = {".mp4", ".mov", ".webm", ".mkv"}
+    if Path(file_path).suffix.lower() in video_exts:
+        tmp_audio = str(_lab_renders_dir / f"_audio_{int(time.time())}.mp3")
+        ok, err = extract_audio(file_path, tmp_audio)
+        if ok:
+            send_path = tmp_audio
+        else:
+            print(f"[SMART EDIT] audio extract failed: {err}")
+
+    try:
+        ctype = mimetypes.guess_type(send_path)[0] or "audio/mpeg"
+        with open(send_path, "rb") as fh:
+            resp = _req.post(
+                "https://api.groq.com/openai/v1/audio/transcriptions",
+                headers={"Authorization": f"Bearer {groq_key}"},
+                files={"file": (Path(send_path).name, fh, ctype)},
+                data={"model": "whisper-large-v3",
+                      "response_format": "verbose_json",
+                      "timestamp_granularities[]": "segment"},
+                timeout=180,
+            )
+        if tmp_audio:
+            Path(tmp_audio).unlink(missing_ok=True)
+        if not resp.ok:
+            return jsonify({"error": resp.text[:300]}), 500
+        r = resp.json()
+        return jsonify({
+            "text":     r.get("text", ""),
+            "segments": r.get("segments", []),
+            "duration": r.get("duration", 0),
+            "language": r.get("language", "en"),
+        })
+    except Exception as e:
+        if tmp_audio:
+            Path(tmp_audio).unlink(missing_ok=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@_flask.route("/api/lab/highlights", methods=["POST"])
+def api_lab_highlights():
+    import re as _re
+    data     = request.json or {}
+    segments = data.get("segments", [])
+    focus    = data.get("focus", "best moments")
+    if not segments:
+        return jsonify({"error": "No segments"}), 400
+
+    lines = []
+    for seg in segments:
+        s, e, txt = seg.get("start", 0), seg.get("end", 0), seg.get("text", "").strip()
+        ms, ss = int(s // 60), int(s % 60)
+        me, se_ = int(e // 60), int(e % 60)
+        lines.append(f"[{ms:02d}:{ss:02d}→{me:02d}:{se_:02d}] {txt}")
+    transcript = "\n".join(lines)
+
+    prompt = (
+        f"Transcription with timestamps:\n\n{transcript}\n\n"
+        f"Find the {focus}. Return ONLY a JSON array, no other text:\n"
+        '[{"start":12.5,"end":45.0,"title":"Short title","reason":"Why compelling"}]\n'
+        "Rules: 3–8 highlights, each 10–90 seconds. start/end are floats (seconds)."
+    )
+    try:
+        result = _run_async(call_task("twin", [
+            {"role": "system", "content": "You are a video editor AI. Identify compelling moments. Respond with valid JSON only."},
+            {"role": "user",   "content": prompt},
+        ]))
+        m = _re.search(r'\[[\s\S]*\]', result)
+        if not m:
+            return jsonify({"error": "Could not parse JSON", "raw": result[:400]}), 500
+        return jsonify({"highlights": json.loads(m.group())})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@_flask.route("/api/lab/cut", methods=["POST"])
+def api_lab_cut():
+    from part4_video import cut_segment, concatenate_clips_with_fade, concatenate_clips
+    data       = request.json or {}
+    source     = data.get("source_path", "")
+    segments   = data.get("segments", [])
+    transition = data.get("transition", "fade")
+    if not source or not Path(source).exists():
+        return jsonify({"error": "Source file not found"}), 400
+    if not segments:
+        return jsonify({"error": "No segments"}), 400
+
+    clip_paths, errors = [], []
+    for i, seg in enumerate(segments):
+        start = float(seg.get("start", 0))
+        end   = float(seg.get("end", 0))
+        out   = str(_lab_renders_dir / f"_clip_{int(time.time()*1000)}_{i}.mp4")
+        ok, result = cut_segment(source, start, end, out)
+        if ok:
+            clip_paths.append(out)
+        else:
+            errors.append(f"Segment {i}: {result}")
+
+    if not clip_paths:
+        return jsonify({"error": "No clips cut", "details": errors}), 500
+
+    final = str(_lab_renders_dir / f"highlight_{int(time.time())}.mp4")
+    if len(clip_paths) == 1:
+        import shutil; shutil.copy2(clip_paths[0], final); ok = True
+    elif transition == "fade":
+        ok, result = concatenate_clips_with_fade(clip_paths, final)
+    else:
+        ok, result = concatenate_clips(clip_paths, final)
+
+    for p in clip_paths:
+        try: Path(p).unlink(missing_ok=True)
+        except: pass
+
+    if not ok:
+        return jsonify({"error": f"Assembly failed: {result}"}), 500
+
+    fname = Path(final).name
+    def _bg():
+        url, sp = _sb.upload_file(final, folder="renders")
+        if url: _sb.log_render(fname, Path(final).stat().st_size, url, sp)
+    Thread(target=_bg, daemon=True).start()
+
+    return jsonify({"ok": True, "url": f"/renders/{fname}", "path": final,
+                    "clips": len(clip_paths), "errors": errors})
+
+
+@_flask.route("/api/lab/metadata", methods=["POST"])
+def api_lab_metadata():
+    import re as _re
+    data       = request.json or {}
+    transcript = data.get("transcript", "").strip()
+    platform   = data.get("platform", "youtube").lower()
+    hint       = data.get("title_hint", "").strip()
+    if not transcript:
+        return jsonify({"error": "No transcript"}), 400
+
+    specs = {
+        "youtube":   "YouTube (title ≤100 chars, description ≤5000 chars, 10–15 SEO hashtags, engaging hook in first line)",
+        "tiktok":    "TikTok (title ≤150 chars, caption ≤2200 chars, 5–8 trending viral hashtags, casual punchy tone)",
+        "instagram": "Instagram (caption ≤2200 chars, 20–30 hashtags, aesthetic engaging tone)",
+        "facebook":  "Facebook (title ≤80 chars, description ≤500 chars, 5–10 hashtags, conversational friendly tone)",
+    }
+    spec   = specs.get(platform, specs["youtube"])
+    hint_l = f"\nVideo hint: {hint}" if hint else ""
+    prompt = (
+        f"Video transcript:\n\n{transcript[:3000]}{hint_l}\n\n"
+        f"Generate optimized metadata for {spec}.\n"
+        "Return ONLY valid JSON:\n"
+        '{"title":"...","description":"...","hashtags":["#tag1","#tag2"]}'
+    )
+    try:
+        result = _run_async(call_task("twin", [
+            {"role": "system", "content": f"You are a social media content strategist. Generate compelling {platform} metadata. Respond with valid JSON only."},
+            {"role": "user",   "content": prompt},
+        ]))
+        m = _re.search(r'\{[\s\S]*\}', result)
+        if not m:
+            return jsonify({"error": "Could not parse JSON", "raw": result[:400]}), 500
+        meta = json.loads(m.group())
+        meta["platform"] = platform
+        return jsonify(meta)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@_flask.route("/api/lab/reformat", methods=["POST"])
+def api_lab_reformat():
+    from part4_video import reformat_for_platform
+    data     = request.json or {}
+    source   = data.get("source_path", "")
+    platform = data.get("platform", "youtube")
+    if not source or not Path(source).exists():
+        return jsonify({"error": "Source file not found"}), 400
+
+    out   = str(_lab_renders_dir / f"reformat_{platform}_{int(time.time())}.mp4")
+    ok, result = reformat_for_platform(source, platform, out)
+    if not ok:
+        return jsonify({"error": result}), 500
+
+    fname = Path(out).name
+    def _bg():
+        url, sp = _sb.upload_file(out, folder="renders")
+        if url: _sb.log_render(fname, Path(out).stat().st_size, url, sp)
+    Thread(target=_bg, daemon=True).start()
+    return jsonify({"ok": True, "url": f"/renders/{fname}", "path": out})
+
+
+@_flask.route("/api/lab/thumbnail", methods=["POST"])
+def api_lab_thumbnail():
+    from part4_video import make_thumbnail
+    data      = request.json or {}
+    source    = data.get("source_path", "")
+    timestamp = float(data.get("timestamp", 0))
+    text      = data.get("text", "")
+    position  = data.get("position", "bottom")
+    if not source or not Path(source).exists():
+        return jsonify({"error": "Source file not found"}), 400
+
+    out = str(_lab_renders_dir / f"thumb_{int(time.time())}.jpg")
+    ok, result = make_thumbnail(source, out, timestamp, text, position)
+    if not ok:
+        return jsonify({"error": result}), 500
+    return jsonify({"ok": True, "url": f"/renders/{Path(out).name}", "path": out})
+
+
 # ── /api/tts ──────────────────────────────────────────────────────────────────
 @_flask.route("/api/tts", methods=["POST"])
 def api_tts():

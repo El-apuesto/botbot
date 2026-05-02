@@ -185,6 +185,24 @@
       align-self: flex-start; }
     .dl-link:hover { box-shadow: var(--glow); }
 
+    /* Smart Editor option buttons */
+    .se-opt {
+      background: var(--purple-dark); border: 1px solid var(--purple-dim);
+      color: var(--purple-dim); font-family: var(--font); font-size: 5px;
+      padding: 4px 8px; cursor: pointer; white-space: nowrap; transition: all .12s; }
+    .se-opt:hover  { border-color: var(--purple); color: var(--purple); }
+    .se-opt.active { border-color: var(--green); color: var(--green); box-shadow: var(--glow-g); }
+
+    /* highlight clip cards inside smart editor */
+    .se-clip {
+      display: flex; align-items: flex-start; gap: 7px;
+      border: 1px solid var(--purple-dim); padding: 5px 7px; }
+    .se-clip input[type=checkbox] { margin-top: 2px; accent-color: var(--green); flex-shrink: 0; }
+    .se-clip-body { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+    .se-clip-title { font-size: 6px; color: var(--green); }
+    .se-clip-time  { font-size: 5px; color: var(--purple); }
+    .se-clip-why   { font-size: 5px; color: var(--purple-dim); font-style: italic; }
+
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
     .blink { animation: blink .7s step-end infinite; }
   </style>
@@ -218,8 +236,9 @@
       <button class="act-btn" id="btn-video"      onclick="doVideo()"      title="Generate AI video clip">[ VIDEO ]</button>
       <button class="act-btn" id="btn-voice"      onclick="doVoice()"      title="Generate voiceover from storyboard">[ VOICEOVER ]</button>
       <button class="act-btn" id="btn-render"     onclick="doRender()"     title="Assemble final video with FFMPEG">[ RENDER ]</button>
-      <button class="act-btn" id="btn-music"      onclick="openMusic()"    title="Manage music library">[ MUSIC ]</button>
-      <button class="act-btn" id="btn-uploads"    onclick="openUploads()"  title="View uploaded files">[ FILES ]</button>
+      <button class="act-btn" id="btn-music"      onclick="openMusic()"       title="Manage music library">[ MUSIC ]</button>
+      <button class="act-btn" id="btn-uploads"    onclick="openUploads()"     title="View uploaded files">[ FILES ]</button>
+      <button class="act-btn" id="btn-smartedit"  onclick="openSmartEditor()" title="Smart Editor — auto-highlight, metadata, thumbnail">[ SMART EDIT ]</button>
     </div>
 
     <!-- Input row -->
@@ -261,6 +280,137 @@
     <div class="pb">
       <div id="uploads-list" style="display:flex;flex-direction:column;gap:5px;"></div>
       <p id="uploads-empty" style="font-size:6px;color:var(--purple-dim);">NO FILES UPLOADED YET.</p>
+    </div>
+  </div>
+
+  <!-- ═══ SMART EDITOR PANEL ═══ -->
+  <div class="panel" id="panel-smartedit">
+    <div class="ph">
+      <span class="pt">[ SMART EDITOR ]</span>
+      <button class="pc" onclick="closePanel('smartedit')">X CLOSE</button>
+    </div>
+    <div class="pb">
+
+      <!-- SOURCE + PLATFORM -->
+      <div class="fg">
+        <span class="fl">SOURCE FILE</span>
+        <select class="fi" id="se-source-select" onchange="seSelectSource(this)">
+          <option value="">-- SELECT UPLOADED FILE --</option>
+        </select>
+        <span style="font-size:5px;color:var(--purple-dim);margin-top:2px">AUDIO OR VIDEO · MAX 25MB FOR TRANSCRIPTION</span>
+      </div>
+
+      <div class="fg">
+        <span class="fl">TARGET PLATFORM</span>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:3px">
+          <button class="se-opt active" id="se-yt"  onclick="sePlatform('youtube',this)">▶ YOUTUBE</button>
+          <button class="se-opt"        id="se-tt"  onclick="sePlatform('tiktok',this)">◆ TIKTOK</button>
+          <button class="se-opt"        id="se-ig"  onclick="sePlatform('instagram',this)">◈ INSTAGRAM</button>
+          <button class="se-opt"        id="se-fb"  onclick="sePlatform('facebook',this)">◉ FACEBOOK</button>
+        </div>
+        <span id="se-platform-spec" style="font-size:5px;color:var(--purple-dim);margin-top:3px">16:9 · 1920×1080 · Long description · 15 hashtags</span>
+      </div>
+
+      <!-- STEP 1: TRANSCRIBE -->
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn" id="se-transcribe-btn" onclick="seTranscribe()">[ 1. TRANSCRIBE ]</button>
+      </div>
+      <div id="se-transcript-box" style="display:none;flex-direction:column;gap:4px">
+        <span class="fl">TRANSCRIPT</span>
+        <div id="se-transcript-text" style="max-height:90px;overflow-y:auto;font-size:5px;color:var(--white);line-height:2;background:#060012;border:1px solid var(--purple-dim);padding:6px;white-space:pre-wrap;word-break:break-word"></div>
+      </div>
+
+      <!-- STEP 2: HIGHLIGHTS -->
+      <div id="se-highlights-section" style="display:none;flex-direction:column;gap:8px">
+        <div class="fg">
+          <span class="fl">HIGHLIGHT FOCUS</span>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:3px">
+            <button class="se-opt active" id="se-f-best"       onclick="seFocus('best moments',this)">BEST</button>
+            <button class="se-opt"        id="se-f-funny"      onclick="seFocus('funniest moments',this)">FUNNY</button>
+            <button class="se-opt"        id="se-f-insight"    onclick="seFocus('most insightful moments',this)">INSIGHTS</button>
+            <button class="se-opt"        id="se-f-quotes"     onclick="seFocus('most quotable one-liners',this)">QUOTES</button>
+          </div>
+        </div>
+        <button class="btn" id="se-highlights-btn" onclick="seHighlights()">[ 2. FIND HIGHLIGHTS ]</button>
+      </div>
+
+      <!-- HIGHLIGHTS LIST -->
+      <div id="se-clips-list" style="display:none;flex-direction:column;gap:5px"></div>
+
+      <!-- STEP 3: CUT & ASSEMBLE -->
+      <button class="btn" id="se-cut-btn" onclick="seCut()" style="display:none">[ 3. CUT & ASSEMBLE ]</button>
+
+      <!-- ASSEMBLED VIDEO RESULT -->
+      <div id="se-video-result" style="display:none;flex-direction:column;gap:8px">
+        <span class="fl">HIGHLIGHT REEL</span>
+        <video id="se-video" controls style="width:100%;max-height:220px;background:#000;border:1px solid var(--purple)"></video>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <a id="se-video-dl" class="dl-link" download="highlight_reel.mp4">[ DOWNLOAD REEL ]</a>
+        </div>
+      </div>
+
+      <!-- STEP 4: METADATA -->
+      <div id="se-metadata-section" style="display:none;flex-direction:column;gap:8px">
+        <button class="btn" id="se-metadata-btn" onclick="seMetadata()">[ 4. GENERATE METADATA ]</button>
+        <div id="se-metadata-result" style="display:none;flex-direction:column;gap:8px">
+          <div class="fg">
+            <span class="fl">TITLE</span>
+            <textarea class="fi" id="se-meta-title" rows="2" style="resize:none"></textarea>
+          </div>
+          <div class="fg">
+            <span class="fl">DESCRIPTION</span>
+            <textarea class="fi" id="se-meta-desc" rows="5" style="resize:none"></textarea>
+          </div>
+          <div class="fg">
+            <span class="fl">HASHTAGS</span>
+            <textarea class="fi" id="se-meta-tags" rows="2" style="resize:none"></textarea>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn" style="font-size:6px;padding:6px 10px" onclick="seCopy('se-meta-title','TITLE')">[ COPY TITLE ]</button>
+            <button class="btn" style="font-size:6px;padding:6px 10px" onclick="seCopy('se-meta-desc','DESC')">[ COPY DESC ]</button>
+            <button class="btn" style="font-size:6px;padding:6px 10px" onclick="seCopy('se-meta-tags','TAGS')">[ COPY TAGS ]</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 5: REFORMAT -->
+      <div id="se-reformat-section" style="display:none;flex-direction:column;gap:8px">
+        <button class="btn" id="se-reformat-btn" onclick="seReformat()">[ 5. REFORMAT FOR PLATFORM ]</button>
+        <div id="se-reformat-result" style="display:none;flex-direction:column;gap:6px">
+          <span class="fl">REFORMATTED VIDEO</span>
+          <video id="se-reformat-video" controls style="width:100%;max-height:220px;background:#000;border:1px solid var(--green)"></video>
+          <a id="se-reformat-dl" class="dl-link" download="reformatted.mp4">[ DOWNLOAD REFORMATTED ]</a>
+        </div>
+      </div>
+
+      <!-- STEP 6: THUMBNAIL -->
+      <div id="se-thumb-section" style="display:none;flex-direction:column;gap:8px;border-top:1px solid var(--purple-dim);padding-top:12px">
+        <span class="fl">[ 6. THUMBNAIL GENERATOR ]</span>
+        <div style="display:flex;gap:6px">
+          <div class="fg" style="flex:1">
+            <span class="fl">TIMESTAMP (SEC)</span>
+            <input class="fi" id="se-thumb-ts" type="number" value="0" min="0" step="0.5" style="margin-top:4px">
+          </div>
+          <div class="fg" style="flex:1">
+            <span class="fl">TEXT POSITION</span>
+            <select class="fi" id="se-thumb-pos" style="margin-top:4px">
+              <option value="bottom">BOTTOM</option>
+              <option value="top">TOP</option>
+              <option value="center">CENTER</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg">
+          <span class="fl">OVERLAY TEXT (OPTIONAL)</span>
+          <input class="fi" id="se-thumb-text" type="text" placeholder="Your title text here..." style="margin-top:4px">
+        </div>
+        <button class="btn" id="se-thumb-btn" onclick="seThumbnail()">[ GENERATE THUMBNAIL ]</button>
+        <div id="se-thumb-result" style="display:none;flex-direction:column;gap:6px">
+          <img id="se-thumb-img" alt="thumbnail" style="width:100%;max-height:200px;object-fit:contain;border:1px solid var(--purple)">
+          <a id="se-thumb-dl" class="dl-link" download="thumbnail.jpg">[ DOWNLOAD THUMBNAIL ]</a>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -821,6 +971,301 @@ document.addEventListener('keydown', e => {
 ───────────────────────────────────────── */
 function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ═════════════════════════════════════════
+   SMART EDITOR STATE + HELPERS
+═════════════════════════════════════════ */
+const SE = {
+  platform:   'youtube',
+  focus:      'best moments',
+  sourcePath: null,
+  sourceName: null,
+  transcript: '',
+  segments:   [],
+  highlights: [],
+  selected:   new Set(),   // indices of selected highlight clips
+  reelUrl:    null,
+  reelPath:   null,
+  reformatPath: null,
+};
+
+const SE_PLATFORM_SPECS = {
+  youtube:   '16:9 · 1920×1080 · Long description · 15 hashtags',
+  tiktok:    '9:16 · 1080×1920 · Short punchy caption · 5–8 hashtags',
+  instagram: '9:16 · 1080×1920 · Aesthetic caption · 20–30 hashtags',
+  facebook:  '16:9 · 1280×720 · Conversational description · 5–10 hashtags',
+};
+
+function sePlatform(p, btn) {
+  SE.platform = p;
+  document.querySelectorAll('#panel-smartedit .se-opt[id^="se-yt"], #panel-smartedit .se-opt[id^="se-tt"], #panel-smartedit .se-opt[id^="se-ig"], #panel-smartedit .se-opt[id^="se-fb"]')
+    .forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('se-platform-spec').textContent = SE_PLATFORM_SPECS[p] || '';
+}
+
+function seFocus(f, btn) {
+  SE.focus = f;
+  document.querySelectorAll('#se-highlights-section .se-opt').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function seShow(id, flex) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = flex ? 'flex' : 'block';
+}
+
+function seSetBusy(btnId, busy, label) {
+  const b = document.getElementById(btnId);
+  if (!b) return;
+  b.disabled = busy;
+  if (label) b.textContent = label;
+}
+
+/* ─────────────────────────────────────────
+   OPEN SMART EDITOR
+───────────────────────────────────────── */
+function openSmartEditor() {
+  openPanel('smartedit');
+  const sel = document.getElementById('se-source-select');
+  sel.innerHTML = '<option value="">-- SELECT UPLOADED FILE --</option>';
+  labState.uploadedFiles.forEach(f => {
+    if (f.file_type === 'video' || f.file_type === 'audio') {
+      const opt = document.createElement('option');
+      opt.value = JSON.stringify({ path: f.path, name: f.name });
+      opt.textContent = f.name + (f.duration ? ` (${f.duration.toFixed(0)}s)` : '');
+      sel.appendChild(opt);
+    }
+  });
+}
+
+function seSelectSource(sel) {
+  if (!sel.value) { SE.sourcePath = null; SE.sourceName = null; return; }
+  try {
+    const d = JSON.parse(sel.value);
+    SE.sourcePath = d.path;
+    SE.sourceName = d.name;
+  } catch { SE.sourcePath = sel.value; SE.sourceName = sel.value; }
+}
+
+/* ─────────────────────────────────────────
+   STEP 1 — TRANSCRIBE
+───────────────────────────────────────── */
+async function seTranscribe() {
+  if (!SE.sourcePath) { alert('SELECT A FILE FIRST'); return; }
+  seSetBusy('se-transcribe-btn', true, '[ TRANSCRIBING... ]');
+  try {
+    const res  = await fetch('/api/lab/transcribe', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: SE.sourcePath }),
+    });
+    const data = await res.json();
+    if (data.error) { alert('TRANSCRIBE ERROR: ' + data.error); return; }
+    SE.transcript = data.text;
+    SE.segments   = data.segments || [];
+
+    // Show transcript
+    seShow('se-transcript-box', true);
+    document.getElementById('se-transcript-text').textContent =
+      SE.segments.length
+        ? SE.segments.map(s => {
+            const mm = (n) => String(Math.floor(n/60)).padStart(2,'0');
+            const ss = (n) => String(Math.floor(n%60)).padStart(2,'0');
+            return `[${mm(s.start)}:${ss(s.start)}] ${(s.text||'').trim()}`;
+          }).join('\n')
+        : SE.transcript;
+
+    // Reveal highlights section
+    seShow('se-highlights-section', true);
+  } catch(e) {
+    alert('TRANSCRIBE FAILED: ' + e);
+  } finally {
+    seSetBusy('se-transcribe-btn', false, '[ 1. TRANSCRIBE ]');
+  }
+}
+
+/* ─────────────────────────────────────────
+   STEP 2 — FIND HIGHLIGHTS
+───────────────────────────────────────── */
+async function seHighlights() {
+  if (!SE.segments.length) { alert('TRANSCRIBE FIRST'); return; }
+  seSetBusy('se-highlights-btn', true, '[ ANALYZING... ]');
+  try {
+    const res  = await fetch('/api/lab/highlights', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ segments: SE.segments, focus: SE.focus }),
+    });
+    const data = await res.json();
+    if (data.error) { alert('HIGHLIGHTS ERROR: ' + data.error); return; }
+    SE.highlights = data.highlights || [];
+    SE.selected   = new Set(SE.highlights.map((_, i) => i));
+
+    // Render clip cards
+    const list = document.getElementById('se-clips-list');
+    list.innerHTML = '';
+    SE.highlights.forEach((h, i) => {
+      const dur = (h.end - h.start).toFixed(1);
+      const mm = (n) => String(Math.floor(n/60)).padStart(2,'0');
+      const ss = (n) => String(Math.floor(n%60)).padStart(2,'0');
+      const ts  = `${mm(h.start)}:${ss(h.start)} → ${mm(h.end)}:${ss(h.end)} (${dur}s)`;
+      const card = document.createElement('div');
+      card.className = 'se-clip';
+      card.innerHTML =
+        `<input type="checkbox" checked id="se-chk-${i}" onchange="seToggleClip(${i},this.checked)">` +
+        `<div class="se-clip-body">` +
+          `<span class="se-clip-title">${esc(h.title || 'Clip ' + (i+1))}</span>` +
+          `<span class="se-clip-time">${ts}</span>` +
+          `<span class="se-clip-why">${esc(h.reason || '')}</span>` +
+        `</div>`;
+      list.appendChild(card);
+    });
+    seShow('se-clips-list', true);
+    seShow('se-cut-btn', false);
+    document.getElementById('se-cut-btn').style.display = 'block';
+  } catch(e) {
+    alert('HIGHLIGHTS FAILED: ' + e);
+  } finally {
+    seSetBusy('se-highlights-btn', false, '[ 2. FIND HIGHLIGHTS ]');
+  }
+}
+
+function seToggleClip(i, checked) {
+  if (checked) SE.selected.add(i); else SE.selected.delete(i);
+}
+
+/* ─────────────────────────────────────────
+   STEP 3 — CUT & ASSEMBLE
+───────────────────────────────────────── */
+async function seCut() {
+  if (!SE.sourcePath)       { alert('NO SOURCE FILE'); return; }
+  if (!SE.selected.size)    { alert('SELECT AT LEAST ONE CLIP'); return; }
+  const segs = [...SE.selected].sort((a,b) => a-b).map(i => ({
+    start: SE.highlights[i].start, end: SE.highlights[i].end,
+  }));
+  seSetBusy('se-cut-btn', true, '[ CUTTING... ]');
+  try {
+    const res  = await fetch('/api/lab/cut', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source_path: SE.sourcePath, segments: segs, transition: 'fade' }),
+    });
+    const data = await res.json();
+    if (data.error) { alert('CUT ERROR: ' + data.error); return; }
+    SE.reelUrl  = data.url;
+    SE.reelPath = data.path;
+
+    // Show result video
+    const vid = document.getElementById('se-video');
+    vid.src = data.url;
+    document.getElementById('se-video-dl').href = data.url;
+    seShow('se-video-result', true);
+
+    // Unlock downstream steps
+    seShow('se-metadata-section', true);
+    seShow('se-reformat-section', true);
+    seShow('se-thumb-section', true);
+  } catch(e) {
+    alert('CUT FAILED: ' + e);
+  } finally {
+    seSetBusy('se-cut-btn', false, '[ 3. CUT & ASSEMBLE ]');
+  }
+}
+
+/* ─────────────────────────────────────────
+   STEP 4 — METADATA
+───────────────────────────────────────── */
+async function seMetadata() {
+  if (!SE.transcript) { alert('TRANSCRIBE FIRST'); return; }
+  seSetBusy('se-metadata-btn', true, '[ GENERATING... ]');
+  try {
+    const res  = await fetch('/api/lab/metadata', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        transcript: SE.transcript,
+        platform:   SE.platform,
+        title_hint: SE.sourceName || '',
+      }),
+    });
+    const data = await res.json();
+    if (data.error) { alert('METADATA ERROR: ' + data.error); return; }
+
+    document.getElementById('se-meta-title').value = data.title || '';
+    document.getElementById('se-meta-desc').value  = data.description || '';
+    document.getElementById('se-meta-tags').value  =
+      Array.isArray(data.hashtags) ? data.hashtags.join(' ') : (data.hashtags || '');
+    seShow('se-metadata-result', true);
+  } catch(e) {
+    alert('METADATA FAILED: ' + e);
+  } finally {
+    seSetBusy('se-metadata-btn', false, '[ 4. GENERATE METADATA ]');
+  }
+}
+
+function seCopy(fieldId, label) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  navigator.clipboard.writeText(el.value).then(() => {
+    const old = el.previousElementSibling?.textContent;
+    if (el.previousElementSibling) {
+      el.previousElementSibling.textContent = label + ' COPIED!';
+      setTimeout(() => { if (el.previousElementSibling) el.previousElementSibling.textContent = old; }, 1500);
+    }
+  }).catch(() => { el.select(); document.execCommand('copy'); });
+}
+
+/* ─────────────────────────────────────────
+   STEP 5 — REFORMAT
+───────────────────────────────────────── */
+async function seReformat() {
+  const src = SE.reelPath || SE.sourcePath;
+  if (!src) { alert('NO VIDEO TO REFORMAT'); return; }
+  seSetBusy('se-reformat-btn', true, '[ REFORMATTING... ]');
+  try {
+    const res  = await fetch('/api/lab/reformat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source_path: src, platform: SE.platform }),
+    });
+    const data = await res.json();
+    if (data.error) { alert('REFORMAT ERROR: ' + data.error); return; }
+    SE.reformatPath = data.path;
+    const vid = document.getElementById('se-reformat-video');
+    vid.src = data.url;
+    document.getElementById('se-reformat-dl').href = data.url;
+    seShow('se-reformat-result', true);
+  } catch(e) {
+    alert('REFORMAT FAILED: ' + e);
+  } finally {
+    seSetBusy('se-reformat-btn', false, '[ 5. REFORMAT FOR PLATFORM ]');
+  }
+}
+
+/* ─────────────────────────────────────────
+   STEP 6 — THUMBNAIL
+───────────────────────────────────────── */
+async function seThumbnail() {
+  const src = SE.reformatPath || SE.reelPath || SE.sourcePath;
+  if (!src) { alert('NO VIDEO SOURCE FOR THUMBNAIL'); return; }
+  const ts   = parseFloat(document.getElementById('se-thumb-ts').value) || 0;
+  const text = document.getElementById('se-thumb-text').value.trim();
+  const pos  = document.getElementById('se-thumb-pos').value;
+  seSetBusy('se-thumb-btn', true, '[ GENERATING... ]');
+  try {
+    const res  = await fetch('/api/lab/thumbnail', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source_path: src, timestamp: ts, text, position: pos }),
+    });
+    const data = await res.json();
+    if (data.error) { alert('THUMBNAIL ERROR: ' + data.error); return; }
+    const img = document.getElementById('se-thumb-img');
+    img.src = data.url + '?t=' + Date.now();
+    document.getElementById('se-thumb-dl').href = data.url;
+    seShow('se-thumb-result', true);
+  } catch(e) {
+    alert('THUMBNAIL FAILED: ' + e);
+  } finally {
+    seSetBusy('se-thumb-btn', false, '[ GENERATE THUMBNAIL ]');
+  }
 }
 </script>
 </body>

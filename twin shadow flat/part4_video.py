@@ -222,6 +222,85 @@ def add_audio_to_video(video_path: str, audio_path: str, output_path: str) -> tu
     return (ok, output_path) if ok else (False, err)
 
 
+def extract_audio(video_path: str, output_path: str) -> tuple[bool, str]:
+    """Extract audio as mono 16kHz MP3 — for pre-processing before Whisper transcription."""
+    ok, err = _run_ffmpeg([
+        "-i", video_path,
+        "-vn", "-ar", "16000", "-ac", "1", "-b:a", "64k",
+        output_path,
+    ])
+    return (ok, output_path) if ok else (False, err)
+
+
+def cut_segment(source_path: str, start: float, end: float, output_path: str) -> tuple[bool, str]:
+    """Cut a precise segment (seconds). Re-encodes for clean keyframe-aligned cuts."""
+    duration = round(end - start, 3)
+    if duration <= 0:
+        return False, "Invalid segment: end must be after start"
+    ok, err = _run_ffmpeg([
+        "-ss", f"{start:.3f}", "-i", source_path,
+        "-t",  f"{duration:.3f}",
+        "-c:v", "libx264", "-c:a", "aac", "-pix_fmt", "yuv420p",
+        output_path,
+    ])
+    return (ok, output_path) if ok else (False, err)
+
+
+def reformat_for_platform(source_path: str, platform: str, output_path: str) -> tuple[bool, str]:
+    """
+    Reformat video aspect ratio for a target platform.
+    youtube  → 1920×1080 16:9  (letterbox black bars)
+    tiktok   → 1080×1920 9:16  (centre crop)
+    instagram→ 1080×1920 9:16  (centre crop)
+    facebook → 1280×720  16:9  (letterbox black bars)
+    """
+    p = platform.lower()
+    if p in ("tiktok", "instagram"):
+        vf = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920:(iw-1080)/2:(ih-1920)/2"
+    elif p == "facebook":
+        vf = "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=black"
+    else:
+        vf = "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=black"
+    ok, err = _run_ffmpeg([
+        "-i", source_path,
+        "-vf", vf,
+        "-c:v", "libx264", "-c:a", "aac", "-pix_fmt", "yuv420p",
+        output_path,
+    ])
+    return (ok, output_path) if ok else (False, err)
+
+
+def make_thumbnail(
+    source_path: str,
+    output_path: str,
+    timestamp: float = 0.0,
+    text: str = "",
+    position: str = "bottom",
+) -> tuple[bool, str]:
+    """
+    Extract a frame at timestamp seconds and optionally burn in overlay text.
+    position: 'top' | 'center' | 'bottom'
+    """
+    y_expr = {"top": "th+20", "center": "(h-th)/2", "bottom": "h-th-30"}.get(position, "h-th-30")
+    if not text:
+        ok, err = _run_ffmpeg([
+            "-ss", f"{timestamp:.3f}", "-i", source_path,
+            "-vframes", "1", "-q:v", "2", output_path,
+        ])
+        return (ok, output_path) if ok else (False, err)
+    safe = text.replace("'", "\\'").replace(":", "\\:").replace("%", "\\%")
+    vf = (
+        f"drawtext=text='{safe}':fontcolor=white:fontsize=52"
+        f":x=(w-text_w)/2:y={y_expr}"
+        f":box=1:boxcolor=black@0.65:boxborderw=12"
+    )
+    ok, err = _run_ffmpeg([
+        "-ss", f"{timestamp:.3f}", "-i", source_path,
+        "-vframes", "1", "-vf", vf, "-q:v", "2", output_path,
+    ])
+    return (ok, output_path) if ok else (False, err)
+
+
 def add_text_overlay(video_path: str, text: str, output_path: str) -> tuple[bool, str]:
     safe = text.replace("'", "\\'").replace(":", "\\:")
     ok, err = _run_ffmpeg([
