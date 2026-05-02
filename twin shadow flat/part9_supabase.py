@@ -249,6 +249,72 @@ def list_renders(limit: int = 50) -> list[dict]:
         return []
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# TRANSCRIPTS
+# Run this SQL once in your Supabase project:
+#   CREATE TABLE IF NOT EXISTS transcripts (
+#     id           BIGSERIAL PRIMARY KEY,
+#     created_at   TIMESTAMPTZ DEFAULT NOW(),
+#     title        TEXT NOT NULL,
+#     session_type TEXT,
+#     content      TEXT,
+#     storage_path TEXT,
+#     public_url   TEXT
+#   );
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def save_transcript(title: str, content: str, session_type: str = "boardroom") -> dict:
+    """
+    Save a session transcript to Supabase Storage + log to transcripts table.
+    Returns {"ok": True, "public_url": ...} or {"ok": False, "error": ...}
+    """
+    if not is_configured():
+        return {"ok": False, "error": "Supabase not configured"}
+    import time as _t, re as _re
+    slug  = _re.sub(r"[^a-z0-9]+", "_", title.lower())[:40]
+    fname = f"{int(_t.time())}_{slug}.txt"
+    spath = f"transcripts/{fname}"
+    try:
+        r = requests.post(
+            f"{_SB_URL}/storage/v1/object/{_BUCKET}/{spath}",
+            headers=_headers({"Content-Type": "text/plain; charset=utf-8", "x-upsert": "true"}),
+            data=content.encode("utf-8"),
+            timeout=30,
+        )
+        if not r.ok:
+            return {"ok": False, "error": r.text[:120]}
+        public_url = f"{_SB_URL}/storage/v1/object/public/{_BUCKET}/{spath}"
+        r2 = requests.post(
+            f"{_SB_URL}/rest/v1/transcripts",
+            headers=_pg_headers(),
+            json={"title": title, "session_type": session_type,
+                  "content": content, "storage_path": spath, "public_url": public_url},
+            timeout=10,
+        )
+        if not r2.ok:
+            print(f"[SUPABASE] transcript DB log failed: {r2.text[:120]}")
+        return {"ok": True, "public_url": public_url, "storage_path": spath}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+def list_transcripts(limit: int = 50) -> list[dict]:
+    if not is_configured():
+        return []
+    try:
+        r = requests.get(
+            f"{_SB_URL}/rest/v1/transcripts",
+            headers=_headers({"Accept": "application/json"}),
+            params={"order": "created_at.desc", "limit": limit,
+                    "select": "id,created_at,title,session_type,public_url"},
+            timeout=10,
+        )
+        return r.json() if r.ok else []
+    except Exception as e:
+        print(f"[SUPABASE] list_transcripts error: {e}")
+        return []
+
+
 def delete_file(storage_path: str) -> bool:
     """Remove a file from Supabase Storage by its storage_path."""
     if not is_configured():

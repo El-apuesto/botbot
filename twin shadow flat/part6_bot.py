@@ -315,6 +315,38 @@ def api_brainstorm():
 
     return _sse_stream(_run)
 
+# ── /api/transcript/save ──────────────────────────────────────────────────────
+@_flask.route("/api/transcript/save", methods=["POST"])
+def api_transcript_save():
+    data         = request.json or {}
+    title        = data.get("title", "session").strip()
+    content      = data.get("content", "").strip()
+    session_type = data.get("session_type", "boardroom")
+    if not content:
+        return jsonify({"ok": False, "error": "No content"}), 400
+    result = _sb.save_transcript(title, content, session_type)
+    return jsonify(result)
+
+# ── /api/audio/list ───────────────────────────────────────────────────────────
+@_flask.route("/api/audio/list", methods=["GET"])
+def api_audio_list():
+    _audio_dir.mkdir(exist_ok=True)
+    files = []
+    for p in sorted(_audio_dir.glob("*.mp3"), key=lambda x: x.stat().st_mtime, reverse=True):
+        stat = p.stat()
+        files.append({
+            "name": p.name,
+            "url":  f"/audio/{p.name}",
+            "size": stat.st_size,
+            "mtime": int(stat.st_mtime),
+        })
+    return jsonify(files)
+
+# ── /api/transcripts/list ─────────────────────────────────────────────────────
+@_flask.route("/api/transcripts/list", methods=["GET"])
+def api_transcripts_list():
+    return jsonify(_sb.list_transcripts(50))
+
 # ── /api/tts ──────────────────────────────────────────────────────────────────
 @_flask.route("/api/tts", methods=["POST"])
 def api_tts():

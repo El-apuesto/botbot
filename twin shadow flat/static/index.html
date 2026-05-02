@@ -258,6 +258,7 @@
       <div class="audio-row">
         <button class="btn" id="boardroom-go-btn" onclick="runBoardroom()">[ CONVENE BOARD ]</button>
         <button class="btn" id="boardroom-audio-btn" style="display:none" onclick="renderTTS('boardroom')">[ PLAY AUDIO ]</button>
+        <button class="btn" id="boardroom-save-btn" style="display:none" onclick="saveTranscript('boardroom')">[ SAVE ]</button>
         <a id="boardroom-export-btn" style="display:none;font-family:var(--font);font-size:7px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="boardroom_transcript.txt">[ EXPORT ]</a>
         <a id="boardroom-mp3-btn" style="display:none;font-family:var(--font);font-size:7px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="boardroom_audio.mp3">[ DL MP3 ]</a>
         <button class="btn" id="boardroom-lab-btn" style="display:none" onclick="sendToVideoLab('boardroom')">[ SEND TO VIDEO LAB ]</button>
@@ -294,6 +295,7 @@
       <div class="audio-row">
         <button class="btn" id="brainstorm-go-btn" onclick="runBrainstorm()">[ START SESSION ]</button>
         <button class="btn" id="brainstorm-audio-btn" style="display:none" onclick="renderTTS('brainstorm')">[ PLAY AUDIO ]</button>
+        <button class="btn" id="brainstorm-save-btn" style="display:none" onclick="saveTranscript('brainstorm')">[ SAVE ]</button>
         <a id="brainstorm-export-btn" style="display:none;font-family:var(--font);font-size:7px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="brainstorm_transcript.txt">[ EXPORT ]</a>
         <a id="brainstorm-mp3-btn" style="display:none;font-family:var(--font);font-size:7px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="brainstorm_audio.mp3">[ DL MP3 ]</a>
       </div>
@@ -417,6 +419,25 @@
       </div>
 
       <button class="btn save" onclick="saveSettings()">[ SAVE SETTINGS ]</button>
+
+      <div style="border-top:1px solid var(--purple-dim);margin-top:18px;padding-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span class="fl" style="font-size:7px">AUDIO GALLERY</span>
+          <button class="btn" style="font-size:6px;padding:5px 10px" onclick="loadAudioGallery()">[ LOAD ]</button>
+        </div>
+        <div id="audio-gallery-list" style="display:flex;flex-direction:column;gap:6px"></div>
+        <p id="audio-gallery-empty" class="ph-text" style="margin-top:8px;display:none">NO AUDIO FILES FOUND.</p>
+      </div>
+
+      <div style="border-top:1px solid var(--purple-dim);margin-top:18px;padding-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span class="fl" style="font-size:7px">SAVED TRANSCRIPTS</span>
+          <button class="btn" style="font-size:6px;padding:5px 10px" onclick="loadTranscripts()">[ LOAD ]</button>
+        </div>
+        <div id="transcripts-list" style="display:flex;flex-direction:column;gap:6px"></div>
+        <p id="transcripts-empty" class="ph-text" style="margin-top:8px;display:none">NO TRANSCRIPTS SAVED.</p>
+      </div>
+
     </div>
   </div>
 
@@ -707,6 +728,7 @@ async function runBoardroom() {
 
   if (boardTurns.length) {
     document.getElementById('boardroom-audio-btn').style.display = '';
+    document.getElementById('boardroom-save-btn').style.display = '';
     const txt = boardTurns.map(t => t.speaker + ': ' + t.text).join('\n\n');
     const blob = new Blob([txt], { type: 'text/plain' });
     document.getElementById('boardroom-export-btn').href = URL.createObjectURL(blob);
@@ -757,6 +779,7 @@ async function runBrainstorm() {
 
   if (bsTurns.length) {
     document.getElementById('brainstorm-audio-btn').style.display = '';
+    document.getElementById('brainstorm-save-btn').style.display = '';
     const txt = bsTurns.map(t => t.speaker + ': ' + t.text).join('\n\n');
     const blob = new Blob([txt], { type: 'text/plain' });
     document.getElementById('brainstorm-export-btn').href = URL.createObjectURL(blob);
@@ -970,6 +993,96 @@ function _getVoiceOverrides() {
     if (v) out[speaker] = v;
   }
   return out;
+}
+
+/* ─────────────────────────────────────────
+   SAVE TRANSCRIPT
+───────────────────────────────────────── */
+async function saveTranscript(mode) {
+  const turns = mode === 'boardroom' ? boardTurns : bsTurns;
+  if (!turns.length) return;
+  const btn = document.getElementById(mode + '-save-btn');
+  btn.disabled = true; btn.textContent = '[ SAVING... ]';
+  const topic = mode === 'boardroom'
+    ? document.getElementById('boardroom-topic').value.trim()
+    : document.getElementById('brainstorm-topic').value.trim();
+  const content = turns.map(t => t.speaker + ': ' + t.text).join('\n\n');
+  const title = (topic || mode).slice(0, 80);
+  try {
+    const res  = await fetch('/api/transcript/save', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, content, session_type: mode }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      btn.textContent = '[ SAVED \u2713 ]';
+    } else {
+      btn.textContent = '[ SAVE FAILED ]';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    btn.textContent = '[ SAVE FAILED ]';
+    btn.disabled = false;
+  }
+}
+
+/* ─────────────────────────────────────────
+   AUDIO GALLERY
+───────────────────────────────────────── */
+async function loadAudioGallery() {
+  const list  = document.getElementById('audio-gallery-list');
+  const empty = document.getElementById('audio-gallery-empty');
+  list.innerHTML = '<p style="font-size:6px;color:var(--purple-dim)">LOADING...</p>';
+  empty.style.display = 'none';
+  try {
+    const files = await fetch('/api/audio/list').then(r => r.json());
+    list.innerHTML = '';
+    if (!files.length) { empty.style.display = ''; return; }
+    files.forEach(f => {
+      const dt = new Date(f.mtime * 1000).toLocaleString();
+      const kb = Math.round(f.size / 1024);
+      const row = document.createElement('div');
+      row.style.cssText = 'border:1px solid var(--purple-dim);padding:6px 8px;display:flex;flex-direction:column;gap:4px';
+      row.innerHTML =
+        `<span style="font-size:6px;color:var(--purple)">${f.name}</span>` +
+        `<span style="font-size:5px;color:#555">${dt} &nbsp; ${kb} KB</span>` +
+        `<audio controls src="${f.url}" style="width:100%;margin-top:2px"></audio>` +
+        `<a href="${f.url}" download="${f.name}" style="font-family:var(--font);font-size:5px;color:var(--purple);text-decoration:none;align-self:flex-start;border:1px solid var(--purple-dim);padding:3px 6px">[ DL ]</a>`;
+      list.appendChild(row);
+    });
+  } catch(e) {
+    list.innerHTML = '<p style="font-size:6px;color:#f44">ERROR: ' + e + '</p>';
+  }
+}
+
+/* ─────────────────────────────────────────
+   SAVED TRANSCRIPTS
+───────────────────────────────────────── */
+async function loadTranscripts() {
+  const list  = document.getElementById('transcripts-list');
+  const empty = document.getElementById('transcripts-empty');
+  list.innerHTML = '<p style="font-size:6px;color:var(--purple-dim)">LOADING...</p>';
+  empty.style.display = 'none';
+  try {
+    const items = await fetch('/api/transcripts/list').then(r => r.json());
+    list.innerHTML = '';
+    if (!items.length) { empty.style.display = ''; return; }
+    items.forEach(t => {
+      const dt   = new Date(t.created_at).toLocaleString();
+      const type = (t.session_type || '').toUpperCase();
+      const row  = document.createElement('div');
+      row.style.cssText = 'border:1px solid var(--purple-dim);padding:6px 8px;display:flex;flex-direction:column;gap:3px';
+      row.innerHTML =
+        `<span style="font-size:6px;color:var(--purple)">${t.title}</span>` +
+        `<span style="font-size:5px;color:#555">${type} &nbsp;|&nbsp; ${dt}</span>` +
+        (t.public_url
+          ? `<a href="${t.public_url}" target="_blank" style="font-family:var(--font);font-size:5px;color:var(--purple);text-decoration:none;align-self:flex-start;border:1px solid var(--purple-dim);padding:3px 6px">[ VIEW ]</a>`
+          : '');
+      list.appendChild(row);
+    });
+  } catch(e) {
+    list.innerHTML = '<p style="font-size:6px;color:#f44">ERROR: ' + e + '</p>';
+  }
 }
 
 async function deployBuilder() {
