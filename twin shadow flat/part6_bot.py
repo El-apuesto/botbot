@@ -440,6 +440,24 @@ def _do_deploy_script(name: str, code: str) -> dict:
     return {"ok": True, "path": f"scripts/{name}.py", "job": job}
 
 
+@_flask.route("/api/deploy/web", methods=["POST"])
+def api_deploy_web():
+    """
+    Web-accessible deploy — reads the last builder output stored server-side.
+    Body: { "name": "my_script" }
+    Returns: { "ok": True, "path": "scripts/my_script.py", "job": {...} }
+    """
+    data = request.json or {}
+    name = data.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "name required"}), 400
+    code = _last_builder_code.get("web", "")
+    if not code:
+        return jsonify({"error": "No builder output — run the Builder first"}), 400
+    result = _do_deploy_script(name, code)
+    return jsonify(result), (200 if result.get("ok") else 400)
+
+
 @_flask.route("/api/builder/deploy", methods=["POST"])
 def api_builder_deploy():
     """

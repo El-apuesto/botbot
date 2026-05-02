@@ -232,6 +232,10 @@
       </div>
       <button class="btn" id="builder-go-btn" onclick="runBuilder()">[ RUN BUILDER ]</button>
       <button class="btn" id="builder-lab-btn" style="display:none" onclick="sendToVideoLab('builder')">[ SEND TO VIDEO LAB ]</button>
+      <div class="fg" id="builder-deploy-row" style="display:none;flex-direction:row;gap:6px;margin-top:4px">
+        <input class="fi" id="builder-deploy-name" type="text" placeholder="script name (a-z, _, -)" style="flex:1;min-width:0">
+        <button class="btn" id="builder-deploy-btn" onclick="deployBuilder()" style="white-space:nowrap">[ DEPLOY ]</button>
+      </div>
       <div id="builder-out" class="session-out"></div>
     </div>
   </div>
@@ -362,6 +366,56 @@
         <textarea class="fi" id="p-brainstorm" rows="3" placeholder="You are a creative contributor..."></textarea>
       </div>
 
+      <div class="fg">
+        <label class="fl">VOICES <span style="font-size:0.75em;opacity:0.5">(GOOGLE CLOUD TTS — IGNORED BY gTTS FALLBACK)</span></label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-top:4px">
+          <label class="fl" style="margin:0;align-self:center">TWIN</label>
+          <select class="fi" id="v-twin">
+            <option value="en-US-Neural2-D">Neural2-D (male, default)</option>
+            <option value="en-US-Neural2-I">Neural2-I (male)</option>
+            <option value="en-US-Neural2-J">Neural2-J (male)</option>
+            <option value="en-US-Neural2-A">Neural2-A (female)</option>
+            <option value="en-US-Neural2-C">Neural2-C (male)</option>
+            <option value="en-US-Wavenet-B">Wavenet-B (male)</option>
+            <option value="en-US-Wavenet-D">Wavenet-D (male)</option>
+          </select>
+          <label class="fl" style="margin:0;align-self:center">SHADOW</label>
+          <select class="fi" id="v-shadow">
+            <option value="en-US-Neural2-A">Neural2-A (female, default)</option>
+            <option value="en-US-Neural2-F">Neural2-F (female)</option>
+            <option value="en-US-Neural2-G">Neural2-G (female)</option>
+            <option value="en-US-Neural2-H">Neural2-H (female)</option>
+            <option value="en-US-Neural2-D">Neural2-D (male)</option>
+            <option value="en-US-Neural2-I">Neural2-I (male)</option>
+            <option value="en-US-Wavenet-A">Wavenet-A (female)</option>
+          </select>
+          <label class="fl" style="margin:0;align-self:center">CAPI</label>
+          <select class="fi" id="v-capi">
+            <option value="en-US-Wavenet-B">Wavenet-B (male, default)</option>
+            <option value="en-US-Neural2-C">Neural2-C (male)</option>
+            <option value="en-US-Neural2-I">Neural2-I (male)</option>
+            <option value="en-US-Wavenet-D">Wavenet-D (male)</option>
+            <option value="en-US-Neural2-D">Neural2-D (male)</option>
+          </select>
+          <label class="fl" style="margin:0;align-self:center">BUILDER</label>
+          <select class="fi" id="v-builder">
+            <option value="en-US-Neural2-I">Neural2-I (male, default)</option>
+            <option value="en-US-Neural2-J">Neural2-J (male)</option>
+            <option value="en-US-Neural2-D">Neural2-D (male)</option>
+            <option value="en-US-Neural2-C">Neural2-C (male)</option>
+            <option value="en-US-Wavenet-B">Wavenet-B (male)</option>
+          </select>
+          <label class="fl" style="margin:0;align-self:center">NARRATOR</label>
+          <select class="fi" id="v-narrator">
+            <option value="en-US-Neural2-C">Neural2-C (male, default)</option>
+            <option value="en-US-Neural2-E">Neural2-E (female)</option>
+            <option value="en-US-Neural2-G">Neural2-G (female)</option>
+            <option value="en-US-Neural2-D">Neural2-D (male)</option>
+            <option value="en-US-Wavenet-D">Wavenet-D (male)</option>
+          </select>
+        </div>
+      </div>
+
       <button class="btn save" onclick="saveSettings()">[ SAVE SETTINGS ]</button>
     </div>
   </div>
@@ -406,6 +460,11 @@ const _labConcepts = {};
   document.getElementById('p-builder').value   = S.get('p_builder', '');
   document.getElementById('p-boardroom').value = S.get('p_boardroom', '');
   document.getElementById('p-brainstorm').value= S.get('p_brainstorm', '');
+  ['twin','shadow','capi','builder','narrator'].forEach(k => {
+    const el = document.getElementById('v-' + k); if (!el) return;
+    const saved = S.get('voice_' + k, '');
+    if (saved) el.value = saved;
+  });
   setDef(defBot, true);
   setMode(teamMode, true);
   addMsg('SHADOW', 'DARK MAGUS ONLINE.\nAI ENGINE ACTIVE. TYPE YOUR COMMAND.');
@@ -719,7 +778,7 @@ async function renderTTS(mode) {
   try {
     const res  = await fetch('/api/tts', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ turns }),
+      body: JSON.stringify({ turns, voice_overrides: _getVoiceOverrides() }),
     });
     const data = await res.json();
     if (data.url) {
@@ -764,6 +823,9 @@ async function runBuilder() {
     const txt = builderTurns.map(t => t.speaker + ': ' + t.text).join('\n\n');
     _labConcepts.builder = { task, output: txt };
     document.getElementById('builder-lab-btn').style.display = '';
+    const deployRow = document.getElementById('builder-deploy-row');
+    deployRow.style.display = 'flex';
+    document.getElementById('builder-deploy-btn').textContent = '[ DEPLOY ]';
   }
 }
 
@@ -890,10 +952,50 @@ function saveSettings() {
   S.set('p_builder',   document.getElementById('p-builder').value);
   S.set('p_boardroom', document.getElementById('p-boardroom').value);
   S.set('p_brainstorm',document.getElementById('p-brainstorm').value);
+  ['twin','shadow','capi','builder','narrator'].forEach(k => {
+    const el = document.getElementById('v-' + k); if (!el) return;
+    S.set('voice_' + k, el.value);
+  });
   bot = defBot; S.set('bot', bot); applyBot(bot);
   document.getElementById('user-label').textContent = uname;
   closePanel('settings');
   addMsg('SYSTEM', 'SETTINGS SAVED. WELCOME, ' + uname + '.');
+}
+
+function _getVoiceOverrides() {
+  const map = { TWIN: 'twin', SHADOW: 'shadow', CAPI: 'capi', BUILDER: 'builder', NARRATOR: 'narrator' };
+  const out = {};
+  for (const [speaker, key] of Object.entries(map)) {
+    const v = S.get('voice_' + key, '');
+    if (v) out[speaker] = v;
+  }
+  return out;
+}
+
+async function deployBuilder() {
+  const nameEl = document.getElementById('builder-deploy-name');
+  const btn    = document.getElementById('builder-deploy-btn');
+  const name   = nameEl.value.trim().replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
+  if (!name) { alert('Enter a script name first.'); return; }
+  btn.disabled = true; btn.textContent = '[ DEPLOYING... ]';
+  try {
+    const res  = await fetch('/api/deploy/web', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      addMsg('SYSTEM', '✓ DEPLOYED: ' + data.path);
+      btn.textContent = '[ DEPLOYED ✓ ]';
+    } else {
+      alert('Deploy failed: ' + (data.error || 'unknown'));
+      btn.textContent = '[ DEPLOY ]';
+    }
+  } catch(e) {
+    alert('Deploy error: ' + e);
+    btn.textContent = '[ DEPLOY ]';
+  }
+  btn.disabled = false;
 }
 </script>
 </body>

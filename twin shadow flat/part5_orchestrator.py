@@ -218,7 +218,7 @@ async def vault_rag(chat_id: int, current_idea: str, max_entries: int = 3) -> st
     ]
 
     try:
-        result = await call_task("shadow", messages)
+        result = await call_task("shadow_chat", messages)
         return f"\n\n[Vault RAG]\n{result}"
     except Exception as e:
         print(f"[RAG] Failed: {e}")
@@ -252,7 +252,7 @@ async def default_shadow_audit(content: str, module_name: str) -> tuple[bool, st
     ]
 
     try:
-        raw = await call_task("shadow", messages)
+        raw = await call_task("shadow_chat", messages)
         try:
             clean = raw.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
             parsed = json.loads(clean)
@@ -301,7 +301,7 @@ async def cross_validate(results: list[ExecutionResult], brief: dict) -> tuple[b
     ]
 
     try:
-        raw = await call_task("shadow", messages)
+        raw = await call_task("shadow_chat", messages)
         try:
             clean = raw.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
             parsed = json.loads(clean)
@@ -498,7 +498,7 @@ class ExecutionEngine:
         ]
 
         start = datetime.now(timezone.utc)
-        result, was_fallback = await call_task_with_fallback("relay", messages, "shadow")
+        result, was_fallback = await call_task_with_fallback("twin", messages, "shadow_chat")
         duration = (datetime.now(timezone.utc) - start).total_seconds() * 1000
 
         passed, audit_notes = await default_shadow_audit(result, "quick_build")
