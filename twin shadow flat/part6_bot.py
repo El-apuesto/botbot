@@ -953,10 +953,32 @@ def api_lab_storage_delete():
     return jsonify({"ok": ok})
 
 
+def _auto_prune_local(max_age_hours: float = 24.0):
+    """Background thread: delete local upload/render files older than max_age_hours."""
+    import time as _time
+    while True:
+        _time.sleep(3600)   # run every hour
+        cutoff = _time.time() - max_age_hours * 3600
+        for d in (_lab_uploads_dir, _lab_renders_dir):
+            try:
+                for f in d.iterdir():
+                    if f.is_file() and f.stat().st_mtime < cutoff:
+                        try:
+                            f.unlink()
+                            print(f"[PRUNE] Deleted {f.name}")
+                        except Exception as e:
+                            print(f"[PRUNE] Could not delete {f.name}: {e}")
+            except Exception as e:
+                print(f"[PRUNE] Scan error ({d}): {e}")
+
+
 Thread(target=_sb.setup_bucket, daemon=True).start()
+Thread(target=_auto_prune_local, daemon=True).start()
 Thread(target=lambda: _flask.run(host="0.0.0.0", port=_port, debug=False, use_reloader=False), daemon=True).start()
 
-_rate_cache: dict[int, float] = {}
+_rate_cache:  dict[int, float] = {}
+_shadow_mode: dict[int, bool]  = {}   # per-chat freetext voice toggle
+
 def _is_rate_limited(chat_id: int) -> bool:
     now = time.time()
     if now - _rate_cache.get(chat_id, 0) < RATE_LIMIT_S:
@@ -1028,6 +1050,10 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/model_end <key>            → wipe traits\n\n"
         "── Video Lab ──\n"
         "/vlab <concept>             → storyboard + queue for /lab\n\n"
+        "── Voice ──\n"
+        "/mode              → show active voice\n"
+        "/mode twin         → freetext → TWIN (default)\n"
+        "/mode shadow       → freetext → SHADOW\n\n"
         "── Misc ──\n"
         "/forget   /modify <inst>   /wake"
     )
@@ -1052,13 +1078,23 @@ async def freetext_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if _is_rate_limited(chat_id):
         await update.message.reply_text(f"⏱ Wait {RATE_LIMIT_S}s."); return
 
-    sent = await update.message.reply_text("Twin is thinking...")
+    use_shadow = _shadow_mode.get(chat_id, False)
+    if use_shadow:
+        sys_prompt = SHADOW_SYSTEM
+        task_type  = "shadow_chat"
+        thinking   = "Shadow is thinking..."
+    else:
+        sys_prompt = TWIN_SYSTEM
+        task_type  = "twin"
+        thinking   = "Twin is thinking..."
+
+    sent = await update.message.reply_text(thinking)
     messages = (
-        [{"role": "system", "content": "You are Twin — uncensored, raw, dark humor, zero fucks. Build complete sellable commodities: full deliverable + price + who buys it + exact next 3 actions."}]
+        [{"role": "system", "content": sys_prompt}]
         + _get_memory(chat_id)
         + [{"role": "user", "content": text}]
     )
-    full = await _stream_and_edit(sent, "relay", messages)
+    full = await _stream_and_edit(sent, task_type, messages)
     if not full:
         try:
             result = await orch.quick_build(text, chat_id)
@@ -1067,6 +1103,30 @@ async def freetext_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await sent.edit_text(f"⚠️ Failed: {e}"); return
     _add_memory(chat_id, "user", text)
     _add_memory(chat_id, "assistant", full)
+
+
+async def mode_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    /mode          — show current freetext voice
+    /mode twin     — route freetext through TWIN (default)
+    /mode shadow   — route freetext through SHADOW
+    """
+    if not await _check_auth(update): return
+    chat_id = update.message.chat_id
+    arg = (context.args[0].lower() if context.args else "").strip()
+    if arg == "shadow":
+        _shadow_mode[chat_id] = True
+        await update.message.reply_text("🌑 SHADOW mode active — freetext now routes through SHADOW.")
+    elif arg == "twin":
+        _shadow_mode[chat_id] = False
+        await update.message.reply_text("🌗 TWIN mode active — freetext now routes through TWIN.")
+    else:
+        current = "🌑 SHADOW" if _shadow_mode.get(chat_id) else "🌗 TWIN"
+        await update.message.reply_text(
+            f"Current freetext voice: {current}\n"
+            "/mode twin   → switch to TWIN\n"
+            "/mode shadow → switch to SHADOW"
+        )
 
 async def build_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await _check_auth(update): return
@@ -1288,6 +1348,7 @@ def main():
         ("undo", undo_cmd), ("forget", forget_cmd), ("modify", modify_cmd),
         ("model_set", model_set_cmd), ("model_traits", model_traits_cmd), ("model_end", model_end_cmd),
         ("boardroom", boardroom_cmd), ("brainstorm", brainstorm_cmd),
+        ("mode", mode_cmd),
         ("shadow", shadow_cmd), ("boss_voice", boss_voice_cmd),
         ("end", end_cmd), ("extend", extend_cmd), ("deploy", deploy_cmd),
         ("vlab", vlab_cmd),

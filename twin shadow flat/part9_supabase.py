@@ -38,8 +38,8 @@ import requests
 from pathlib import Path
 
 from urllib.parse import unquote
-_SB_URL = unquote(os.environ.get("SUPABASE_URL", "")).strip().rstrip("/")
-_SB_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
+_SB_URL = unquote(os.environ.get("SUPABASE_URL", "")).replace(" ", "").strip().rstrip("/")
+_SB_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "").replace(" ", "").strip()
 _BUCKET = "twin-shadow-lab"
 
 
