@@ -37,8 +37,9 @@ import mimetypes
 import requests
 from pathlib import Path
 
-_SB_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
-_SB_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
+from urllib.parse import unquote
+_SB_URL = unquote(os.environ.get("SUPABASE_URL", "")).strip().rstrip("/")
+_SB_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
 _BUCKET = "twin-shadow-lab"
 
 
