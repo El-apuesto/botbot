@@ -973,15 +973,35 @@ async function openUploads() {
   openPanel('uploads');
   const list  = document.getElementById('uploads-list');
   const empty = document.getElementById('uploads-empty');
-  list.innerHTML = '';
-  if (!labState.uploadedFiles.length) { empty.style.display = ''; return; }
+  list.innerHTML = '<div class="log-line dim">SCANNING DISK...</div>';
   empty.style.display = 'none';
-  labState.uploadedFiles.forEach(f => {
-    const row = document.createElement('div');
-    row.className = 'upl-row';
-    row.innerHTML = `<span class="upl-name">${esc(f.name)}</span><span class="upl-type">[${f.file_type}]</span>`;
-    list.appendChild(row);
-  });
+
+  try {
+    const data = await fetch('/api/lab/files').then(r => r.json());
+    const diskFiles = data.files || [];
+
+    // Merge session + disk, dedupe by path
+    const seen = new Set();
+    const all  = [];
+    labState.uploadedFiles.forEach(f => { if (!seen.has(f.path)) { seen.add(f.path); all.push(f); } });
+    diskFiles.forEach(f => { if (!seen.has(f.path)) { seen.add(f.path); all.push(f); } });
+
+    list.innerHTML = '';
+    if (!all.length) { empty.style.display = ''; return; }
+
+    all.forEach(f => {
+      const row = document.createElement('div');
+      row.className = 'upl-row';
+      const dur = f.duration ? ` · ${f.duration.toFixed(0)}s` : '';
+      const mb  = f.size    ? ` · ${(f.size/1024/1024).toFixed(1)}MB` : '';
+      row.innerHTML =
+        `<span class="upl-name">${esc(f.name)}</span>` +
+        `<span class="upl-type">[${f.file_type}${dur}${mb}]</span>`;
+      list.appendChild(row);
+    });
+  } catch(e) {
+    list.innerHTML = `<div class="log-line err">ERROR: ${esc(String(e))}</div>`;
+  }
 }
 
 /* ─────────────────────────────────────────
@@ -1104,19 +1124,54 @@ async function seLoadFonts() {
   }
 }
 
-function openSmartEditor() {
+async function openSmartEditor() {
   openPanel('smartedit');
+  seLoadFonts();
+
   const sel = document.getElementById('se-source-select');
-  sel.innerHTML = '<option value="">-- SELECT UPLOADED FILE --</option>';
-  labState.uploadedFiles.forEach(f => {
-    if (f.file_type === 'video' || f.file_type === 'audio') {
+  sel.innerHTML = '<option value="">-- LOADING FILES... --</option>';
+
+  try {
+    const data = await fetch('/api/lab/files').then(r => r.json());
+    const diskFiles = data.files || [];
+
+    // Merge session uploads with disk files, deduplicate by path
+    const seen = new Set();
+    const all  = [];
+
+    // Session files first (most recently uploaded this session)
+    labState.uploadedFiles.forEach(f => {
+      if ((f.file_type === 'video' || f.file_type === 'audio') && !seen.has(f.path)) {
+        seen.add(f.path);
+        all.push(f);
+      }
+    });
+
+    // Then anything on disk not already listed
+    diskFiles.forEach(f => {
+      if ((f.file_type === 'video' || f.file_type === 'audio') && !seen.has(f.path)) {
+        seen.add(f.path);
+        all.push(f);
+      }
+    });
+
+    sel.innerHTML = '<option value="">-- SELECT FILE --</option>';
+    if (!all.length) {
+      sel.innerHTML = '<option value="">-- NO FILES ON DISK. UPLOAD ONE FIRST. --</option>';
+      return;
+    }
+    all.forEach(f => {
       const opt = document.createElement('option');
       opt.value = JSON.stringify({ path: f.path, name: f.name });
-      opt.textContent = f.name + (f.duration ? ` (${f.duration.toFixed(0)}s)` : '');
+      const dur = f.duration ? ` · ${f.duration.toFixed(0)}s` : '';
+      const kb  = f.size    ? ` · ${(f.size/1024/1024).toFixed(1)}MB` : '';
+      opt.textContent = f.name + dur + kb;
       sel.appendChild(opt);
-    }
-  });
-  seLoadFonts();
+    });
+  } catch(e) {
+    sel.innerHTML = '<option value="">-- ERROR LOADING FILES --</option>';
+    console.error('openSmartEditor files:', e);
+  }
 }
 
 function seSelectSource(sel) {

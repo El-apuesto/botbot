@@ -926,6 +926,45 @@ def api_lab_upload():
     })
 
 
+# ── /api/lab/files — scan disk for all existing uploads ───────────────────────
+@_flask.route("/api/lab/files", methods=["GET"])
+def api_lab_files():
+    """List every file currently on disk in the uploads dir, newest first."""
+    video_exts = {".mp4", ".mov", ".webm", ".mkv"}
+    audio_exts = {".mp3", ".wav", ".ogg", ".m4a"}
+    image_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+    files = []
+    try:
+        for p in sorted(_lab_uploads_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
+            if not p.is_file() or p.name.startswith("."):
+                continue
+            ext = p.suffix.lower()
+            if ext in video_exts:
+                ftype    = "video"
+                duration = get_video_duration(str(p))
+            elif ext in audio_exts:
+                ftype    = "audio"
+                duration = 0.0
+            elif ext in image_exts:
+                ftype    = "image"
+                duration = 0.0
+            else:
+                continue
+            files.append({
+                "name":      p.name,
+                "path":      str(p),
+                "file_type": ftype,
+                "duration":  duration,
+                "size":      p.stat().st_size,
+                "mtime":     p.stat().st_mtime,
+            })
+    except Exception as e:
+        return jsonify({"error": str(e), "files": []}), 200
+
+    return jsonify({"files": files, "count": len(files)})
+
+
 # ── /api/lab/music ────────────────────────────────────────────────────────────
 @_flask.route("/api/lab/music", methods=["GET"])
 def api_lab_music_list():
