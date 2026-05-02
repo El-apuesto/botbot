@@ -980,11 +980,17 @@ async function openUploads() {
     const data = await fetch('/api/lab/files').then(r => r.json());
     const diskFiles = data.files || [];
 
-    // Merge session + disk, dedupe by path
+    // Merge session + disk files, dedupe by name (cloud files have path=null so can't use path)
     const seen = new Set();
     const all  = [];
-    labState.uploadedFiles.forEach(f => { if (!seen.has(f.path)) { seen.add(f.path); all.push(f); } });
-    diskFiles.forEach(f => { if (!seen.has(f.path)) { seen.add(f.path); all.push(f); } });
+    labState.uploadedFiles.forEach(f => {
+      const key = f.name || f.path;
+      if (!seen.has(key)) { seen.add(key); all.push(f); }
+    });
+    diskFiles.forEach(f => {
+      const key = f.name || f.path;
+      if (!seen.has(key)) { seen.add(key); all.push(f); }
+    });
 
     list.innerHTML = '';
     if (!all.length) { empty.style.display = ''; return; }
@@ -992,11 +998,12 @@ async function openUploads() {
     all.forEach(f => {
       const row = document.createElement('div');
       row.className = 'upl-row';
-      const dur = f.duration ? ` · ${f.duration.toFixed(0)}s` : '';
-      const mb  = f.size    ? ` · ${(f.size/1024/1024).toFixed(1)}MB` : '';
+      const dur   = f.duration ? ` · ${f.duration.toFixed(0)}s` : '';
+      const mb    = f.size     ? ` · ${(f.size/1024/1024).toFixed(1)}MB` : '';
+      const badge = f.cloud    ? ' ☁' : '';
       row.innerHTML =
-        `<span class="upl-name">${esc(f.name)}</span>` +
-        `<span class="upl-type">[${f.file_type}${dur}${mb}]</span>`;
+        `<span class="upl-name">${esc(f.name)}${badge}</span>` +
+        `<span class="upl-type">[${(f.file_type||'file').toUpperCase()}${dur}${mb}]</span>`;
       list.appendChild(row);
     });
   } catch(e) {
@@ -1224,12 +1231,13 @@ async function seEnsureLocal() {
 ───────────────────────────────────────── */
 async function seTranscribe() {
   if (!SE.sourcePath && !SE.sourceUrl) { alert('SELECT A FILE FIRST'); return; }
-  seSetBusy('se-transcribe-btn', true, '[ TRANSCRIBING... ]');
   // Lazy download if the file is cloud-only — only runs once per session
   if (!SE.sourcePath) {
+    seSetBusy('se-transcribe-btn', true, '[ DOWNLOADING FROM CLOUD... ]');
     const ok = await seEnsureLocal();
     if (!ok) { seSetBusy('se-transcribe-btn', false, '[ 1. TRANSCRIBE ]'); return; }
   }
+  seSetBusy('se-transcribe-btn', true, '[ TRANSCRIBING... ]');
   try {
     const res  = await fetch('/api/lab/transcribe', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
