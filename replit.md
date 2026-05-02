@@ -7,6 +7,7 @@ An esoteric/occult comedy content platform: Python Flask web server + Telegram b
 - **Flask web server** — port 5000, started by `part6_bot.py` at import time in a daemon thread
 - **Telegram bot** — runs concurrently via `python-telegram-bot` async loop; requires `TOKEN` env var
 - **Web UI** — `static/index.html` — DOS-style retro interface with press-start-2P font, desktop background image, chat panel overlaid on purple box
+- **Video Lab** — `static/lab.html` — `/lab` route; same DOS aesthetic; full short-form video pipeline
 - **AI streaming** — all API calls are async; Flask↔async bridge uses a Queue + daemon thread per request for real SSE streaming
 
 ## Authority Hierarchy (LOCKED)
@@ -26,31 +27,53 @@ All source files inside `twin shadow flat/`:
 | `part1_registry.py` | Model registry, TTS voice assignments, board/brainstorm member lists |
 | `part2_router.py` | Async LLM router with key rotation (Groq ×3, AIML ×3) |
 | `part3_modules.py` | AI text modules (brief, code review, creative, business, shadow fallback) |
-| `part4_video.py` | Video generation (FAL/Replicate/HuggingFace) |
+| `part4_video.py` | Video generation (FAL/Replicate/HuggingFace) + FFMPEG utilities (extract_last_frame, concatenate_clips, mix_audio_onto_video, etc.) |
 | `part5_orchestrator.py` | Execution engine, vault, RAG, cross-module validation |
 | `part6_bot.py` | Flask server + all API routes + Telegram bot handlers |
 | `part7_commands.py` | Telegram bot command handlers |
 | `part8_personas.py` | System prompts: CAPI, SHADOW, TWIN, board members, brainstorm, builder |
 | `static/index.html` | Full DOS-style web UI (chat, boardroom, brainstorm, pipeline, settings) |
+| `static/lab.html` | Video Lab page (/lab) — storyboard, image gen, video gen, voiceover, FFMPEG render |
 | `static/desk_bg.jpg` | Desktop background image |
 | `static/mobile_bg.jpg` | Mobile background image |
 | `static/send_btn.jpg` | Send button image |
-| `audio/` | TTS-rendered MP3 output files |
+| `static/music/` | Music library for video lab (MP3/WAV/OGG) |
+| `audio/` | TTS-rendered MP3 output files + voiceovers |
+| `uploads/` | Lab uploads (video, audio, image files) |
+| `renders/` | Final rendered MP4 output files |
 
 ## Flask API Routes
 
+### Main App
 | Route | Method | Purpose |
 |---|---|---|
 | `/` | GET | Serves index.html |
+| `/lab` | GET | Serves lab.html (Video Lab) |
 | `/static/<file>` | GET | Static assets |
 | `/audio/<file>` | GET | TTS audio files |
+| `/renders/<file>` | GET | Rendered video files |
 | `/api/chat` | POST | SSE streaming chat (TWIN or SHADOW) |
 | `/api/boardroom` | POST | SSE multi-agent boardroom session |
 | `/api/brainstorm` | POST | SSE brainstorming/podcast session |
 | `/api/tts` | POST | Multi-voice TTS; returns audio URL |
 | `/api/builder` | POST | SSE builder bot (code generation) |
+| `/api/builder/deploy` | POST | Loopback-only: write script to disk + register pipeline job |
 | `/api/pipeline` | GET/POST | Pipeline job queue |
 | `/api/pipeline/<id>` | DELETE | Remove pipeline job |
+
+### Video Lab
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/lab/upload` | POST | Upload video/audio/image to uploads/ |
+| `/api/lab/music` | GET | List music tracks in static/music/ |
+| `/api/lab/music/add` | POST | Upload new music track |
+| `/api/lab/storyboard` | POST | TWIN (Groq) generates JSON storyboard from concept |
+| `/api/lab/image` | POST | FAL flux/schnell image generation per scene |
+| `/api/lab/video/generate` | POST | Start FAL→Replicate video gen job (background thread) |
+| `/api/lab/video/status/<id>` | GET | Poll video job status |
+| `/api/lab/voice` | POST | gTTS voiceover MP3 from script |
+| `/api/lab/render` | POST (SSE) | FFMPEG assembly: concat clips + mix audio |
+| `/api/lab/concept` | GET/POST | Bot→Lab concept bridge |
 
 ## Key Rotation
 
@@ -62,6 +85,30 @@ All source files inside `twin shadow flat/`:
 - Google Cloud TTS (multi-voice, per-persona) when `GOOGLE_APPLICATION_CREDENTIALS` is set
 - gTTS single-voice fallback when Google Cloud is absent
 - Voice assignments in `TTS_VOICES` dict in `part1_registry.py`
+
+## Video Lab Pipeline
+
+1. User enters concept → `/api/lab/storyboard` → TWIN generates JSON scenes
+2. Click IMAGES → `/api/lab/image` per scene → FAL flux/schnell; reference frame extracted by FFMPEG for visual continuity
+3. Click VIDEO → `/api/lab/video/generate` → FAL WAN-2.1 (primary) → Replicate MiniMax (fallback); polled via `/api/lab/video/status/<id>`
+4. Click VOICEOVER → `/api/lab/voice` → gTTS MP3 from storyboard voiceover lines
+5. Click RENDER → `/api/lab/render` SSE → FFMPEG: slideshow from images + concat clips + mix audio → MP4 in renders/
+6. Boards/Builder can push concept JSON to `/api/lab/concept` → auto-fills on /lab page load
+
+## FFMPEG
+
+ffmpeg is available via Nix at `/nix/store/.../bin/ffmpeg`. Operations used:
+- `images_to_slideshow()` — concat images as video slideshow
+- `concatenate_clips()` — concat MP4 clips
+- `mix_audio_onto_video()` — voiceover + background music mix (music at 25% vol)
+- `extract_last_frame()` — extract last frame of clip as PNG reference
+
+## Deploy Security
+
+- `/api/builder/deploy` is loopback-only (`127.0.0.1`/`::1`); all browser requests return 403
+- Filename validated with `^[a-zA-Z0-9_-]{1,64}$` before writes
+- 64KB code size cap
+- Deploy logic factored into `_do_deploy_script()` — called by Flask route and `/deploy` Telegram command
 
 ## Running
 
@@ -78,9 +125,9 @@ cd 'twin shadow flat' && python3 main.py
 | `OPENROUTER_API_KEY` | Yes (board/SHADOW) | OpenRouter key |
 | `AIML_API_KEY_1/2/3` | Yes (builder) | AIML key rotation |
 | `OLLAMA_API_KEY` | Yes (CAPI) | Ollama Cloud key |
-| `GROK_API_KEY` | Video | Grok/Aurora key |
-| `FAL_KEY` | Video | FAL.ai key |
-| `REPLICATE_API_TOKEN` | Video | Replicate key |
-| `HUGGINGFACE_API_KEY` | Video | HuggingFace key |
+| `GROK_API_KEY` | Shadow Video | Grok/Aurora key |
+| `FAL_KEY` | Video Lab | FAL.ai key (image + video gen) |
+| `REPLICATE_API_TOKEN` | Video Lab | Replicate key (video fallback) |
+| `HUGGINGFACE_API_KEY` | Video Lab | HuggingFace key (video fallback) |
 | `GOOGLE_APPLICATION_CREDENTIALS` | TTS | Path to GCP service account JSON |
 | `PORT` | No | Web port (default: 5000) |

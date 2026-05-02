@@ -8,7 +8,9 @@ import os
 import re
 import time
 import json
+import uuid
 import queue
+import shutil
 import asyncio
 import socket
 import threading
@@ -26,6 +28,11 @@ from part5_orchestrator import (
     vault_clear, vault_last, vault_undo,
 )
 from part2_router import stream_task, call_task, direct_call
+from part4_video import (
+    fal_generate_image, extract_last_frame, download_file,
+    images_to_slideshow, concatenate_clips, mix_audio_onto_video,
+    get_video_duration,
+)
 from part1_registry import (
     get_task_routing, get_provider_cfg,
     BOARD_MEMBERS, SHADOW_BOARD_MEMBERS,
@@ -475,6 +482,379 @@ def api_pipeline_delete(job_id):
     jobs = [j for j in _pipeline_load() if j.get("id") != job_id]
     _pipeline_save(jobs)
     return jsonify({"ok": True})
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VIDEO LAB — /lab + /api/lab/*
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_lab_uploads_dir = Path(__file__).parent / "uploads"
+_lab_renders_dir = Path(__file__).parent / "renders"
+_lab_music_dir   = Path(__file__).parent / "static" / "music"
+_lab_music_meta  = Path(__file__).parent / "static" / "music" / "_meta.json"
+_lab_concept_store: dict = {}   # latest concept pushed from bots; cleared on GET
+_lab_jobs: dict = {}            # job_id → {status, url, error, provider, local_path}
+
+for _d in (_lab_uploads_dir, _lab_renders_dir, _lab_music_dir):
+    _d.mkdir(exist_ok=True)
+
+
+def _music_meta_load() -> list:
+    try:
+        return json.loads(_lab_music_meta.read_text()) if _lab_music_meta.exists() else []
+    except Exception:
+        return []
+
+def _music_meta_save(tracks: list):
+    try:
+        _lab_music_meta.write_text(json.dumps(tracks, indent=2))
+    except Exception:
+        pass
+
+
+# ── /lab ──────────────────────────────────────────────────────────────────────
+@_flask.route("/lab")
+def lab_page():
+    return send_from_directory(str(_static_dir), "lab.html")
+
+@_flask.route("/renders/<path:filename>")
+def _renders(filename):
+    return send_from_directory(str(_lab_renders_dir), filename, mimetype="video/mp4")
+
+
+# ── /api/lab/upload ───────────────────────────────────────────────────────────
+_ALLOWED_LAB_EXT = {".mp4", ".mov", ".webm", ".mkv",
+                    ".mp3", ".wav", ".ogg", ".m4a",
+                    ".jpg", ".jpeg", ".png", ".gif", ".webp"}
+_MAX_UPLOAD_BYTES = 200 * 1024 * 1024   # 200 MB
+
+@_flask.route("/api/lab/upload", methods=["POST"])
+def api_lab_upload():
+    if "file" not in request.files:
+        return jsonify({"error": "No file in request"}), 400
+    f    = request.files["file"]
+    name = f.filename or "upload"
+    ext  = Path(name).suffix.lower()
+    if ext not in _ALLOWED_LAB_EXT:
+        return jsonify({"error": f"File type {ext} not allowed"}), 400
+
+    safe_name = re.sub(r"[^a-zA-Z0-9._-]", "_", name)
+    dest = _lab_uploads_dir / f"{int(time.time() * 1000)}_{safe_name}"
+    f.save(str(dest))
+
+    if dest.stat().st_size > _MAX_UPLOAD_BYTES:
+        dest.unlink(missing_ok=True)
+        return jsonify({"error": "File exceeds 200 MB limit"}), 400
+
+    video_exts = {".mp4", ".mov", ".webm", ".mkv"}
+    audio_exts = {".mp3", ".wav", ".ogg", ".m4a"}
+    image_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+    if ext in video_exts:
+        file_type = "video"
+        duration  = get_video_duration(str(dest))
+    elif ext in audio_exts:
+        file_type = "audio"
+        duration  = 0.0
+    else:
+        file_type = "image"
+        duration  = 0.0
+
+    return jsonify({
+        "ok":        True,
+        "name":      safe_name,
+        "path":      str(dest),
+        "file_type": file_type,
+        "duration":  duration,
+    })
+
+
+# ── /api/lab/music ────────────────────────────────────────────────────────────
+@_flask.route("/api/lab/music", methods=["GET"])
+def api_lab_music_list():
+    tracks = _music_meta_load()
+    # Also scan for any untracked files in static/music/
+    known  = {t["name"] for t in tracks}
+    for p in _lab_music_dir.glob("*"):
+        if p.suffix.lower() in {".mp3", ".wav", ".ogg", ".m4a"} and p.name not in known and not p.name.startswith("_"):
+            tracks.append({"name": p.name, "path": f"/static/music/{p.name}", "tags": ""})
+    return jsonify(tracks)
+
+
+@_flask.route("/api/lab/music/add", methods=["POST"])
+def api_lab_music_add():
+    if "file" not in request.files:
+        return jsonify({"error": "No file"}), 400
+    f    = request.files["file"]
+    tags = request.form.get("tags", "").strip()
+    ext  = Path(f.filename or "").suffix.lower()
+    if ext not in {".mp3", ".wav", ".ogg", ".m4a"}:
+        return jsonify({"error": "Audio files only (.mp3/.wav/.ogg/.m4a)"}), 400
+    safe_name = re.sub(r"[^a-zA-Z0-9._-]", "_", f.filename or "track")
+    dest = _lab_music_dir / safe_name
+    f.save(str(dest))
+    tracks = _music_meta_load()
+    tracks.append({"name": safe_name, "path": f"/static/music/{safe_name}", "tags": tags})
+    _music_meta_save(tracks)
+    return jsonify({"ok": True, "name": safe_name, "path": f"/static/music/{safe_name}"})
+
+
+# ── /api/lab/storyboard ───────────────────────────────────────────────────────
+_STORYBOARD_SYSTEM = (
+    "You are a short-form video director specializing in esoteric, occult, and dark comedy content. "
+    "Given a video concept, output ONLY a JSON object (no markdown, no commentary) in this exact format:\n"
+    '{"scenes":[{"id":1,"description":"...","duration":5,"voiceover":"...","style":"..."}]}\n'
+    "Generate 4-6 scenes. duration is seconds (3-8 each). style: e.g. 'dark cinematic', 'lo-fi grainy', 'neon occult'. "
+    "Voiceover is the spoken line for that scene (1-2 sentences max). Be vivid and specific."
+)
+
+@_flask.route("/api/lab/storyboard", methods=["POST"])
+def api_lab_storyboard():
+    data    = request.json or {}
+    concept = data.get("concept", "").strip()
+    if not concept:
+        return jsonify({"error": "No concept provided"}), 400
+
+    msgs = [
+        {"role": "system", "content": _STORYBOARD_SYSTEM},
+        {"role": "user",   "content": f"Video concept: {concept}"},
+    ]
+    try:
+        result = _run_async(call_task("twin", msgs))
+        text   = result.get("output", "") if isinstance(result, dict) else str(result)
+        # Extract JSON from response
+        start = text.find("{")
+        end   = text.rfind("}") + 1
+        if start == -1 or end == 0:
+            return jsonify({"error": "Model did not return valid JSON storyboard", "raw": text[:500]}), 500
+        raw_json = text[start:end]
+        board    = json.loads(raw_json)
+        if "scenes" not in board:
+            return jsonify({"error": "Missing 'scenes' key in storyboard", "raw": raw_json[:500]}), 500
+        return jsonify(board)
+    except json.JSONDecodeError as e:
+        return jsonify({"error": f"JSON parse error: {e}", "raw": text[:500] if 'text' in dir() else ""}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ── /api/lab/image ────────────────────────────────────────────────────────────
+@_flask.route("/api/lab/image", methods=["POST"])
+def api_lab_image():
+    data            = request.json or {}
+    description     = data.get("description", "").strip()
+    style           = data.get("style", "dark cinematic occult aesthetic")
+    scene_id        = data.get("scene_id")
+    reference_clip  = data.get("reference_clip")
+    if not description:
+        return jsonify({"error": "No description"}), 400
+
+    ref_frame = None
+    if reference_clip and Path(reference_clip).exists():
+        frame_out = str(_lab_uploads_dir / f"refframe_{int(time.time()*1000)}.png")
+        ref_frame = extract_last_frame(reference_clip, frame_out)
+
+    try:
+        result = _run_async(fal_generate_image(description, style, ref_frame))
+        if result.get("error"):
+            return jsonify(result), 500
+
+        url   = result["url"]
+        lpath = None
+        if url and url.startswith("http"):
+            fname = f"scene_{scene_id or int(time.time())}_{int(time.time()*100)}.jpg"
+            lpath = download_file(url, str(_lab_uploads_dir), fname)
+
+        return jsonify({"url": url, "local_path": lpath, "scene_id": scene_id})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ── /api/lab/video/generate ───────────────────────────────────────────────────
+def _fal_video_job_bg(job_id: str, prompt: str, image_url: str | None):
+    """Background thread: run FAL video job, update _lab_jobs."""
+    async def _go():
+        try:
+            import fal_client
+            args: dict = {"prompt": prompt}
+            if image_url:
+                args["image_url"] = image_url
+            handler = await fal_client.submit_async("fal-ai/wan-2.1", arguments=args)
+            result  = await handler.get()
+            vid     = result.get("video", {})
+            url     = vid.get("url") if isinstance(vid, dict) else str(vid)
+            if not url:
+                url = str(result)
+            lpath = download_file(url, str(_lab_renders_dir), f"aivideo_{job_id[:8]}.mp4")
+            _lab_jobs[job_id] = {"status": "done", "url": url, "local_path": lpath, "provider": "fal"}
+        except Exception as e:
+            _lab_jobs[job_id] = {"status": "error", "error": str(e), "provider": "fal"}
+            _replicate_video_job_bg(job_id, prompt, image_url)
+
+    asyncio.run(_go())
+
+
+def _replicate_video_job_bg(job_id: str, prompt: str, image_url: str | None):
+    """Fallback: run Replicate MiniMax video job."""
+    try:
+        import replicate
+        inp: dict = {"prompt": prompt}
+        if image_url:
+            inp["first_frame_image"] = image_url
+        output = replicate.run("minimax/video-01", input=inp)
+        url    = output[0] if isinstance(output, list) else str(output)
+        lpath  = download_file(url, str(_lab_renders_dir), f"aivideo_{job_id[:8]}.mp4")
+        _lab_jobs[job_id] = {"status": "done", "url": url, "local_path": lpath, "provider": "replicate"}
+    except Exception as e:
+        _lab_jobs[job_id] = {"status": "error", "error": str(e), "provider": "replicate"}
+
+
+@_flask.route("/api/lab/video/generate", methods=["POST"])
+def api_lab_video_generate():
+    data      = request.json or {}
+    prompt    = data.get("prompt", "").strip()
+    image_url = data.get("image_url")
+    if not prompt:
+        return jsonify({"error": "No prompt"}), 400
+
+    job_id = str(uuid.uuid4())
+    _lab_jobs[job_id] = {"status": "processing", "provider": "fal"}
+    Thread(target=_fal_video_job_bg, args=(job_id, prompt, image_url), daemon=True).start()
+    return jsonify({"job_id": job_id, "status": "processing", "provider": "fal"})
+
+
+@_flask.route("/api/lab/video/status/<job_id>", methods=["GET"])
+def api_lab_video_status(job_id):
+    job = _lab_jobs.get(job_id)
+    if not job:
+        return jsonify({"status": "unknown", "error": "Job not found"}), 404
+    return jsonify(job)
+
+
+# ── /api/lab/voice ────────────────────────────────────────────────────────────
+@_flask.route("/api/lab/voice", methods=["POST"])
+def api_lab_voice():
+    data = request.json or {}
+    text = data.get("text", "").strip()
+    if not text:
+        return jsonify({"error": "No text"}), 400
+
+    _audio_dir.mkdir(exist_ok=True)
+    fname    = f"lab_vo_{int(time.time())}.mp3"
+    out_path = _audio_dir / fname
+
+    try:
+        from gtts import gTTS
+        tts = gTTS(text=text[:2000], lang="en", slow=False)
+        tts.save(str(out_path))
+        return jsonify({"url": f"/audio/{fname}", "path": str(out_path)})
+    except Exception as e:
+        return jsonify({"error": f"gTTS failed: {e}"}), 500
+
+
+# ── /api/lab/render (SSE) ─────────────────────────────────────────────────────
+@_flask.route("/api/lab/render", methods=["POST"])
+def api_lab_render():
+    """
+    Assemble final video using FFMPEG.
+    Body: {clips, image_paths, voiceover, music, transition, output_name}
+    SSE: text progress lines; final line "DONE:/renders/<file>"
+    """
+    data        = request.json or {}
+    clip_paths  = [p for p in (data.get("clips") or []) if p and Path(p).exists()]
+    image_paths = [p for p in (data.get("image_paths") or []) if p and Path(p).exists()]
+    voiceover   = data.get("voiceover")
+    music       = data.get("music")
+    output_name = re.sub(r"[^a-zA-Z0-9_-]", "_", data.get("output_name", f"render_{int(time.time())}"))
+    transition  = data.get("transition", "fade")
+
+    if not clip_paths and not image_paths:
+        return jsonify({"error": "No clips or images to render"}), 400
+
+    if voiceover and not Path(voiceover).exists():
+        voiceover = None
+    if music and not (music.startswith("/static/") or Path(music).exists()):
+        music = None
+    if music and music.startswith("/static/"):
+        music = str(Path(__file__).parent / music.lstrip("/"))
+
+    async def _run():
+        step_num = [0]
+        def step(msg):
+            step_num[0] += 1
+            return msg
+
+        tmp_video = None
+        try:
+            # Step 1: Build base video from images or clips
+            if image_paths:
+                yield step("BUILDING SLIDESHOW FROM SCENE IMAGES...")
+                tmp1 = str(_lab_renders_dir / f"_slide_{output_name}.mp4")
+                ok, err = images_to_slideshow(image_paths, tmp1, duration=3.0)
+                if not ok:
+                    yield f"✗ SLIDESHOW FAILED: {err[:120]}"
+                    return
+                yield "✓ SLIDESHOW BUILT"
+                # Prepend to clips
+                clip_paths.insert(0, tmp1)
+
+            if len(clip_paths) > 1:
+                yield step("CONCATENATING CLIPS...")
+                concat_out = str(_lab_renders_dir / f"_concat_{output_name}.mp4")
+                ok, err = concatenate_clips(clip_paths, concat_out)
+                if not ok:
+                    yield f"✗ CONCAT FAILED: {err[:120]}\n(UNSUPPORTED EFFECT: clips must share codec/resolution)"
+                    return
+                yield "✓ CLIPS CONCATENATED"
+                tmp_video = concat_out
+            elif clip_paths:
+                tmp_video = clip_paths[0]
+            else:
+                yield "✗ NO VIDEO SOURCE"
+                return
+
+            # Step 2: Mix audio
+            final_out = str(_lab_renders_dir / f"{output_name}.mp4")
+            if voiceover or music:
+                yield step("MIXING AUDIO (VOICEOVER + MUSIC)...")
+                ok, err = mix_audio_onto_video(tmp_video, voiceover, music, final_out)
+                if ok:
+                    yield "✓ AUDIO MIXED"
+                else:
+                    yield f"✗ AUDIO MIX FAILED: {err[:120]} — SAVING WITHOUT AUDIO"
+                    shutil.copy2(tmp_video, final_out)
+            else:
+                shutil.copy2(tmp_video, final_out)
+
+            yield f"DONE:/renders/{output_name}.mp4"
+
+        except Exception as e:
+            yield f"✗ RENDER ERROR: {str(e)[:200]}"
+
+    return _sse_stream(_run)
+
+
+# ── /api/lab/concept ─────────────────────────────────────────────────────────
+@_flask.route("/api/lab/concept", methods=["GET"])
+def api_lab_concept_get():
+    """Return and clear the queued concept (set by boardroom/builder bots)."""
+    concept = _lab_concept_store.copy()
+    _lab_concept_store.clear()
+    if not concept:
+        return jsonify({}), 200
+    return jsonify(concept)
+
+
+@_flask.route("/api/lab/concept", methods=["POST"])
+def api_lab_concept_set():
+    """Bot bridge: boardroom/builder POSTs a video concept JSON here."""
+    data = request.json or {}
+    if not data.get("concept"):
+        return jsonify({"error": "concept field required"}), 400
+    _lab_concept_store.clear()
+    _lab_concept_store.update(data)
+    return jsonify({"ok": True})
+
 
 Thread(target=lambda: _flask.run(host="0.0.0.0", port=_port, debug=False, use_reloader=False), daemon=True).start()
 
