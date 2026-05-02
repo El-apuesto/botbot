@@ -6,11 +6,16 @@ All handlers including part7 command layer.
 from __future__ import annotations
 import os
 import time
+import json
+import queue
+import asyncio
 import socket
+import threading
+import tempfile
 from pathlib import Path
 from threading import Thread
 
-from flask import Flask
+from flask import Flask, send_from_directory, send_file, request, Response, jsonify
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -19,7 +24,17 @@ from part5_orchestrator import (
     vault_list, vault_get, vault_delete,
     vault_clear, vault_last, vault_undo,
 )
-from part2_router import stream_task
+from part2_router import stream_task, call_task, direct_call
+from part1_registry import (
+    get_task_routing, get_provider_cfg,
+    BOARD_MEMBERS, SHADOW_BOARD_MEMBERS,
+    BRAINSTORM_MEMBERS, SHADOW_BRAINSTORM_MEMBERS,
+    TTS_VOICES,
+)
+from part8_personas import (
+    TWIN_SYSTEM, SHADOW_SYSTEM, CAPI_SYSTEM,
+    board_member_system, brainstorm_system, BUILDER_SYSTEM, MODERATOR_SYSTEM,
+)
 from part7_commands import (
     handle_model_set, handle_model_traits, handle_model_end,
     handle_boardroom, handle_brainstorm,
@@ -44,10 +59,346 @@ def _find_port(start: int = 5000) -> int:
                 return p
     return start
 
-_flask = Flask("TwinShadow")
+_static_dir = Path(__file__).parent / "static"
+_audio_dir  = Path(__file__).parent / "audio"
+
+_flask = Flask("TwinShadow", static_folder=str(_static_dir), static_url_path="/static")
+
 @_flask.route("/")
-def _home(): return "Twin Shadow AWAKE"
+def _home():
+    return send_from_directory(str(_static_dir), "index.html")
+
+@_flask.route("/audio/<path:filename>")
+def _audio(filename):
+    return send_from_directory(str(_audio_dir), filename, mimetype="audio/mpeg")
+
 _port = _find_port(int(os.environ.get("PORT", 5000)))
+
+# ── Pipeline store (in-memory, JSON-persisted) ────────────────────────────────
+_pipeline_file = Path(__file__).parent / "pipeline.json"
+def _pipeline_load() -> list:
+    try:
+        return json.loads(_pipeline_file.read_text()) if _pipeline_file.exists() else []
+    except Exception:
+        return []
+def _pipeline_save(jobs: list):
+    try: _pipeline_file.write_text(json.dumps(jobs, indent=2))
+    except Exception: pass
+
+# ── Async→Flask bridge (real streaming via queue) ─────────────────────────────
+def _async_gen_to_queue(async_gen_fn, q: queue.Queue, *args, **kwargs):
+    async def _run():
+        try:
+            async for chunk in async_gen_fn(*args, **kwargs):
+                q.put(("data", chunk))
+        except Exception as e:
+            q.put(("error", str(e)))
+        finally:
+            q.put(("done", None))
+    asyncio.run(_run())
+
+def _sse_stream(async_gen_fn, *args, **kwargs):
+    """Wrap an async generator into a Flask SSE Response."""
+    q: queue.Queue = queue.Queue()
+    t = threading.Thread(target=_async_gen_to_queue, args=(async_gen_fn, q, *args), kwargs=kwargs, daemon=True)
+    t.start()
+    def _gen():
+        while True:
+            kind, val = q.get()
+            if kind == "data":
+                yield f"data: {json.dumps({'text': val})}\n\n"
+            elif kind == "error":
+                yield f"data: {json.dumps({'error': val})}\n\n"
+                break
+            else:
+                yield "data: {\"done\": true}\n\n"
+                break
+    return Response(_gen(), content_type="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+def _run_async(coro):
+    return asyncio.run(coro)
+
+# ── /api/chat ─────────────────────────────────────────────────────────────────
+@_flask.route("/api/chat", methods=["POST"])
+def api_chat():
+    data     = request.json or {}
+    message  = data.get("message", "").strip()
+    bot      = data.get("bot", "twin").lower()
+    history  = data.get("history", [])
+    username = data.get("username", "USER")
+    sys_override = data.get("system_prompt", "")
+    if not message:
+        return jsonify({"error": "No message"}), 400
+
+    if bot == "shadow":
+        sys_prompt = sys_override or SHADOW_SYSTEM
+        task_type  = "shadow_chat"
+    else:
+        sys_prompt = sys_override or TWIN_SYSTEM
+        task_type  = "twin"
+
+    msgs = [{"role": "system", "content": sys_prompt}]
+    for h in history[-20:]:
+        if h.get("role") in ("user", "assistant"):
+            msgs.append({"role": h["role"], "content": h["content"]})
+    msgs.append({"role": "user", "content": message})
+
+    async def _gen():
+        async for chunk in stream_task(task_type, msgs):
+            yield chunk
+
+    return _sse_stream(_gen)
+
+# ── /api/boardroom ────────────────────────────────────────────────────────────
+@_flask.route("/api/boardroom", methods=["POST"])
+def api_boardroom():
+    data        = request.json or {}
+    topic       = data.get("topic", "").strip()
+    shadow_mode = data.get("shadow_mode", False)
+    if not topic:
+        return jsonify({"error": "No topic"}), 400
+
+    members = SHADOW_BOARD_MEMBERS if shadow_mode else BOARD_MEMBERS
+
+    async def _run():
+        # Step 1: TWIN briefs the topic
+        brief_msgs = [
+            {"role": "system", "content": TWIN_SYSTEM},
+            {"role": "user",   "content": f"Brief this topic for the boardroom in 3 sentences max: {topic}"},
+        ]
+        yield f"\x1eSPEAKER:TWIN\x1f"
+        brief = ""
+        async for chunk in stream_task("twin", brief_msgs):
+            brief += chunk
+            yield chunk
+        yield "\x1eEND\x1f"
+
+        # Step 2: Each board member responds
+        context = f"Topic: {topic}\n\nTWIN's brief: {brief}"
+        for member in members:
+            name = member["name"]
+            role = member.get("role", name)
+            sys_p = board_member_system(name, role, shadow_mode)
+            provider_key, model_key = get_task_routing(member["key"])
+            msgs = [
+                {"role": "system", "content": sys_p},
+                {"role": "user",   "content": context + f"\n\nYour response as {name} ({role}):"},
+            ]
+            yield f"\x1eSPEAKER:{name}\x1f"
+            member_resp = ""
+            try:
+                async for chunk in stream_task(member["key"], msgs):
+                    member_resp += chunk
+                    yield chunk
+            except Exception as e:
+                yield f"[{name} offline: {e}]"
+            yield "\x1eEND\x1f"
+            context += f"\n\n{name}: {member_resp[:300]}"
+
+        # Step 3: SHADOW final word (always)
+        shadow_msgs = [
+            {"role": "system", "content": SHADOW_SYSTEM},
+            {"role": "user",   "content": f"Boardroom discussed: {topic}\n\nContext:\n{context[:1500]}\n\nYour final word:"},
+        ]
+        yield f"\x1eSPEAKER:SHADOW\x1f"
+        try:
+            async for chunk in stream_task("shadow_chat", shadow_msgs):
+                yield chunk
+        except Exception as e:
+            yield f"[SHADOW offline: {e}]"
+        yield "\x1eEND\x1f"
+
+    return _sse_stream(_run)
+
+# ── /api/brainstorm ───────────────────────────────────────────────────────────
+@_flask.route("/api/brainstorm", methods=["POST"])
+def api_brainstorm():
+    data         = request.json or {}
+    topic        = data.get("topic", "").strip()
+    shadow_mode  = data.get("shadow_mode", False)
+    podcast_mode = data.get("podcast_mode", False)
+    rounds       = min(int(data.get("rounds", 2)), 3)
+    if not topic:
+        return jsonify({"error": "No topic"}), 400
+
+    members = SHADOW_BRAINSTORM_MEMBERS if shadow_mode else BRAINSTORM_MEMBERS
+
+    async def _run():
+        context = f"Topic: {topic}"
+        for rnd in range(1, rounds + 1):
+            for member in members:
+                name = member["name"]
+                sys_p = brainstorm_system(name, podcast_mode)
+                msgs = [
+                    {"role": "system", "content": sys_p},
+                    {"role": "user",   "content": context + f"\n\nRound {rnd} — {name}:"},
+                ]
+                yield f"\x1eSPEAKER:{name}\x1f"
+                resp = ""
+                try:
+                    async for chunk in stream_task(member["key"], msgs):
+                        resp += chunk
+                        yield chunk
+                except Exception as e:
+                    yield f"[{name} offline: {e}]"
+                yield "\x1eEND\x1f"
+                context += f"\n\n{name} (round {rnd}): {resp[:250]}"
+
+            # TWIN moderates between rounds
+            if rnd < rounds:
+                mod_msgs = [
+                    {"role": "system", "content": MODERATOR_SYSTEM},
+                    {"role": "user",   "content": context[-1200:]},
+                ]
+                yield f"\x1eSPEAKER:TWIN\x1f"
+                mod = ""
+                try:
+                    async for chunk in stream_task("twin", mod_msgs):
+                        mod += chunk
+                        yield chunk
+                except Exception as e:
+                    yield f"[TWIN offline: {e}]"
+                yield "\x1eEND\x1f"
+                context += f"\n\nTWIN (mod): {mod[:200]}"
+
+    return _sse_stream(_run)
+
+# ── /api/tts ──────────────────────────────────────────────────────────────────
+@_flask.route("/api/tts", methods=["POST"])
+def api_tts():
+    """
+    Body: { "turns": [{"speaker": "TWIN", "text": "..."}, ...], "voice_overrides": {} }
+    Returns: { "url": "/audio/<filename>" }
+    Falls back to gTTS single-voice if Google Cloud TTS not configured.
+    """
+    data   = request.json or {}
+    turns  = data.get("turns", [])
+    voice_overrides = data.get("voice_overrides", {})
+    if not turns:
+        return jsonify({"error": "No turns"}), 400
+
+    _audio_dir.mkdir(exist_ok=True)
+    fname = f"session_{int(time.time())}.mp3"
+    out_path = _audio_dir / fname
+
+    gc_creds = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "")
+
+    if gc_creds:
+        # Google Cloud TTS multi-voice
+        try:
+            from google.cloud import texttospeech
+            from pydub import AudioSegment
+            import io
+
+            tts_client = texttospeech.TextToSpeechClient()
+            segments = []
+            for turn in turns:
+                speaker = turn.get("speaker", "NARRATOR").upper()
+                text    = turn.get("text", "").strip()
+                if not text:
+                    continue
+                voice_name = voice_overrides.get(speaker) or TTS_VOICES.get(speaker, "en-US-Neural2-D")
+                lang = voice_name[:5]
+                synthesis_input = texttospeech.SynthesisInput(text=text)
+                voice = texttospeech.VoiceSelectionParams(
+                    language_code=lang,
+                    name=voice_name,
+                )
+                audio_config = texttospeech.AudioConfig(audio_encoding=texttospeech.AudioEncoding.MP3)
+                response = tts_client.synthesize_speech(input=synthesis_input, voice=voice, audio_config=audio_config)
+                seg = AudioSegment.from_mp3(io.BytesIO(response.audio_content))
+                segments.append(seg)
+
+            if segments:
+                combined = segments[0]
+                for seg in segments[1:]:
+                    combined += seg
+                combined.export(str(out_path), format="mp3")
+                return jsonify({"url": f"/audio/{fname}"})
+            return jsonify({"error": "No audio generated"}), 500
+
+        except Exception as e:
+            print(f"[TTS] Google Cloud TTS failed: {e} — falling back to gTTS")
+
+    # gTTS fallback — single narrator voice, concatenate all text
+    try:
+        from gtts import gTTS
+        full_text = " ".join(
+            f"{t.get('speaker','')}: {t.get('text','')}" for t in turns if t.get("text")
+        )
+        tts = gTTS(text=full_text, lang="en", slow=False)
+        tts.save(str(out_path))
+        return jsonify({"url": f"/audio/{fname}"})
+    except Exception as e:
+        return jsonify({"error": f"TTS failed: {e}"}), 500
+
+# ── /api/builder ──────────────────────────────────────────────────────────────
+@_flask.route("/api/builder", methods=["POST"])
+def api_builder():
+    data  = request.json or {}
+    task  = data.get("task", "").strip()
+    if not task:
+        return jsonify({"error": "No task"}), 400
+
+    async def _run():
+        yield f"\x1eSPEAKER:BUILDER\x1f"
+        code = ""
+        msgs = [
+            {"role": "system", "content": BUILDER_SYSTEM},
+            {"role": "user",   "content": task},
+        ]
+        try:
+            async for chunk in stream_task("builder", msgs):
+                code += chunk
+                yield chunk
+        except Exception as e:
+            yield f"[BUILDER offline: {e}]"
+        yield "\x1eEND\x1f"
+
+        # Quick review by QWEN
+        if code and len(code) > 20:
+            review_msgs = [
+                {"role": "system", "content": "Review this code in 2 sentences. Flag any critical bugs only."},
+                {"role": "user",   "content": code[:3000]},
+            ]
+            yield f"\x1eSPEAKER:QWEN\x1f"
+            try:
+                async for chunk in stream_task("builder_check", review_msgs):
+                    yield chunk
+            except Exception as e:
+                yield f"[QWEN review skipped: {e}]"
+            yield "\x1eEND\x1f"
+
+    return _sse_stream(_run)
+
+# ── /api/pipeline ─────────────────────────────────────────────────────────────
+@_flask.route("/api/pipeline", methods=["GET"])
+def api_pipeline_get():
+    return jsonify(_pipeline_load())
+
+@_flask.route("/api/pipeline", methods=["POST"])
+def api_pipeline_add():
+    data = request.json or {}
+    if not data.get("name"):
+        return jsonify({"error": "name required"}), 400
+    jobs = _pipeline_load()
+    job  = {
+        "id":         int(time.time() * 1000),
+        "name":       data["name"],
+        "status":     "queued",
+        "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    jobs.append(job)
+    _pipeline_save(jobs)
+    return jsonify(job)
+
+@_flask.route("/api/pipeline/<int:job_id>", methods=["DELETE"])
+def api_pipeline_delete(job_id):
+    jobs = [j for j in _pipeline_load() if j.get("id") != job_id]
+    _pipeline_save(jobs)
+    return jsonify({"ok": True})
+
 Thread(target=lambda: _flask.run(host="0.0.0.0", port=_port, debug=False, use_reloader=False), daemon=True).start()
 
 _rate_cache: dict[int, float] = {}

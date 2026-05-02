@@ -2,16 +2,844 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TWIN SHADOW</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Twin Shadow</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
-    body { margin:0; background:#0a0a0a; color:#00ffcc; font-family:monospace; height:100vh; }
-    .hero { height:40vh; background:linear-gradient(#1a0033,#000); display:flex; align-items:center; justify-content:center; border-bottom:5px solid #ff00ff; }
-    .title { font-size:3rem; color:#00ffff; text-shadow:0 0 20px #ff00ff; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --purple:      #cc00ff;
+      --purple-dim:  #7700aa;
+      --purple-dark: #1a0033;
+      --glow:        0 0 6px #cc00ff, 0 0 14px #cc00ff;
+      --font:        'Press Start 2P', monospace;
+      --white:       #ffffff;
+    }
+
+    html, body { width: 100%; height: 100%; overflow: hidden;
+      background: #000; font-family: var(--font); color: var(--white); }
+
+    /* ── BACKGROUND ── */
+    #app { position: fixed; inset: 0;
+      background-image: url('/static/mobile_bg.jpg');
+      background-size: cover; background-position: center top; background-repeat: no-repeat; }
+    @media (orientation: landscape) and (min-width: 700px) {
+      #app { background-image: url('/static/desk_bg.jpg'); background-position: left center; }
+    }
+
+    /* ── CHAT PANEL ── */
+    #chat-panel {
+      position: absolute; display: flex; flex-direction: column;
+      top: 44%; left: 3%; right: 3%; bottom: 20%;
+      background: rgba(6, 0, 18, 0.5); overflow: hidden;
+    }
+    @media (orientation: landscape) and (min-width: 700px) {
+      #chat-panel { top: 34%; left: 37%; right: 1%; bottom: 14%; }
+    }
+
+    /* ── TOGGLE STRIP ── */
+    #strip {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 3px 8px; border-bottom: 1px solid var(--purple-dim);
+      background: rgba(6,0,18,.75); flex-shrink: 0; min-height: 22px;
+    }
+    #user-label { font-size: 6px; color: var(--purple); text-shadow: var(--glow); letter-spacing: 1px; }
+    #bot-toggle { display: flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; }
+    #toggle-name { font-size: 6px; color: var(--purple); text-shadow: var(--glow);
+      min-width: 48px; text-align: right; letter-spacing: 1px; }
+    .sw { position: relative; width: 30px; height: 13px;
+      background: #0a0018; border: 1px solid var(--purple); }
+    .sw::after { content: ''; position: absolute; top: 2px; left: 2px;
+      width: 7px; height: 7px; background: var(--purple); box-shadow: var(--glow);
+      transition: transform .15s; }
+    .sw.on::after { transform: translateX(17px); }
+
+    /* ── MESSAGES ── */
+    #msgs { flex: 1; overflow-y: auto; padding: 8px 10px 4px;
+      display: flex; flex-direction: column; gap: 8px;
+      scrollbar-width: thin; scrollbar-color: var(--purple-dim) transparent; }
+    #msgs::-webkit-scrollbar { width: 3px; }
+    #msgs::-webkit-scrollbar-thumb { background: var(--purple-dim); }
+
+    .msg { display: flex; flex-direction: column; gap: 2px; }
+    .msg-who { font-size: 6px; color: var(--purple); text-shadow: var(--glow); letter-spacing: 1px; }
+    .msg-body { font-size: 7px; color: var(--white); line-height: 1.9; word-break: break-word; white-space: pre-wrap; }
+    @media (min-width: 700px) { .msg-who { font-size: 7px; } .msg-body { font-size: 8px; } }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .typing::after { content: '█'; animation: blink .7s step-end infinite; }
+
+    /* ── FILE HINT ── */
+    #file-hint { display: none; font-size: 5px; color: var(--purple);
+      padding: 2px 10px; background: rgba(6,0,18,.85);
+      border-top: 1px solid var(--purple-dim); flex-shrink: 0; }
+
+    /* ── INPUT ROW ── */
+    #input-row { display: flex; align-items: flex-end; gap: 5px;
+      padding: 5px 7px; border-top: 1px solid var(--purple);
+      background: rgba(6,0,18,.8); flex-shrink: 0; }
+    #upload-btn { flex-shrink: 0; background: transparent;
+      border: 1px solid var(--purple-dim); color: var(--purple); font-size: 13px;
+      width: 26px; height: 26px; cursor: pointer; display: flex;
+      align-items: center; justify-content: center; transition: box-shadow .15s; }
+    #upload-btn:hover { box-shadow: var(--glow); }
+    #file-input { display: none; }
+    #txt { flex: 1; background: transparent; border: none; outline: none;
+      color: var(--white); font-family: var(--font); font-size: 7px; line-height: 1.8;
+      resize: none; min-height: 26px; max-height: 110px; overflow-y: auto;
+      caret-color: var(--white); padding: 2px 0; scrollbar-width: none; }
+    #txt::-webkit-scrollbar { display: none; }
+    @media (min-width: 700px) { #txt { font-size: 8px; } }
+    #send-btn { flex-shrink: 0; width: 34px; height: 34px; padding: 0;
+      border: 1px solid var(--purple); background: #060012;
+      cursor: pointer; overflow: hidden; transition: box-shadow .15s; }
+    #send-btn:hover { box-shadow: var(--glow); }
+    #send-btn img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* ── MENU BAR ── */
+    #menu-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 20%;
+      display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 1fr);
+      padding: 2px 6% 4px; gap: 1px 0; pointer-events: none; }
+    @media (orientation: landscape) and (min-width: 700px) {
+      #menu-bar { right: auto; width: 36%; height: 14%; padding: 2px 2% 4px; }
+    }
+    .mi { background: transparent; border: none; font-family: var(--font);
+      font-size: 0; cursor: pointer; pointer-events: all;
+      -webkit-tap-highlight-color: rgba(204,0,255,.15); transition: background .1s; }
+    .mi:hover, .mi:focus { background: rgba(204,0,255,.08); outline: none; }
+    .mi.active { background: rgba(204,0,255,.18); }
+
+    /* ── OVERLAY PANELS ── */
+    .panel { display: none; position: fixed; inset: 0;
+      background: rgba(4,0,16,.96); z-index: 200; flex-direction: column;
+      align-items: center; padding: 20px 14px 16px; overflow-y: auto; }
+    .panel.open { display: flex; }
+    .panel::-webkit-scrollbar { width: 4px; }
+    .panel::-webkit-scrollbar-thumb { background: var(--purple-dim); }
+
+    .ph { width: 100%; max-width: 700px; display: flex;
+      justify-content: space-between; align-items: center;
+      border-bottom: 2px solid var(--purple); padding-bottom: 8px; margin-bottom: 14px; }
+    .pt { font-size: 9px; color: var(--purple); text-shadow: var(--glow); letter-spacing: 2px; }
+    .pc { background: transparent; border: 1px solid var(--purple);
+      color: var(--purple); font-family: var(--font); font-size: 7px;
+      padding: 5px 9px; cursor: pointer; }
+    .pc:hover { box-shadow: var(--glow); }
+    .pb { width: 100%; max-width: 700px; display: flex; flex-direction: column; gap: 14px; }
+
+    /* Form elements */
+    .fg { display: flex; flex-direction: column; gap: 6px; }
+    .fl { font-size: 6px; color: var(--purple); letter-spacing: 1px; }
+    .fi { background: #060012; border: 1px solid var(--purple-dim);
+      color: var(--white); font-family: var(--font); font-size: 7px;
+      padding: 7px; outline: none; width: 100%; }
+    .fi:focus { border-color: var(--purple); box-shadow: var(--glow); }
+    textarea.fi { resize: vertical; min-height: 56px; line-height: 1.8; }
+    .opt-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .opt { font-size: 7px; padding: 5px 9px; background: transparent;
+      border: 1px solid var(--purple-dim); color: #555;
+      font-family: var(--font); cursor: pointer; transition: all .12s; }
+    .opt.on { border-color: var(--purple); color: var(--purple); box-shadow: var(--glow); }
+    .btn { align-self: flex-start; background: var(--purple-dark); border: 2px solid var(--purple);
+      color: var(--purple); font-family: var(--font); font-size: 7px;
+      padding: 8px 14px; cursor: pointer; letter-spacing: 1px; text-shadow: var(--glow); }
+    .btn:hover { box-shadow: var(--glow); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .save { font-size: 8px; padding: 10px 18px; letter-spacing: 2px; }
+
+    /* Session output */
+    .session-out { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+      padding: 8px 0; min-height: 120px; }
+    .session-out::-webkit-scrollbar { width: 3px; }
+    .session-out::-webkit-scrollbar-thumb { background: var(--purple-dim); }
+    .turn { display: flex; flex-direction: column; gap: 3px; }
+    .turn-who { font-size: 6px; color: var(--purple); text-shadow: var(--glow);
+      letter-spacing: 1px; border-bottom: 1px solid var(--purple-dark); padding-bottom: 2px; }
+    .turn-body { font-size: 7px; color: var(--white); line-height: 2; white-space: pre-wrap;
+      word-break: break-word; }
+    @media (min-width: 700px) { .turn-who { font-size: 7px; } .turn-body { font-size: 8px; } }
+
+    /* Audio row */
+    .audio-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    #boardroom-audio, #brainstorm-audio { display: none; }
+    audio { width: 100%; margin-top: 4px; }
+
+    .ph-text { font-size: 7px; color: var(--purple-dim); line-height: 2.8;
+      text-align: center; margin-top: 20px; }
+
+    /* Pipeline jobs */
+    .job-row { display: flex; justify-content: space-between; align-items: center;
+      border: 1px solid var(--purple-dim); padding: 6px 10px; }
+    .job-name { font-size: 7px; color: var(--white); }
+    .job-status { font-size: 5px; color: var(--purple); }
+    .job-del { background: transparent; border: 1px solid #440033; color: #880055;
+      font-family: var(--font); font-size: 5px; padding: 3px 6px; cursor: pointer; }
   </style>
 </head>
 <body>
-  <div class="hero"><div class="title">TWIN SHADOW</div></div>
-  <h2 style="text-align:center;margin-top:30px;">Dark Magus is online.</h2>
+<div id="app">
+
+  <!-- ═══ CHAT PANEL ═══ -->
+  <div id="chat-panel">
+    <div id="strip">
+      <span id="user-label">USER</span>
+      <div id="bot-toggle" onclick="toggleBot()">
+        <span id="toggle-name">TWIN</span>
+        <div class="sw" id="sw"></div>
+      </div>
+    </div>
+
+    <div id="msgs"></div>
+    <div id="file-hint"></div>
+
+    <div id="input-row">
+      <button id="upload-btn" onclick="document.getElementById('file-input').click()" title="Upload">&#128206;</button>
+      <input id="file-input" type="file" accept="image/*,audio/*,video/*" onchange="onFile(this)">
+      <textarea id="txt" rows="1" onkeydown="onKey(event)" oninput="resize(this)"></textarea>
+      <button id="send-btn" onclick="send()" title="Send">
+        <img src="/static/send_btn.jpg" alt="Send">
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ MENU BAR ═══ -->
+  <div id="menu-bar">
+    <button class="mi" data-p="home"          onclick="openPanel('home')"          title="[1] HOME"></button>
+    <button class="mi" data-p="brainstorming" onclick="openPanel('brainstorming')" title="[4] BRAINSTORMING"></button>
+    <button class="mi" data-p="projects"      onclick="openPanel('projects')"      title="[2] PROJECTS"></button>
+    <button class="mi" data-p="pipeline"      onclick="openPanel('pipeline')"      title="[5] PIPELINE"></button>
+    <button class="mi" data-p="boardroom"     onclick="openPanel('boardroom')"     title="[3] BOARDROOM"></button>
+    <button class="mi" data-p="settings"      onclick="openPanel('settings')"      title="[6] SETTINGS"></button>
+  </div>
+
+  <!-- ═══ PANELS ═══ -->
+
+  <!-- [1] HOME -->
+  <div class="panel" id="panel-home">
+    <div class="ph"><span class="pt">[1] HOME</span><button class="pc" onclick="closePanel('home')">X CLOSE</button></div>
+    <div class="pb"><p class="ph-text">TWIN SHADOW v2.0<br>DARK MAGUS ONLINE.<br><br>AI ENGINE ACTIVE.<br>SELECT A MODE TO BEGIN.</p></div>
+  </div>
+
+  <!-- [2] PROJECTS -->
+  <div class="panel" id="panel-projects">
+    <div class="ph"><span class="pt">[2] PROJECTS</span><button class="pc" onclick="closePanel('projects')">X CLOSE</button></div>
+    <div class="pb">
+      <div class="fg">
+        <label class="fl">NEW BUILDER TASK</label>
+        <textarea class="fi" id="builder-input" rows="3" placeholder="Describe what to build..."></textarea>
+      </div>
+      <button class="btn" onclick="runBuilder()">[ RUN BUILDER ]</button>
+      <div id="builder-out" class="session-out"></div>
+    </div>
+  </div>
+
+  <!-- [3] BOARDROOM -->
+  <div class="panel" id="panel-boardroom">
+    <div class="ph"><span class="pt">[3] BOARDROOM</span><button class="pc" onclick="closePanel('boardroom')">X CLOSE</button></div>
+    <div class="pb">
+      <div class="fg">
+        <label class="fl">TOPIC / IDEA</label>
+        <textarea class="fi" id="boardroom-topic" rows="2" placeholder="Pitch your idea to the board..."></textarea>
+      </div>
+      <div class="fg">
+        <span class="fl">MODE</span>
+        <div class="opt-row">
+          <button class="opt on" id="br-normal" onclick="setBoardMode('normal')">NORMAL BOARD</button>
+          <button class="opt" id="br-shadow" onclick="setBoardMode('shadow')">SHADOW BOARD</button>
+        </div>
+      </div>
+      <div class="audio-row">
+        <button class="btn" id="boardroom-go-btn" onclick="runBoardroom()">[ CONVENE BOARD ]</button>
+        <button class="btn" id="boardroom-audio-btn" style="display:none" onclick="renderTTS('boardroom')">[ PLAY AUDIO ]</button>
+        <a id="boardroom-export-btn" style="display:none;font-family:var(--font);font-size:7px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="boardroom_transcript.txt">[ EXPORT ]</a>
+      </div>
+      <audio id="boardroom-audio" controls></audio>
+      <div id="boardroom-out" class="session-out"></div>
+    </div>
+  </div>
+
+  <!-- [4] BRAINSTORMING -->
+  <div class="panel" id="panel-brainstorming">
+    <div class="ph"><span class="pt">[4] BRAINSTORMING</span><button class="pc" onclick="closePanel('brainstorming')">X CLOSE</button></div>
+    <div class="pb">
+      <div class="fg">
+        <label class="fl">TOPIC</label>
+        <textarea class="fi" id="brainstorm-topic" rows="2" placeholder="What are we riffing on?"></textarea>
+      </div>
+      <div class="fg">
+        <span class="fl">MODE</span>
+        <div class="opt-row">
+          <button class="opt on" id="bs-normal" onclick="setBrainstormMode('normal')">NORMAL</button>
+          <button class="opt" id="bs-shadow" onclick="setBrainstormMode('shadow')">SHADOW</button>
+          <button class="opt" id="bs-podcast" onclick="setBrainstormMode('podcast')">PODCAST</button>
+        </div>
+      </div>
+      <div class="fg">
+        <span class="fl">ROUNDS</span>
+        <div class="opt-row">
+          <button class="opt on" id="bs-r1" onclick="setBsRounds(1)">1</button>
+          <button class="opt" id="bs-r2" onclick="setBsRounds(2)">2</button>
+          <button class="opt" id="bs-r3" onclick="setBsRounds(3)">3</button>
+        </div>
+      </div>
+      <div class="audio-row">
+        <button class="btn" id="brainstorm-go-btn" onclick="runBrainstorm()">[ START SESSION ]</button>
+        <button class="btn" id="brainstorm-audio-btn" style="display:none" onclick="renderTTS('brainstorm')">[ PLAY AUDIO ]</button>
+        <a id="brainstorm-export-btn" style="display:none;font-family:var(--font);font-size:7px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="brainstorm_transcript.txt">[ EXPORT ]</a>
+      </div>
+      <audio id="brainstorm-audio" controls></audio>
+      <div id="brainstorm-out" class="session-out"></div>
+    </div>
+  </div>
+
+  <!-- [5] PIPELINE -->
+  <div class="panel" id="panel-pipeline">
+    <div class="ph"><span class="pt">[5] PIPELINE</span><button class="pc" onclick="closePanel('pipeline')">X CLOSE</button></div>
+    <div class="pb">
+      <div class="fg" style="flex-direction:row;gap:8px;align-items:flex-end">
+        <input class="fi" id="pipeline-name" type="text" placeholder="Job name..." style="flex:1">
+        <button class="btn" onclick="addPipelineJob()">[ ADD JOB ]</button>
+      </div>
+      <div id="pipeline-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+      <p class="ph-text" id="pipeline-empty">NO JOBS IN QUEUE.</p>
+    </div>
+  </div>
+
+  <!-- [6] SETTINGS -->
+  <div class="panel" id="panel-settings">
+    <div class="ph"><span class="pt">[6] SETTINGS</span><button class="pc" onclick="closePanel('settings')">X CLOSE</button></div>
+    <div class="pb">
+
+      <div class="fg">
+        <label class="fl" for="s-name">USERNAME</label>
+        <input class="fi" id="s-name" type="text" placeholder="USER" maxlength="20" autocomplete="off">
+      </div>
+
+      <div class="fg">
+        <span class="fl">DEFAULT BOT</span>
+        <div class="opt-row">
+          <button class="opt on" id="def-twin"   onclick="setDef('twin')">TWIN</button>
+          <button class="opt"    id="def-shadow" onclick="setDef('shadow')">SHADOW</button>
+        </div>
+      </div>
+
+      <div class="fg">
+        <span class="fl">TEAM MODE</span>
+        <div class="opt-row">
+          <button class="opt on" id="mode-normal" onclick="setMode('normal')">NORMAL TEAM</button>
+          <button class="opt"    id="mode-shadow" onclick="setMode('shadow')">SHADOW TEAM</button>
+        </div>
+      </div>
+
+      <div class="fg">
+        <label class="fl">TWIN — SYSTEM PROMPT</label>
+        <textarea class="fi" id="p-twin" rows="3" placeholder="You are TWIN..."></textarea>
+      </div>
+
+      <div class="fg">
+        <label class="fl">SHADOW — SYSTEM PROMPT</label>
+        <textarea class="fi" id="p-shadow" rows="3" placeholder="You are SHADOW..."></textarea>
+      </div>
+
+      <div class="fg">
+        <label class="fl">BUILDER — SYSTEM PROMPT</label>
+        <textarea class="fi" id="p-builder" rows="3" placeholder="You are the Builder..."></textarea>
+      </div>
+
+      <div class="fg">
+        <label class="fl">BOARDROOM — SYSTEM PROMPT</label>
+        <textarea class="fi" id="p-boardroom" rows="3" placeholder="You are a board member..."></textarea>
+      </div>
+
+      <div class="fg">
+        <label class="fl">BRAINSTORM — SYSTEM PROMPT</label>
+        <textarea class="fi" id="p-brainstorm" rows="3" placeholder="You are a creative contributor..."></textarea>
+      </div>
+
+      <button class="btn save" onclick="saveSettings()">[ SAVE SETTINGS ]</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ─────────────────────────────────────────
+   STORAGE
+───────────────────────────────────────── */
+const S = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+
+/* ─────────────────────────────────────────
+   STATE
+───────────────────────────────────────── */
+let bot       = S.get('bot', 'twin');
+let uname     = S.get('uname', 'USER');
+let defBot    = S.get('defBot', 'twin');
+let teamMode  = S.get('teamMode', 'normal');
+let history   = [];
+let boardMode = 'normal';
+let bsMode    = 'normal';
+let bsRounds  = 1;
+let boardTurns = [];
+let bsTurns    = [];
+let pendingFile = null;
+let chatBusy    = false;
+
+/* ─────────────────────────────────────────
+   BOOT
+───────────────────────────────────────── */
+(function init() {
+  applyBot(bot);
+  document.getElementById('user-label').textContent = uname;
+  document.getElementById('s-name').value      = uname;
+  document.getElementById('p-twin').value      = S.get('p_twin', '');
+  document.getElementById('p-shadow').value    = S.get('p_shadow', '');
+  document.getElementById('p-builder').value   = S.get('p_builder', '');
+  document.getElementById('p-boardroom').value = S.get('p_boardroom', '');
+  document.getElementById('p-brainstorm').value= S.get('p_brainstorm', '');
+  setDef(defBot, true);
+  setMode(teamMode, true);
+  addMsg('SHADOW', 'DARK MAGUS ONLINE.\nAI ENGINE ACTIVE. TYPE YOUR COMMAND.');
+})();
+
+/* ─────────────────────────────────────────
+   BOT TOGGLE
+───────────────────────────────────────── */
+function toggleBot() {
+  bot = bot === 'twin' ? 'shadow' : 'twin';
+  S.set('bot', bot); applyBot(bot);
+}
+function applyBot(b) {
+  document.getElementById('sw').classList.toggle('on', b === 'shadow');
+  document.getElementById('toggle-name').textContent = b.toUpperCase();
+}
+
+/* ─────────────────────────────────────────
+   MESSAGES (chat panel)
+───────────────────────────────────────── */
+function addMsg(who, text, typing) {
+  const box  = document.getElementById('msgs');
+  const d    = document.createElement('div'); d.className = 'msg';
+  const name = document.createElement('div'); name.className = 'msg-who'; name.textContent = who;
+  const body = document.createElement('div');
+  body.className = 'msg-body' + (typing ? ' typing' : '');
+  body.textContent = text || '';
+  d.appendChild(name); d.appendChild(body); box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+  return body;
+}
+
+/* ─────────────────────────────────────────
+   SEND — real SSE streaming
+───────────────────────────────────────── */
+async function send() {
+  if (chatBusy) return;
+  const el  = document.getElementById('txt');
+  const msg = el.value.trim();
+  if (!msg && !pendingFile) return;
+
+  const label = pendingFile ? `${msg ? msg + ' ' : ''}[${pendingFile.name}]` : msg;
+  addMsg(uname, label);
+  history.push({ role: 'user', content: msg });
+
+  el.value = ''; el.style.height = 'auto'; clearFile();
+
+  chatBusy = true;
+  const body = addMsg(bot.toUpperCase(), '', true);
+
+  const sysOverride = bot === 'shadow'
+    ? S.get('p_shadow', '') : S.get('p_twin', '');
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: msg, bot, history: history.slice(-30),
+        username: uname, system_prompt: sysOverride,
+      }),
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const reader = res.body.getReader();
+    const dec    = new TextDecoder();
+    let   buf    = '';
+    let   full   = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        try {
+          const d = JSON.parse(line.slice(5).trim());
+          if (d.done) break;
+          if (d.error) { body.textContent = '[ERROR] ' + d.error; body.classList.remove('typing'); break; }
+          if (d.text) { full += d.text; body.textContent = full; body.classList.remove('typing'); }
+        } catch {}
+      }
+    }
+
+    body.classList.remove('typing');
+    if (full) history.push({ role: 'assistant', content: full });
+
+  } catch (e) {
+    body.classList.remove('typing');
+    body.textContent = '[CONNECTION ERROR] ' + e.message;
+  } finally {
+    chatBusy = false;
+    document.getElementById('msgs').scrollTop = 99999;
+  }
+}
+
+function onKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }
+function resize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 110) + 'px'; }
+
+/* ─────────────────────────────────────────
+   FILE UPLOAD
+───────────────────────────────────────── */
+function onFile(inp) {
+  if (!inp.files.length) return;
+  pendingFile = inp.files[0];
+  const hint  = document.getElementById('file-hint');
+  hint.textContent = '> ' + pendingFile.name;
+  hint.style.display = 'block';
+}
+function clearFile() {
+  pendingFile = null;
+  const hint  = document.getElementById('file-hint');
+  hint.style.display = 'none'; hint.textContent = '';
+  document.getElementById('file-input').value = '';
+}
+
+/* ─────────────────────────────────────────
+   SESSION HELPERS (boardroom / brainstorm)
+───────────────────────────────────────── */
+/**
+ * Stream a multi-speaker SSE session.
+ * Server yields: \x1eSPEAKER:NAME\x1f | text chunks | \x1eEND\x1f
+ * Returns array of {speaker, text} for TTS / export.
+ */
+async function streamSession(url, body, outEl) {
+  outEl.innerHTML = '';
+  let curName = null, curBody = null, curText = '';
+  let sseBuffer = '';
+  const allTurns = [];
+
+  let res;
+  try {
+    res = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch(e) { outEl.innerHTML = '<p style="color:#f44">NETWORK ERROR: ' + e + '</p>'; return []; }
+  if (!res.ok) { outEl.innerHTML = '<p style="color:#f44">ERROR: ' + res.status + '</p>'; return []; }
+
+  const reader = res.body.getReader();
+  const dec    = new TextDecoder();
+
+  const flushTurn = () => {
+    if (curName && curBody) {
+      curBody.classList.remove('typing');
+      const txt = curBody.textContent.trim();
+      if (txt) allTurns.push({ speaker: curName, text: txt });
+    }
+  };
+
+  const newTurn = name => {
+    flushTurn();
+    curName = name; curText = '';
+    const turn = document.createElement('div'); turn.className = 'turn';
+    const who  = document.createElement('div'); who.className = 'turn-who'; who.textContent = name;
+    curBody    = document.createElement('div'); curBody.className = 'turn-body typing';
+    turn.appendChild(who); turn.appendChild(curBody);
+    outEl.appendChild(turn);
+    outEl.scrollTop = outEl.scrollHeight;
+  };
+
+  outer: while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    sseBuffer += dec.decode(value, { stream: true });
+    const events = sseBuffer.split('\n\n');
+    sseBuffer = events.pop();
+
+    for (const ev of events) {
+      if (!ev.startsWith('data:')) continue;
+      let d;
+      try { d = JSON.parse(ev.slice(5).trim()); } catch { continue; }
+      if (d.done) break outer;
+      if (d.error) {
+        if (curBody) { curBody.classList.remove('typing'); curBody.textContent += '\n[ERROR] ' + d.error; }
+        else outEl.innerHTML += '<p style="color:#f44">[ERROR] ' + d.error + '</p>';
+        break outer;
+      }
+      const chunk = d.text || '';
+      if (!chunk) continue;
+
+      // Detect control marker: starts and ends with our private delimiters
+      if (chunk.charCodeAt(0) === 0x1E && chunk.charCodeAt(chunk.length - 1) === 0x1F) {
+        const marker = chunk.slice(1, -1);
+        if (marker.startsWith('SPEAKER:')) {
+          newTurn(marker.slice(8));
+        } else if (marker === 'END') {
+          if (curBody) curBody.classList.remove('typing');
+        }
+      } else {
+        // Regular text
+        if (curBody) {
+          curBody.textContent += chunk;
+          curBody.classList.remove('typing');
+        }
+        outEl.scrollTop = outEl.scrollHeight;
+      }
+    }
+  }
+
+  flushTurn();
+  return allTurns;
+}
+
+/* ─────────────────────────────────────────
+   BOARDROOM
+───────────────────────────────────────── */
+function setBoardMode(m) {
+  boardMode = m;
+  document.getElementById('br-normal').classList.toggle('on', m === 'normal');
+  document.getElementById('br-shadow').classList.toggle('on', m === 'shadow');
+}
+
+async function runBoardroom() {
+  const topic = document.getElementById('boardroom-topic').value.trim();
+  if (!topic) return;
+  const btn = document.getElementById('boardroom-go-btn');
+  btn.disabled = true; btn.textContent = '[ CONVENING... ]';
+  boardTurns = [];
+  document.getElementById('boardroom-audio').style.display = 'none';
+  document.getElementById('boardroom-audio-btn').style.display = 'none';
+  document.getElementById('boardroom-export-btn').style.display = 'none';
+
+  try {
+    boardTurns = await streamSession('/api/boardroom',
+      { topic, shadow_mode: boardMode === 'shadow' },
+      document.getElementById('boardroom-out'),
+    );
+  } catch(e) {
+    document.getElementById('boardroom-out').innerHTML += '<p style="color:#f44">' + e + '</p>';
+  }
+
+  btn.disabled = false; btn.textContent = '[ CONVENE BOARD ]';
+
+  if (boardTurns.length) {
+    document.getElementById('boardroom-audio-btn').style.display = '';
+    const txt = boardTurns.map(t => t.speaker + ': ' + t.text).join('\n\n');
+    const blob = new Blob([txt], { type: 'text/plain' });
+    document.getElementById('boardroom-export-btn').href = URL.createObjectURL(blob);
+    document.getElementById('boardroom-export-btn').style.display = '';
+  }
+}
+
+/* ─────────────────────────────────────────
+   BRAINSTORM
+───────────────────────────────────────── */
+function setBrainstormMode(m) {
+  bsMode = m;
+  document.getElementById('bs-normal').classList.toggle('on', m === 'normal');
+  document.getElementById('bs-shadow').classList.toggle('on', m === 'shadow');
+  document.getElementById('bs-podcast').classList.toggle('on', m === 'podcast');
+}
+function setBsRounds(r) {
+  bsRounds = r;
+  [1,2,3].forEach(n =>
+    document.getElementById('bs-r'+n).classList.toggle('on', n === r));
+}
+
+async function runBrainstorm() {
+  const topic = document.getElementById('brainstorm-topic').value.trim();
+  if (!topic) return;
+  const btn = document.getElementById('brainstorm-go-btn');
+  btn.disabled = true; btn.textContent = '[ RUNNING... ]';
+  bsTurns = [];
+  document.getElementById('brainstorm-audio').style.display = 'none';
+  document.getElementById('brainstorm-audio-btn').style.display = 'none';
+  document.getElementById('brainstorm-export-btn').style.display = 'none';
+
+  try {
+    bsTurns = await streamSession('/api/brainstorm',
+      { topic, shadow_mode: bsMode === 'shadow',
+        podcast_mode: bsMode === 'podcast', rounds: bsRounds },
+      document.getElementById('brainstorm-out'),
+    );
+  } catch(e) {
+    document.getElementById('brainstorm-out').innerHTML += '<p style="color:#f44">' + e + '</p>';
+  }
+
+  btn.disabled = false; btn.textContent = '[ START SESSION ]';
+
+  if (bsTurns.length) {
+    document.getElementById('brainstorm-audio-btn').style.display = '';
+    const txt = bsTurns.map(t => t.speaker + ': ' + t.text).join('\n\n');
+    const blob = new Blob([txt], { type: 'text/plain' });
+    document.getElementById('brainstorm-export-btn').href = URL.createObjectURL(blob);
+    document.getElementById('brainstorm-export-btn').style.display = '';
+  }
+}
+
+/* ─────────────────────────────────────────
+   TTS PLAYBACK
+───────────────────────────────────────── */
+async function renderTTS(mode) {
+  const turns = mode === 'boardroom' ? boardTurns : bsTurns;
+  if (!turns.length) return;
+
+  const audioBtn = document.getElementById(mode + '-audio-btn');
+  audioBtn.textContent = '[ RENDERING... ]';
+  audioBtn.disabled = true;
+
+  try {
+    const res  = await fetch('/api/tts', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ turns }),
+    });
+    const data = await res.json();
+    if (data.url) {
+      const el = document.getElementById(mode + '-audio');
+      el.src = data.url;
+      el.style.display = 'block';
+      el.play();
+    } else {
+      alert('TTS failed: ' + (data.error || 'unknown'));
+    }
+  } catch(e) {
+    alert('TTS error: ' + e);
+  }
+
+  audioBtn.textContent = '[ PLAY AUDIO ]';
+  audioBtn.disabled = false;
+}
+
+/* ─────────────────────────────────────────
+   BUILDER
+───────────────────────────────────────── */
+async function runBuilder() {
+  const task = document.getElementById('builder-input').value.trim();
+  if (!task) return;
+  const out = document.getElementById('builder-out');
+  out.innerHTML = '';
+  const btn = document.querySelector('#panel-projects .btn');
+  btn.disabled = true; btn.textContent = '[ BUILDING... ]';
+  try {
+    await streamSession('/api/builder', { task }, out);
+  } catch(e) {
+    out.innerHTML += '<p style="color:#f44">' + e + '</p>';
+  }
+  btn.disabled = false; btn.textContent = '[ RUN BUILDER ]';
+}
+
+/* ─────────────────────────────────────────
+   PIPELINE
+───────────────────────────────────────── */
+async function loadPipeline() {
+  const list  = document.getElementById('pipeline-list');
+  const empty = document.getElementById('pipeline-empty');
+  try {
+    const jobs = await fetch('/api/pipeline').then(r => r.json());
+    list.innerHTML = '';
+    empty.style.display = jobs.length ? 'none' : '';
+    jobs.forEach(job => {
+      const row = document.createElement('div'); row.className = 'job-row';
+      row.innerHTML =
+        `<span class="job-name">${job.name}</span>` +
+        `<span class="job-status">[${job.status}]</span>` +
+        `<button class="job-del" onclick="delJob(${job.id})">DEL</button>`;
+      list.appendChild(row);
+    });
+  } catch {}
+}
+
+async function addPipelineJob() {
+  const inp = document.getElementById('pipeline-name');
+  const name = inp.value.trim();
+  if (!name) return;
+  try {
+    await fetch('/api/pipeline', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }) });
+    inp.value = '';
+    loadPipeline();
+  } catch {}
+}
+
+async function delJob(id) {
+  try {
+    await fetch('/api/pipeline/' + id, { method: 'DELETE' });
+    loadPipeline();
+  } catch {}
+}
+
+/* ─────────────────────────────────────────
+   PANELS
+───────────────────────────────────────── */
+function openPanel(name) {
+  if (name === 'home') { closeAll(); return; }
+  closeAll();
+  const p = document.getElementById('panel-' + name);
+  if (p) p.classList.add('open');
+  document.querySelectorAll('.mi').forEach(b =>
+    b.classList.toggle('active', b.dataset.p === name));
+  if (name === 'pipeline') loadPipeline();
+}
+function closePanel(name) {
+  document.getElementById('panel-' + name)?.classList.remove('open');
+  document.querySelectorAll('.mi').forEach(b => b.classList.remove('active'));
+}
+function closeAll() {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('.mi').forEach(b => b.classList.remove('active'));
+}
+
+/* keyboard shortcuts */
+document.addEventListener('keydown', e => {
+  const tag = document.activeElement?.tagName;
+  if (tag === 'TEXTAREA' || tag === 'INPUT') return;
+  const map = {'1':'home','2':'projects','3':'boardroom',
+               '4':'brainstorming','5':'pipeline','6':'settings'};
+  if (map[e.key]) openPanel(map[e.key]);
+  if (e.key === 'Escape') closeAll();
+});
+
+/* ─────────────────────────────────────────
+   SETTINGS
+───────────────────────────────────────── */
+function setDef(v, silent) {
+  defBot = v; if (!silent) S.set('defBot', v);
+  document.getElementById('def-twin').classList.toggle('on', v === 'twin');
+  document.getElementById('def-shadow').classList.toggle('on', v === 'shadow');
+}
+function setMode(v, silent) {
+  teamMode = v; if (!silent) S.set('teamMode', v);
+  document.getElementById('mode-normal').classList.toggle('on', v === 'normal');
+  document.getElementById('mode-shadow').classList.toggle('on', v === 'shadow');
+}
+function saveSettings() {
+  const n = (document.getElementById('s-name').value.trim().toUpperCase() || 'USER').slice(0, 20);
+  uname = n; S.set('uname', n);
+  S.set('p_twin',      document.getElementById('p-twin').value);
+  S.set('p_shadow',    document.getElementById('p-shadow').value);
+  S.set('p_builder',   document.getElementById('p-builder').value);
+  S.set('p_boardroom', document.getElementById('p-boardroom').value);
+  S.set('p_brainstorm',document.getElementById('p-brainstorm').value);
+  bot = defBot; S.set('bot', bot); applyBot(bot);
+  document.getElementById('user-label').textContent = uname;
+  closePanel('settings');
+  addMsg('SYSTEM', 'SETTINGS SAVED. WELCOME, ' + uname + '.');
+}
+</script>
 </body>
 </html>
