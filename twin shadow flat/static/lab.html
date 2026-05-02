@@ -386,6 +386,8 @@
       <!-- STEP 6: THUMBNAIL -->
       <div id="se-thumb-section" style="display:none;flex-direction:column;gap:8px;border-top:1px solid var(--purple-dim);padding-top:12px">
         <span class="fl">[ 6. THUMBNAIL GENERATOR ]</span>
+
+        <!-- Row 1: timestamp + position -->
         <div style="display:flex;gap:6px">
           <div class="fg" style="flex:1">
             <span class="fl">TIMESTAMP (SEC)</span>
@@ -400,13 +402,50 @@
             </select>
           </div>
         </div>
+
+        <!-- Row 2: overlay text -->
         <div class="fg">
           <span class="fl">OVERLAY TEXT (OPTIONAL)</span>
           <input class="fi" id="se-thumb-text" type="text" placeholder="Your title text here..." style="margin-top:4px">
         </div>
+
+        <!-- Row 3: font picker -->
+        <div class="fg">
+          <span class="fl">FONT</span>
+          <div id="se-font-btns" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">
+            <span style="font-size:5px;color:var(--purple-dim)">LOADING FONTS...</span>
+          </div>
+        </div>
+
+        <!-- Row 4: font size + color + outline -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <div class="fg" style="flex:1;min-width:80px">
+            <span class="fl">FONT SIZE</span>
+            <input class="fi" id="se-thumb-size" type="number" value="52" min="20" max="200" step="4" style="margin-top:4px">
+          </div>
+          <div class="fg" style="flex:1;min-width:80px">
+            <span class="fl">TEXT COLOR</span>
+            <select class="fi" id="se-thumb-color" style="margin-top:4px">
+              <option value="white">WHITE</option>
+              <option value="yellow">YELLOW</option>
+              <option value="0xff00ff">MAGENTA</option>
+              <option value="0x00ff88">GREEN</option>
+              <option value="black">BLACK</option>
+            </select>
+          </div>
+          <div class="fg" style="flex:1;min-width:80px;justify-content:flex-end">
+            <span class="fl">BLACK BOX</span>
+            <div style="display:flex;align-items:center;gap:5px;margin-top:6px">
+              <input type="checkbox" id="se-thumb-outline" checked style="accent-color:var(--green);width:14px;height:14px">
+              <span style="font-size:5px;color:var(--purple-dim)">OUTLINE</span>
+            </div>
+          </div>
+        </div>
+
         <button class="btn" id="se-thumb-btn" onclick="seThumbnail()">[ GENERATE THUMBNAIL ]</button>
+
         <div id="se-thumb-result" style="display:none;flex-direction:column;gap:6px">
-          <img id="se-thumb-img" alt="thumbnail" style="width:100%;max-height:200px;object-fit:contain;border:1px solid var(--purple)">
+          <img id="se-thumb-img" alt="thumbnail" style="width:100%;max-height:220px;object-fit:contain;border:1px solid var(--purple)">
           <a id="se-thumb-dl" class="dl-link" download="thumbnail.jpg">[ DOWNLOAD THUMBNAIL ]</a>
         </div>
       </div>
@@ -1027,6 +1066,44 @@ function seSetBusy(btnId, busy, label) {
 /* ─────────────────────────────────────────
    OPEN SMART EDITOR
 ───────────────────────────────────────── */
+async function seLoadFonts() {
+  const box = document.getElementById('se-font-btns');
+  if (!box) return;
+  try {
+    const fonts = await fetch('/api/lab/fonts').then(r => r.json());
+    box.innerHTML = '';
+    SE._selectedFont = fonts[0]?.key || '';
+    fonts.forEach((f, i) => {
+      const b = document.createElement('button');
+      b.className = 'se-opt' + (i === 0 ? ' active' : '');
+      b.dataset.fontKey = f.key;
+      b.style.cssText = `font-family:'${f.label}';letter-spacing:0`;
+      b.textContent = f.label;
+      b.onclick = () => {
+        box.querySelectorAll('.se-opt').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        SE._selectedFont = f.key;
+      };
+      box.appendChild(b);
+    });
+    // also inject @font-face for each so buttons render in the actual font
+    fonts.forEach(f => {
+      if (!document.getElementById('ff-' + f.key)) {
+        const style = document.createElement('style');
+        style.id = 'ff-' + f.key;
+        style.textContent = `@font-face{font-family:'${f.label}';src:url('${f.url}') format('truetype');}`;
+        document.head.appendChild(style);
+        // apply after load
+        document.querySelectorAll(`[data-font-key="${f.key}"]`).forEach(b => {
+          b.style.fontFamily = `'${f.label}', monospace`;
+        });
+      }
+    });
+  } catch(e) {
+    box.innerHTML = '<span style="font-size:5px;color:#ff4466">FONT LOAD ERROR</span>';
+  }
+}
+
 function openSmartEditor() {
   openPanel('smartedit');
   const sel = document.getElementById('se-source-select');
@@ -1039,6 +1116,7 @@ function openSmartEditor() {
       sel.appendChild(opt);
     }
   });
+  seLoadFonts();
 }
 
 function seSelectSource(sel) {
@@ -1246,14 +1324,21 @@ async function seReformat() {
 async function seThumbnail() {
   const src = SE.reformatPath || SE.reelPath || SE.sourcePath;
   if (!src) { alert('NO VIDEO SOURCE FOR THUMBNAIL'); return; }
-  const ts   = parseFloat(document.getElementById('se-thumb-ts').value) || 0;
-  const text = document.getElementById('se-thumb-text').value.trim();
-  const pos  = document.getElementById('se-thumb-pos').value;
+  const ts      = parseFloat(document.getElementById('se-thumb-ts').value)    || 0;
+  const text    = document.getElementById('se-thumb-text').value.trim();
+  const pos     = document.getElementById('se-thumb-pos').value;
+  const font    = SE._selectedFont || '';
+  const fsize   = parseInt(document.getElementById('se-thumb-size').value)     || 52;
+  const fcolor  = document.getElementById('se-thumb-color').value;
+  const outline = document.getElementById('se-thumb-outline').checked;
   seSetBusy('se-thumb-btn', true, '[ GENERATING... ]');
   try {
     const res  = await fetch('/api/lab/thumbnail', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ source_path: src, timestamp: ts, text, position: pos }),
+      body: JSON.stringify({
+        source_path: src, timestamp: ts, text, position: pos,
+        font, font_size: fsize, font_color: fcolor, outline,
+      }),
     });
     const data = await res.json();
     if (data.error) { alert('THUMBNAIL ERROR: ' + data.error); return; }

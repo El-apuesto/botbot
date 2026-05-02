@@ -276,10 +276,15 @@ def make_thumbnail(
     timestamp: float = 0.0,
     text: str = "",
     position: str = "bottom",
+    font_path: str | None = None,
+    font_size: int = 52,
+    font_color: str = "white",
+    outline: bool = True,
 ) -> tuple[bool, str]:
     """
     Extract a frame at timestamp seconds and optionally burn in overlay text.
     position: 'top' | 'center' | 'bottom'
+    font_path: absolute path to a .ttf file (uses ffmpeg default if None)
     """
     y_expr = {"top": "th+20", "center": "(h-th)/2", "bottom": "h-th-30"}.get(position, "h-th-30")
     if not text:
@@ -288,11 +293,13 @@ def make_thumbnail(
             "-vframes", "1", "-q:v", "2", output_path,
         ])
         return (ok, output_path) if ok else (False, err)
-    safe = text.replace("'", "\\'").replace(":", "\\:").replace("%", "\\%")
+
+    safe  = text.replace("'", "\\'").replace(":", "\\:").replace("%", "\\%")
+    ffile = f"fontfile='{font_path}':" if font_path and Path(font_path).exists() else ""
+    box   = ":box=1:boxcolor=black@0.65:boxborderw=12" if outline else ""
     vf = (
-        f"drawtext=text='{safe}':fontcolor=white:fontsize=52"
-        f":x=(w-text_w)/2:y={y_expr}"
-        f":box=1:boxcolor=black@0.65:boxborderw=12"
+        f"drawtext={ffile}text='{safe}':fontcolor={font_color}:fontsize={font_size}"
+        f":x=(w-text_w)/2:y={y_expr}{box}"
     )
     ok, err = _run_ffmpeg([
         "-ss", f"{timestamp:.3f}", "-i", source_path,

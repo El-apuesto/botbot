@@ -554,19 +554,54 @@ def api_lab_reformat():
     return jsonify({"ok": True, "url": f"/renders/{fname}", "path": out})
 
 
+_fonts_dir = Path(__file__).parent / "static" / "fonts"
+
+_FONT_LABELS = {
+    "BebasNeue":       "BEBAS NEUE",
+    "Oswald-Bold":     "OSWALD BOLD",
+    "Anton":           "ANTON",
+    "Bangers":         "BANGERS",
+    "PermanentMarker": "PERM. MARKER",
+    "PressStart2P":    "PRESS START 2P",
+}
+
+@_flask.route("/api/lab/fonts", methods=["GET"])
+def api_lab_fonts():
+    fonts = []
+    for f in sorted(_fonts_dir.glob("*.ttf")):
+        key   = f.stem
+        label = _FONT_LABELS.get(key, key)
+        fonts.append({"key": key, "label": label,
+                       "path": str(f), "url": f"/static/fonts/{f.name}"})
+    return jsonify(fonts)
+
+
 @_flask.route("/api/lab/thumbnail", methods=["POST"])
 def api_lab_thumbnail():
     from part4_video import make_thumbnail
-    data      = request.json or {}
-    source    = data.get("source_path", "")
-    timestamp = float(data.get("timestamp", 0))
-    text      = data.get("text", "")
-    position  = data.get("position", "bottom")
+    data       = request.json or {}
+    source     = data.get("source_path", "")
+    timestamp  = float(data.get("timestamp", 0))
+    text       = data.get("text", "")
+    position   = data.get("position", "bottom")
+    font_key   = data.get("font", "")
+    font_size  = int(data.get("font_size", 52))
+    font_color = data.get("font_color", "white")
+    outline    = bool(data.get("outline", True))
+
     if not source or not Path(source).exists():
         return jsonify({"error": "Source file not found"}), 400
 
+    font_path = None
+    if font_key:
+        candidate = _fonts_dir / f"{font_key}.ttf"
+        if candidate.exists():
+            font_path = str(candidate)
+
     out = str(_lab_renders_dir / f"thumb_{int(time.time())}.jpg")
-    ok, result = make_thumbnail(source, out, timestamp, text, position)
+    ok, result = make_thumbnail(source, out, timestamp, text, position,
+                                font_path=font_path, font_size=font_size,
+                                font_color=font_color, outline=outline)
     if not ok:
         return jsonify({"error": result}), 500
     return jsonify({"ok": True, "url": f"/renders/{Path(out).name}", "path": out})
