@@ -107,6 +107,61 @@ def concatenate_clips(clip_paths: list[str], output_path: str) -> tuple[bool, st
     return (ok, output_path) if ok else (False, err)
 
 
+def concatenate_clips_with_fade(
+    clip_paths: list[str],
+    output_path: str,
+    fade_duration: float = 0.5,
+) -> tuple[bool, str]:
+    """
+    Concatenate clips with FFMPEG xfade crossfade transitions.
+    Produces video-only output (no audio stream) — call mix_audio_onto_video() afterwards.
+    Falls back to hard-cut concatenation if xfade fails (codec mismatch, etc.).
+
+    Offset formula for chain of N clips, step i (1-indexed):
+        offset_i = sum(durations[0..i-1]) - i * fade_duration
+    """
+    if not clip_paths:
+        return False, "No clips."
+    if len(clip_paths) == 1:
+        import shutil
+        shutil.copy2(clip_paths[0], output_path)
+        return True, output_path
+
+    durations = [max(get_video_duration(p), fade_duration + 0.1) for p in clip_paths]
+
+    inputs: list[str] = []
+    for p in clip_paths:
+        inputs.extend(["-i", p])
+
+    fc_parts: list[str] = []
+    prev_tag       = "[0:v]"
+    cumulative_dur = 0.0
+
+    for i in range(1, len(clip_paths)):
+        cumulative_dur += durations[i - 1]
+        offset  = max(0.0, cumulative_dur - i * fade_duration)
+        out_tag = "[v]" if i == len(clip_paths) - 1 else f"[x{i}]"
+        fc_parts.append(
+            f"{prev_tag}[{i}:v]xfade=transition=fade"
+            f":duration={fade_duration:.2f}:offset={offset:.3f}{out_tag}"
+        )
+        prev_tag = out_tag
+
+    fc   = ";".join(fc_parts)
+    ok, err = _run_ffmpeg(
+        inputs + [
+            "-filter_complex", fc,
+            "-map", "[v]", "-an",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p",
+            output_path,
+        ]
+    )
+    if ok:
+        return True, output_path
+    print(f"[VIDEO LAB] xfade failed ({err[:120]}), falling back to hard cut")
+    return concatenate_clips(clip_paths, output_path)
+
+
 def mix_audio_onto_video(
     video_path: str,
     voiceover_path: str | None,
@@ -183,8 +238,11 @@ def add_text_overlay(video_path: str, text: str, output_path: str) -> tuple[bool
 
 async def fal_generate_image(prompt: str, style: str = "", reference_frame_path: str | None = None) -> dict:
     """
-    Generate an image via FAL flux/schnell (fast T2I).
-    If reference_frame_path provided, uploads it and appends style note to prompt.
+    Generate an image via FAL.
+    When reference_frame_path is given:
+      1. Upload the frame to FAL CDN via fal_client.upload_file()
+      2. Use fal-ai/flux/dev/image-to-image for true visual continuity (strength=0.65)
+      3. Fall back to text-only fal-ai/flux/schnell on failure
     Returns {"url": ..., "local_path": None} or {"error": ...}.
     """
     try:
@@ -192,19 +250,41 @@ async def fal_generate_image(prompt: str, style: str = "", reference_frame_path:
     except ImportError:
         return {"error": "fal-client not installed"}
 
-    full_prompt = prompt
-    if style:
-        full_prompt = f"{prompt}, {style}"
-    if reference_frame_path and Path(reference_frame_path).exists():
-        full_prompt += " — seamless continuation from previous scene, matching visual style, lighting, and color palette"
+    import asyncio
 
+    full_prompt = f"{prompt}, {style}" if style else prompt
+
+    # Try img2img with reference frame (real pixel-level visual anchor)
+    if reference_frame_path and Path(reference_frame_path).exists():
+        try:
+            loop    = asyncio.get_event_loop()
+            ref_url = await loop.run_in_executor(None, fal_client.upload_file, reference_frame_path)
+            result  = await fal_client.run_async(
+                "fal-ai/flux/dev/image-to-image",
+                arguments={
+                    "prompt":              full_prompt[:500],
+                    "image_url":           ref_url,
+                    "strength":            0.65,
+                    "num_inference_steps": 28,
+                    "num_images":          1,
+                    "image_size":          "landscape_16_9",
+                },
+            )
+            images = result.get("images", [])
+            if images:
+                return {"url": images[0]["url"], "local_path": None, "reference_used": True}
+        except Exception as e:
+            print(f"[VIDEO LAB] img2img failed ({e}), falling back to T2I")
+            full_prompt += " — seamless continuation, matching visual style and lighting"
+
+    # Text-to-image (no reference or img2img failed)
     try:
         result = await fal_client.run_async(
             "fal-ai/flux/schnell",
             arguments={
-                "prompt":     full_prompt[:500],
-                "image_size": "landscape_16_9",
-                "num_images": 1,
+                "prompt":              full_prompt[:500],
+                "image_size":          "landscape_16_9",
+                "num_images":          1,
                 "num_inference_steps": 4,
             },
         )

@@ -30,8 +30,8 @@ from part5_orchestrator import (
 from part2_router import stream_task, call_task, direct_call
 from part4_video import (
     fal_generate_image, extract_last_frame, download_file,
-    images_to_slideshow, concatenate_clips, mix_audio_onto_video,
-    get_video_duration,
+    images_to_slideshow, concatenate_clips, concatenate_clips_with_fade,
+    mix_audio_onto_video, get_video_duration,
 )
 from part1_registry import (
     get_task_routing, get_provider_cfg,
@@ -671,42 +671,75 @@ def api_lab_image():
 
 
 # ── /api/lab/video/generate ───────────────────────────────────────────────────
-def _fal_video_job_bg(job_id: str, prompt: str, image_url: str | None):
-    """Background thread: run FAL video job, update _lab_jobs."""
-    async def _go():
-        try:
-            import fal_client
-            args: dict = {"prompt": prompt}
-            if image_url:
-                args["image_url"] = image_url
-            handler = await fal_client.submit_async("fal-ai/wan-2.1", arguments=args)
-            result  = await handler.get()
-            vid     = result.get("video", {})
-            url     = vid.get("url") if isinstance(vid, dict) else str(vid)
-            if not url:
-                url = str(result)
-            lpath = download_file(url, str(_lab_renders_dir), f"aivideo_{job_id[:8]}.mp4")
-            _lab_jobs[job_id] = {"status": "done", "url": url, "local_path": lpath, "provider": "fal"}
-        except Exception as e:
-            _lab_jobs[job_id] = {"status": "error", "error": str(e), "provider": "fal"}
-            _replicate_video_job_bg(job_id, prompt, image_url)
+async def _run_video_job(job_id: str, prompt: str, image_url: str | None):
+    """
+    Provider chain: FAL WAN-2.1 → Replicate MiniMax → HuggingFace Wan2.1.
+    _lab_jobs[job_id] is updated to {"status":"processing","provider":...} while
+    each provider is running; only set to "error" after ALL three fail.
+    Frontend polling must not stop on "processing".
+    """
+    errors: dict = {}
 
-    asyncio.run(_go())
+    # ── Provider 1: FAL WAN-2.1 ───────────────────────────────────────────────
+    _lab_jobs[job_id] = {"status": "processing", "provider": "fal"}
+    try:
+        import fal_client
+        args: dict = {"prompt": prompt}
+        if image_url:
+            args["image_url"] = image_url
+        handler = await fal_client.submit_async("fal-ai/wan-2.1", arguments=args)
+        result  = await handler.get()
+        vid     = result.get("video", {})
+        url     = (vid.get("url") if isinstance(vid, dict) else str(vid)) or ""
+        if not url:
+            raise RuntimeError("FAL returned no video URL")
+        lpath = download_file(url, str(_lab_renders_dir), f"aivideo_{job_id[:8]}.mp4")
+        _lab_jobs[job_id] = {"status": "done", "url": url, "local_path": lpath, "provider": "fal"}
+        return
+    except Exception as e:
+        errors["fal"] = str(e)
+        print(f"[VIDEO LAB] FAL failed: {e}")
 
-
-def _replicate_video_job_bg(job_id: str, prompt: str, image_url: str | None):
-    """Fallback: run Replicate MiniMax video job."""
+    # ── Provider 2: Replicate MiniMax ─────────────────────────────────────────
+    _lab_jobs[job_id] = {"status": "processing", "provider": "replicate"}
     try:
         import replicate
         inp: dict = {"prompt": prompt}
         if image_url:
             inp["first_frame_image"] = image_url
-        output = replicate.run("minimax/video-01", input=inp)
+        loop   = asyncio.get_event_loop()
+        output = await loop.run_in_executor(None, lambda: replicate.run("minimax/video-01", input=inp))
         url    = output[0] if isinstance(output, list) else str(output)
         lpath  = download_file(url, str(_lab_renders_dir), f"aivideo_{job_id[:8]}.mp4")
         _lab_jobs[job_id] = {"status": "done", "url": url, "local_path": lpath, "provider": "replicate"}
+        return
     except Exception as e:
-        _lab_jobs[job_id] = {"status": "error", "error": str(e), "provider": "replicate"}
+        errors["replicate"] = str(e)
+        print(f"[VIDEO LAB] Replicate failed: {e}")
+
+    # ── Provider 3: HuggingFace Wan2.1-T2V ───────────────────────────────────
+    _lab_jobs[job_id] = {"status": "processing", "provider": "huggingface"}
+    try:
+        from huggingface_hub import InferenceClient
+        client = InferenceClient(token=os.environ.get("HUGGINGFACE_API_KEY", ""))
+        loop   = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None, lambda: client.text_to_video(prompt, model="Wan-AI/Wan2.1-T2V-14B")
+        )
+        url    = result.url if hasattr(result, "url") else str(result)
+        lpath  = download_file(url, str(_lab_renders_dir), f"aivideo_{job_id[:8]}.mp4")
+        _lab_jobs[job_id] = {"status": "done", "url": url, "local_path": lpath, "provider": "huggingface"}
+        return
+    except Exception as e:
+        errors["huggingface"] = str(e)
+        print(f"[VIDEO LAB] HuggingFace failed: {e}")
+
+    # ── All providers exhausted ───────────────────────────────────────────────
+    _lab_jobs[job_id] = {"status": "error", "error": "All video providers failed", "errors": errors}
+
+
+def _video_job_thread(job_id: str, prompt: str, image_url: str | None):
+    asyncio.run(_run_video_job(job_id, prompt, image_url))
 
 
 @_flask.route("/api/lab/video/generate", methods=["POST"])
@@ -719,7 +752,7 @@ def api_lab_video_generate():
 
     job_id = str(uuid.uuid4())
     _lab_jobs[job_id] = {"status": "processing", "provider": "fal"}
-    Thread(target=_fal_video_job_bg, args=(job_id, prompt, image_url), daemon=True).start()
+    Thread(target=_video_job_thread, args=(job_id, prompt, image_url), daemon=True).start()
     return jsonify({"job_id": job_id, "status": "processing", "provider": "fal"})
 
 
@@ -799,13 +832,17 @@ def api_lab_render():
                 clip_paths.insert(0, tmp1)
 
             if len(clip_paths) > 1:
-                yield step("CONCATENATING CLIPS...")
                 concat_out = str(_lab_renders_dir / f"_concat_{output_name}.mp4")
-                ok, err = concatenate_clips(clip_paths, concat_out)
+                if transition == "fade":
+                    yield step("CONCATENATING CLIPS WITH FADE TRANSITIONS...")
+                    ok, err = concatenate_clips_with_fade(clip_paths, concat_out)
+                else:
+                    yield step("CONCATENATING CLIPS (HARD CUT)...")
+                    ok, err = concatenate_clips(clip_paths, concat_out)
                 if not ok:
-                    yield f"✗ CONCAT FAILED: {err[:120]}\n(UNSUPPORTED EFFECT: clips must share codec/resolution)"
+                    yield f"✗ CONCAT FAILED: {err[:120]}"
                     return
-                yield "✓ CLIPS CONCATENATED"
+                yield f"✓ CLIPS CONCATENATED ({transition.upper()})"
                 tmp_video = concat_out
             elif clip_paths:
                 tmp_video = clip_paths[0]
