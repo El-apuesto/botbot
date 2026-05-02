@@ -9,7 +9,6 @@ import re
 import time
 import json
 import queue
-import secrets
 import asyncio
 import socket
 import threading
@@ -61,9 +60,8 @@ def _find_port(start: int = 5000) -> int:
                 return p
     return start
 
-_static_dir   = Path(__file__).parent / "static"
-_audio_dir    = Path(__file__).parent / "audio"
-_DEPLOY_TOKEN = secrets.token_hex(16)   # fresh each restart; used to guard /api/builder/deploy
+_static_dir = Path(__file__).parent / "static"
+_audio_dir  = Path(__file__).parent / "audio"
 
 _flask = Flask("TwinShadow", static_folder=str(_static_dir), static_url_path="/static")
 
@@ -75,10 +73,6 @@ def _home():
 def _audio(filename):
     return send_from_directory(str(_audio_dir), filename, mimetype="audio/mpeg")
 
-@_flask.route("/api/deploy-token", methods=["GET"])
-def api_deploy_token():
-    """Return the runtime deploy token. Same-origin only (served by same Flask process)."""
-    return jsonify({"token": _DEPLOY_TOKEN})
 
 _port = _find_port(int(os.environ.get("PORT", 5000)))
 
@@ -406,18 +400,19 @@ _MAX_DEPLOY_BYTES = 65_536   # 64 KB
 @_flask.route("/api/builder/deploy", methods=["POST"])
 def api_builder_deploy():
     """
-    Body: { "token": "<deploy_token>", "name": "my_script", "code": "..." }
-    Requires the runtime deploy token from /api/deploy-token.
+    Loopback-only endpoint — only callable from server-side code (Telegram bot commands).
+    Browser requests are rejected at the network layer because the Replit proxy rewrites
+    the remote_addr to a non-loopback address.
+
+    Body: { "name": "my_script", "code": "..." }
     Writes code to scripts/<name>.py and registers it in pipeline.json.
     Returns: { "ok": true, "path": "scripts/my_script.py" }
     """
-    data  = request.json or {}
-    token = data.get("token", "").strip()
-    if not secrets.compare_digest(token, _DEPLOY_TOKEN):
-        return jsonify({"error": "Unauthorized"}), 401
+    if request.remote_addr not in ("127.0.0.1", "::1"):
+        return jsonify({"error": "Forbidden: server-side only"}), 403
 
-    name = data.get("name", "").strip()
-    code = data.get("code", "").strip()
+    name = (request.json or {}).get("name", "").strip()
+    code = (request.json or {}).get("code", "").strip()
     if not name or not code:
         return jsonify({"error": "name and code required"}), 400
     if not _SAFE_SCRIPT_NAME.match(name):
