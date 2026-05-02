@@ -388,8 +388,9 @@ let bsMode    = 'normal';
 let bsRounds  = 1;
 let boardTurns = [];
 let bsTurns    = [];
-let pendingFile = null;
-let chatBusy    = false;
+let pendingFile  = null;
+let chatBusy     = false;
+let _deployToken = '';
 
 /* ─────────────────────────────────────────
    BOOT
@@ -406,6 +407,7 @@ let chatBusy    = false;
   setDef(defBot, true);
   setMode(teamMode, true);
   addMsg('SHADOW', 'DARK MAGUS ONLINE.\nAI ENGINE ACTIVE. TYPE YOUR COMMAND.');
+  fetch('/api/deploy-token').then(r => r.json()).then(d => { _deployToken = d.token || ''; }).catch(() => {});
 })();
 
 /* ─────────────────────────────────────────

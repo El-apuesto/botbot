@@ -5,9 +5,11 @@ All handlers including part7 command layer.
 
 from __future__ import annotations
 import os
+import re
 import time
 import json
 import queue
+import secrets
 import asyncio
 import socket
 import threading
@@ -59,8 +61,9 @@ def _find_port(start: int = 5000) -> int:
                 return p
     return start
 
-_static_dir = Path(__file__).parent / "static"
-_audio_dir  = Path(__file__).parent / "audio"
+_static_dir   = Path(__file__).parent / "static"
+_audio_dir    = Path(__file__).parent / "audio"
+_DEPLOY_TOKEN = secrets.token_hex(16)   # fresh each restart; used to guard /api/builder/deploy
 
 _flask = Flask("TwinShadow", static_folder=str(_static_dir), static_url_path="/static")
 
@@ -71,6 +74,11 @@ def _home():
 @_flask.route("/audio/<path:filename>")
 def _audio(filename):
     return send_from_directory(str(_audio_dir), filename, mimetype="audio/mpeg")
+
+@_flask.route("/api/deploy-token", methods=["GET"])
+def api_deploy_token():
+    """Return the runtime deploy token. Same-origin only (served by same Flask process)."""
+    return jsonify({"token": _DEPLOY_TOKEN})
 
 _port = _find_port(int(os.environ.get("PORT", 5000)))
 
@@ -392,18 +400,30 @@ def api_builder():
 
 
 # ── /api/builder/deploy ───────────────────────────────────────────────────────
+_SAFE_SCRIPT_NAME = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')
+_MAX_DEPLOY_BYTES = 65_536   # 64 KB
+
 @_flask.route("/api/builder/deploy", methods=["POST"])
 def api_builder_deploy():
     """
-    Body: { "name": "my_script", "code": "..." }
+    Body: { "token": "<deploy_token>", "name": "my_script", "code": "..." }
+    Requires the runtime deploy token from /api/deploy-token.
     Writes code to scripts/<name>.py and registers it in pipeline.json.
     Returns: { "ok": true, "path": "scripts/my_script.py" }
     """
-    data = request.json or {}
-    name = data.get("name", "").strip().replace(" ", "_").replace("/", "_")
+    data  = request.json or {}
+    token = data.get("token", "").strip()
+    if not secrets.compare_digest(token, _DEPLOY_TOKEN):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    name = data.get("name", "").strip()
     code = data.get("code", "").strip()
     if not name or not code:
         return jsonify({"error": "name and code required"}), 400
+    if not _SAFE_SCRIPT_NAME.match(name):
+        return jsonify({"error": "name must be 1-64 chars: letters, digits, _ or -"}), 400
+    if len(code.encode()) > _MAX_DEPLOY_BYTES:
+        return jsonify({"error": f"code exceeds {_MAX_DEPLOY_BYTES // 1024} KB limit"}), 400
 
     scripts_dir = Path(__file__).parent / "scripts"
     scripts_dir.mkdir(exist_ok=True)
