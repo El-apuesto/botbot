@@ -153,9 +153,10 @@ def api_chat():
 # ── /api/boardroom ────────────────────────────────────────────────────────────
 @_flask.route("/api/boardroom", methods=["POST"])
 def api_boardroom():
-    data        = request.json or {}
-    topic       = data.get("topic", "").strip()
-    shadow_mode = data.get("shadow_mode", False)
+    data           = request.json or {}
+    topic          = data.get("topic", "").strip()
+    shadow_mode    = data.get("shadow_mode", False)
+    sys_override   = data.get("system_prompt", "").strip()
     if not topic:
         return jsonify({"error": "No topic"}), 400
 
@@ -163,8 +164,9 @@ def api_boardroom():
 
     async def _run():
         # Step 1: TWIN briefs the topic
+        twin_sys = sys_override or TWIN_SYSTEM
         brief_msgs = [
-            {"role": "system", "content": TWIN_SYSTEM},
+            {"role": "system", "content": twin_sys},
             {"role": "user",   "content": f"Brief this topic for the boardroom in 3 sentences max: {topic}"},
         ]
         yield f"\x1eSPEAKER:TWIN\x1f"
@@ -219,6 +221,7 @@ def api_brainstorm():
     shadow_mode  = data.get("shadow_mode", False)
     podcast_mode = data.get("podcast_mode", False)
     rounds       = min(int(data.get("rounds", 2)), 3)
+    sys_override = data.get("system_prompt", "").strip()
     if not topic:
         return jsonify({"error": "No topic"}), 400
 
@@ -229,7 +232,7 @@ def api_brainstorm():
         for rnd in range(1, rounds + 1):
             for member in members:
                 name = member["name"]
-                sys_p = brainstorm_system(name, podcast_mode)
+                sys_p = sys_override or brainstorm_system(name, podcast_mode)
                 msgs = [
                     {"role": "system", "content": sys_p},
                     {"role": "user",   "content": context + f"\n\nRound {rnd} — {name}:"},
@@ -336,8 +339,9 @@ def api_tts():
 # ── /api/builder ──────────────────────────────────────────────────────────────
 @_flask.route("/api/builder", methods=["POST"])
 def api_builder():
-    data  = request.json or {}
-    task  = data.get("task", "").strip()
+    data         = request.json or {}
+    task         = data.get("task", "").strip()
+    sys_override = data.get("system_prompt", "").strip()
     if not task:
         return jsonify({"error": "No task"}), 400
 
@@ -345,7 +349,7 @@ def api_builder():
         yield f"\x1eSPEAKER:BUILDER\x1f"
         code = ""
         msgs = [
-            {"role": "system", "content": BUILDER_SYSTEM},
+            {"role": "system", "content": sys_override or BUILDER_SYSTEM},
             {"role": "user",   "content": task},
         ]
         try:

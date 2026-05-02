@@ -88,7 +88,8 @@
     #txt { flex: 1; background: transparent; border: none; outline: none;
       color: var(--white); font-family: var(--font); font-size: 7px; line-height: 1.8;
       resize: none; min-height: 26px; max-height: 110px; overflow-y: auto;
-      caret-color: var(--white); padding: 2px 0; scrollbar-width: none; }
+      caret-color: var(--purple); caret-shape: block;
+      padding: 2px 0; scrollbar-width: none; }
     #txt::-webkit-scrollbar { display: none; }
     @media (min-width: 700px) { #txt { font-size: 8px; } }
     #send-btn { flex-shrink: 0; width: 34px; height: 34px; padding: 0;
@@ -627,7 +628,8 @@ async function runBoardroom() {
 
   try {
     boardTurns = await streamSession('/api/boardroom',
-      { topic, shadow_mode: boardMode === 'shadow' },
+      { topic, shadow_mode: boardMode === 'shadow',
+        system_prompt: S.get('p_boardroom', '') },
       document.getElementById('boardroom-out'),
     );
   } catch(e) {
@@ -673,7 +675,8 @@ async function runBrainstorm() {
   try {
     bsTurns = await streamSession('/api/brainstorm',
       { topic, shadow_mode: bsMode === 'shadow',
-        podcast_mode: bsMode === 'podcast', rounds: bsRounds },
+        podcast_mode: bsMode === 'podcast', rounds: bsRounds,
+        system_prompt: S.get('p_brainstorm', '') },
       document.getElementById('brainstorm-out'),
     );
   } catch(e) {
@@ -735,7 +738,7 @@ async function runBuilder() {
   const btn = document.querySelector('#panel-projects .btn');
   btn.disabled = true; btn.textContent = '[ BUILDING... ]';
   try {
-    await streamSession('/api/builder', { task }, out);
+    await streamSession('/api/builder', { task, system_prompt: S.get('p_builder', '') }, out);
   } catch(e) {
     out.innerHTML += '<p style="color:#f44">' + e + '</p>';
   }
