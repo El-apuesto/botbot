@@ -833,7 +833,16 @@ def api_lab_render():
 
             if len(clip_paths) > 1:
                 concat_out = str(_lab_renders_dir / f"_concat_{output_name}.mp4")
-                if transition == "fade":
+                _SUPPORTED_TRANSITIONS = {"fade", "cut"}
+                if transition not in _SUPPORTED_TRANSITIONS:
+                    yield (
+                        f"⚠ TRANSITION '{transition.upper()}' NOT SUPPORTED "
+                        f"(supported: FADE, CUT) — USING HARD CUT"
+                    )
+                    effective_transition = "cut"
+                else:
+                    effective_transition = transition
+                if effective_transition == "fade":
                     yield step("CONCATENATING CLIPS WITH FADE TRANSITIONS...")
                     ok, err = concatenate_clips_with_fade(clip_paths, concat_out)
                 else:
@@ -842,7 +851,7 @@ def api_lab_render():
                 if not ok:
                     yield f"✗ CONCAT FAILED: {err[:120]}"
                     return
-                yield f"✓ CLIPS CONCATENATED ({transition.upper()})"
+                yield f"✓ CLIPS CONCATENATED ({effective_transition.upper()})"
                 tmp_video = concat_out
             elif clip_paths:
                 tmp_video = clip_paths[0]

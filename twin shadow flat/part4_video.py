@@ -358,8 +358,8 @@ async def run_video(task: dict) -> dict:
 
     for provider, fn in [
         ("fal",         lambda p: _fal_generate(p, image_url=image_url)),
-        ("huggingface", _hf_generate),
         ("replicate",   lambda p: _replicate_generate(p, image_url=image_url)),
+        ("huggingface", _hf_generate),
     ]:
         try:
             url = await fn(prompt)
