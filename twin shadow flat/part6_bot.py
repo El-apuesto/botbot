@@ -926,43 +926,107 @@ def api_lab_upload():
     })
 
 
-# ── /api/lab/files — scan disk for all existing uploads ───────────────────────
+# ── /api/lab/files — disk + Supabase cloud, merged ────────────────────────────
 @_flask.route("/api/lab/files", methods=["GET"])
 def api_lab_files():
-    """List every file currently on disk in the uploads dir, newest first."""
+    """
+    Return all known upload files:
+    1. Files on local disk (newest first) — immediately usable.
+    2. Supabase cloud records whose file has been pruned from disk —
+       shown as cloud=True; downloaded lazily on first use via /api/lab/ensure_local.
+    """
     video_exts = {".mp4", ".mov", ".webm", ".mkv"}
     audio_exts = {".mp3", ".wav", ".ogg", ".m4a"}
     image_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
-    files = []
+    # ── 1. Disk files ──────────────────────────────────────────────────────────
+    disk_files   = []
+    disk_names   = set()
     try:
-        for p in sorted(_lab_uploads_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
+        for p in sorted(_lab_uploads_dir.iterdir(),
+                        key=lambda x: x.stat().st_mtime, reverse=True):
             if not p.is_file() or p.name.startswith("."):
                 continue
             ext = p.suffix.lower()
             if ext in video_exts:
-                ftype    = "video"
-                duration = get_video_duration(str(p))
+                ftype, duration = "video", get_video_duration(str(p))
             elif ext in audio_exts:
-                ftype    = "audio"
-                duration = 0.0
+                ftype, duration = "audio", 0.0
             elif ext in image_exts:
-                ftype    = "image"
-                duration = 0.0
+                ftype, duration = "image", 0.0
             else:
                 continue
-            files.append({
+            disk_names.add(p.name)
+            disk_files.append({
                 "name":      p.name,
                 "path":      str(p),
+                "url":       None,
                 "file_type": ftype,
                 "duration":  duration,
                 "size":      p.stat().st_size,
-                "mtime":     p.stat().st_mtime,
+                "cloud":     False,
             })
     except Exception as e:
-        return jsonify({"error": str(e), "files": []}), 200
+        print(f"[LAB FILES] disk scan error: {e}")
 
+    # ── 2. Supabase cloud-only records ─────────────────────────────────────────
+    cloud_files = []
+    try:
+        records = _sb.list_uploads(limit=200)
+        for rec in records:
+            name = rec.get("name", "")
+            url  = rec.get("public_url") or ""
+            if not name or not url:
+                continue
+            if name in disk_names:
+                continue          # already listed from disk
+            ftype = rec.get("file_type", "video")
+            if ftype not in ("video", "audio", "image"):
+                continue
+            cloud_files.append({
+                "name":      name,
+                "path":      None,    # not on disk — needs ensure_local first
+                "url":       url,
+                "file_type": ftype,
+                "duration":  float(rec.get("duration") or 0),
+                "size":      int(rec.get("size_bytes") or 0),
+                "cloud":     True,
+            })
+    except Exception as e:
+        print(f"[LAB FILES] supabase fetch error: {e}")
+
+    files = disk_files + cloud_files
     return jsonify({"files": files, "count": len(files)})
+
+
+# ── /api/lab/ensure_local — lazy download from Supabase when user picks file ──
+@_flask.route("/api/lab/ensure_local", methods=["POST"])
+def api_lab_ensure_local():
+    """
+    Download a cloud file to local disk on demand (only when user actually
+    clicks to use it). Returns the local path for subsequent processing.
+    """
+    import urllib.request as _ulr
+    data = request.json or {}
+    url  = data.get("url", "").strip()
+    name = data.get("name", "").strip()
+    if not url:
+        return jsonify({"error": "url required"}), 400
+
+    safe_name = re.sub(r"[^a-zA-Z0-9._-]", "_", name) if name else f"cloud_{int(time.time())}"
+    dest = _lab_uploads_dir / safe_name
+    if dest.exists():
+        return jsonify({"ok": True, "path": str(dest), "cached": True})
+
+    try:
+        req = _ulr.Request(url, headers={"User-Agent": "TwinShadow/1.0"})
+        with _ulr.urlopen(req, timeout=120) as resp, open(str(dest), "wb") as f:
+            while chunk := resp.read(1024 * 64):
+                f.write(chunk)
+        return jsonify({"ok": True, "path": str(dest), "cached": False})
+    except Exception as e:
+        dest.unlink(missing_ok=True)
+        return jsonify({"error": str(e)}), 500
 
 
 # ── /api/lab/music ────────────────────────────────────────────────────────────

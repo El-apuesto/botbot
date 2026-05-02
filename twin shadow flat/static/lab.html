@@ -1036,16 +1036,18 @@ function esc(s) {
    SMART EDITOR STATE + HELPERS
 ═════════════════════════════════════════ */
 const SE = {
-  platform:   'youtube',
-  focus:      'best moments',
-  sourcePath: null,
-  sourceName: null,
-  transcript: '',
-  segments:   [],
-  highlights: [],
-  selected:   new Set(),   // indices of selected highlight clips
-  reelUrl:    null,
-  reelPath:   null,
+  platform:    'youtube',
+  focus:       'best moments',
+  sourcePath:  null,   // local disk path (null if cloud-only)
+  sourceName:  null,
+  sourceUrl:   null,   // Supabase public URL (set for cloud-only files)
+  sourceCloud: false,  // true = file is cloud-only, needs ensure_local first
+  transcript:  '',
+  segments:    [],
+  highlights:  [],
+  selected:    new Set(),
+  reelUrl:     null,
+  reelPath:    null,
   reformatPath: null,
 };
 
@@ -1157,15 +1159,16 @@ async function openSmartEditor() {
 
     sel.innerHTML = '<option value="">-- SELECT FILE --</option>';
     if (!all.length) {
-      sel.innerHTML = '<option value="">-- NO FILES ON DISK. UPLOAD ONE FIRST. --</option>';
+      sel.innerHTML = '<option value="">-- NO FILES. UPLOAD ONE FIRST. --</option>';
       return;
     }
     all.forEach(f => {
       const opt = document.createElement('option');
-      opt.value = JSON.stringify({ path: f.path, name: f.name });
-      const dur = f.duration ? ` · ${f.duration.toFixed(0)}s` : '';
-      const kb  = f.size    ? ` · ${(f.size/1024/1024).toFixed(1)}MB` : '';
-      opt.textContent = f.name + dur + kb;
+      opt.value = JSON.stringify({ path: f.path, name: f.name, url: f.url, cloud: f.cloud });
+      const dur   = f.duration ? ` · ${f.duration.toFixed(0)}s` : '';
+      const mb    = f.size     ? ` · ${(f.size/1024/1024).toFixed(1)}MB` : '';
+      const badge = f.cloud    ? ' [☁ CLOUD]' : '';
+      opt.textContent = f.name + dur + mb + badge;
       sel.appendChild(opt);
     });
   } catch(e) {
@@ -1175,20 +1178,58 @@ async function openSmartEditor() {
 }
 
 function seSelectSource(sel) {
-  if (!sel.value) { SE.sourcePath = null; SE.sourceName = null; return; }
+  if (!sel.value) {
+    SE.sourcePath = null; SE.sourceName = null;
+    SE.sourceUrl  = null; SE.sourceCloud = false;
+    return;
+  }
   try {
     const d = JSON.parse(sel.value);
-    SE.sourcePath = d.path;
-    SE.sourceName = d.name;
-  } catch { SE.sourcePath = sel.value; SE.sourceName = sel.value; }
+    SE.sourcePath  = d.path  || null;
+    SE.sourceName  = d.name  || '';
+    SE.sourceUrl   = d.url   || null;
+    SE.sourceCloud = d.cloud || false;
+  } catch {
+    SE.sourcePath = sel.value; SE.sourceName = sel.value;
+    SE.sourceUrl  = null;      SE.sourceCloud = false;
+  }
+}
+
+/* ─────────────────────────────────────────
+   ENSURE LOCAL — lazy download on first use
+───────────────────────────────────────── */
+async function seEnsureLocal() {
+  if (SE.sourcePath) return true;   // already on disk, nothing to do
+  if (!SE.sourceUrl) { alert('NO FILE SELECTED'); return false; }
+
+  seSetBusy('se-transcribe-btn', true, '[ DOWNLOADING FROM CLOUD... ]');
+  try {
+    const res  = await fetch('/api/lab/ensure_local', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: SE.sourceUrl, name: SE.sourceName }),
+    });
+    const data = await res.json();
+    if (data.error) { alert('DOWNLOAD FAILED: ' + data.error); return false; }
+    SE.sourcePath  = data.path;
+    SE.sourceCloud = false;   // now local
+    return true;
+  } catch(e) {
+    alert('DOWNLOAD ERROR: ' + e);
+    return false;
+  }
 }
 
 /* ─────────────────────────────────────────
    STEP 1 — TRANSCRIBE
 ───────────────────────────────────────── */
 async function seTranscribe() {
-  if (!SE.sourcePath) { alert('SELECT A FILE FIRST'); return; }
+  if (!SE.sourcePath && !SE.sourceUrl) { alert('SELECT A FILE FIRST'); return; }
   seSetBusy('se-transcribe-btn', true, '[ TRANSCRIBING... ]');
+  // Lazy download if the file is cloud-only — only runs once per session
+  if (!SE.sourcePath) {
+    const ok = await seEnsureLocal();
+    if (!ok) { seSetBusy('se-transcribe-btn', false, '[ 1. TRANSCRIBE ]'); return; }
+  }
   try {
     const res  = await fetch('/api/lab/transcribe', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
