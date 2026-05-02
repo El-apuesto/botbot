@@ -61,11 +61,6 @@ ALLOWED_IDS: set[int] = {int(x) for x in _raw_ids.split(",") if x.strip()} if _r
 orch = Orchestrator()
 
 def _find_port(start: int = 5000) -> int:
-    for p in range(start, start + 10):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            if s.connect_ex(('0.0.0.0', p)) != 0:
-                return p
     return start
 
 _static_dir = Path(__file__).parent / "static"
@@ -1418,4 +1413,25 @@ def main():
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, freetext_handler))
     print("🌑 Twin Shadow online.")
-    app.run_polling(drop_pending_updates=True)
+    import asyncio as _asyncio
+    from telegram.error import Conflict as _TGConflict
+    async def _run():
+        async with app:
+            await app.start()
+            await app.updater.start_polling(drop_pending_updates=True, error_callback=lambda e: None)
+            stop_event = _asyncio.Event()
+            try:
+                await stop_event.wait()
+            except (KeyboardInterrupt, SystemExit):
+                pass
+            finally:
+                await app.updater.stop()
+                await app.stop()
+    while True:
+        try:
+            _asyncio.run(_run())
+            break
+        except _TGConflict:
+            import time as _t
+            print("⚠️ Telegram 409 conflict — retrying in 15s...")
+            _t.sleep(15)
