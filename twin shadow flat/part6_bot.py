@@ -18,7 +18,7 @@ import tempfile
 from pathlib import Path
 from threading import Thread
 
-from flask import Flask, send_from_directory, send_file, request, Response, jsonify
+from flask import Flask, send_from_directory, send_file, request, Response, jsonify, session, redirect, render_template
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -71,13 +71,56 @@ def _find_port(start: int = 5000) -> int:
 _static_dir = Path(__file__).parent / "static"
 _audio_dir  = Path(__file__).parent / "audio"
 
-_flask = Flask("TwinShadow", static_folder=str(_static_dir), static_url_path="/static")
+_flask = Flask("TwinShadow", static_folder=str(_static_dir), static_url_path="/static",
+               template_folder=str(Path(__file__).parent / "static"))
+_flask.secret_key = os.environ.get("SB_SECRET", os.urandom(24).hex())
+
+# ── Web authentication ────────────────────────────────────────────────────────
+_WEB_PASS = os.environ.get("WEB_PASSWORD") or os.environ.get("SB_SECRET", "")
+
+def _is_web_authed() -> bool:
+    return not _WEB_PASS or session.get("web_authed") is True
+
+_AUTH_EXEMPT = {"/login", "/logout"}
+
+@_flask.before_request
+def _check_web_auth():
+    if request.path in _AUTH_EXEMPT:
+        return None
+    if request.path.startswith("/static/"):
+        return None
+    if not _is_web_authed():
+        if request.path.startswith("/api/"):
+            return jsonify({"error": "Not authenticated"}), 401
+        return redirect("/login")
+
+def _require_web_auth(fn):
+    return fn  # kept for decorator syntax on / and /audio — before_request covers all
+
+@_flask.route("/login", methods=["GET", "POST"])
+def _login():
+    error = None
+    if request.method == "POST":
+        pw = request.form.get("password", "")
+        if pw == _WEB_PASS:
+            session["web_authed"] = True
+            session.permanent = True
+            return redirect("/")
+        error = "INCORRECT ACCESS CODE."
+    return render_template("login.html", error=error)
+
+@_flask.route("/logout")
+def _logout():
+    session.clear()
+    return redirect("/login")
 
 @_flask.route("/")
+@_require_web_auth
 def _home():
     return send_from_directory(str(_static_dir), "index.html")
 
 @_flask.route("/audio/<path:filename>")
+@_require_web_auth
 def _audio(filename):
     return send_from_directory(str(_audio_dir), filename, mimetype="audio/mpeg")
 

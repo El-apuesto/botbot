@@ -38,8 +38,16 @@ import requests
 from pathlib import Path
 
 from urllib.parse import unquote
-_SB_URL = unquote(os.environ.get("SUPABASE_URL", "")).replace(" ", "").strip().rstrip("/")
-_SB_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "").replace(" ", "").strip()
+
+def _clean_env(val: str) -> str:
+    """Strip variable-name prefix (e.g. NEXT_PUBLIC_SUPABASE_URL=...) and whitespace."""
+    val = unquote(val).strip()
+    if "=" in val:
+        val = val.split("=", 1)[1].strip()
+    return val.replace(" ", "").rstrip("/")
+
+_SB_URL = _clean_env(os.environ.get("SUPABASE_URL", ""))
+_SB_KEY = _clean_env(os.environ.get("SUPABASE_SERVICE_KEY", ""))
 _BUCKET = "twin-shadow-lab"
 
 

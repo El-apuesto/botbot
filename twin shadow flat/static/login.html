@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Twin Shadow — Access</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --purple: #cc00ff; --purple-dark: #1a0033; --glow: 0 0 6px #cc00ff, 0 0 14px #cc00ff; }
+    html, body { width: 100%; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; font-family: 'Press Start 2P', monospace; }
+    .box {
+      border: 2px solid var(--purple);
+      box-shadow: var(--glow);
+      background: var(--purple-dark);
+      padding: 36px 32px;
+      width: min(420px, 92vw);
+      display: flex; flex-direction: column; gap: 20px;
+    }
+    .title { color: var(--purple); font-size: 0.75em; text-shadow: var(--glow); letter-spacing: 2px; }
+    .sub   { color: #ffffff55; font-size: 0.55em; line-height: 1.8; }
+    input  {
+      background: #000; border: 1px solid var(--purple); color: var(--purple);
+      font-family: inherit; font-size: 0.65em; padding: 10px 12px;
+      width: 100%; outline: none; letter-spacing: 2px;
+    }
+    input:focus { box-shadow: var(--glow); }
+    button {
+      background: var(--purple); color: #000; border: none;
+      font-family: inherit; font-size: 0.65em; padding: 10px;
+      cursor: pointer; width: 100%; letter-spacing: 2px;
+    }
+    button:hover { box-shadow: var(--glow); }
+    .err { color: #ff4444; font-size: 0.55em; text-align: center; }
+  </style>
+</head>
+<body>
+<div class="box">
+  <div class="title">// TWIN SHADOW ACCESS</div>
+  <div class="sub">RESTRICTED SYSTEM.<br>AUTHORISED USERS ONLY.</div>
+  <form method="POST" action="/login" style="display:flex;flex-direction:column;gap:14px">
+    <input type="password" name="password" placeholder="ENTER ACCESS CODE" autofocus autocomplete="current-password">
+    {% if error %}
+    <div class="err">⛔ {{ error }}</div>
+    {% endif %}
+    <button type="submit">[ AUTHENTICATE ]</button>
+  </form>
+</div>
+</body>
+</html>
