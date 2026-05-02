@@ -230,7 +230,8 @@
         <label class="fl">NEW BUILDER TASK</label>
         <textarea class="fi" id="builder-input" rows="3" placeholder="Describe what to build..."></textarea>
       </div>
-      <button class="btn" onclick="runBuilder()">[ RUN BUILDER ]</button>
+      <button class="btn" id="builder-go-btn" onclick="runBuilder()">[ RUN BUILDER ]</button>
+      <button class="btn" id="builder-lab-btn" style="display:none" onclick="sendToVideoLab('builder')">[ SEND TO VIDEO LAB ]</button>
       <div id="builder-out" class="session-out"></div>
     </div>
   </div>
@@ -255,6 +256,7 @@
         <button class="btn" id="boardroom-audio-btn" style="display:none" onclick="renderTTS('boardroom')">[ PLAY AUDIO ]</button>
         <a id="boardroom-export-btn" style="display:none;font-family:var(--font);font-size:7px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="boardroom_transcript.txt">[ EXPORT ]</a>
         <a id="boardroom-mp3-btn" style="display:none;font-family:var(--font);font-size:7px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="boardroom_audio.mp3">[ DL MP3 ]</a>
+        <button class="btn" id="boardroom-lab-btn" style="display:none" onclick="sendToVideoLab('boardroom')">[ SEND TO VIDEO LAB ]</button>
       </div>
       <audio id="boardroom-audio" controls></audio>
       <div id="boardroom-out" class="session-out"></div>
@@ -390,6 +392,7 @@ let boardTurns = [];
 let bsTurns    = [];
 let pendingFile = null;
 let chatBusy    = false;
+const _labConcepts = {};
 
 /* ─────────────────────────────────────────
    BOOT
@@ -628,6 +631,8 @@ async function runBoardroom() {
   document.getElementById('boardroom-audio-btn').style.display = 'none';
   document.getElementById('boardroom-export-btn').style.display = 'none';
   document.getElementById('boardroom-mp3-btn').style.display = 'none';
+  const labBtnBr = document.getElementById('boardroom-lab-btn');
+  labBtnBr.style.display = 'none'; labBtnBr.disabled = false; labBtnBr.textContent = '[ SEND TO VIDEO LAB ]';
 
   try {
     boardTurns = await streamSession('/api/boardroom',
@@ -647,6 +652,8 @@ async function runBoardroom() {
     const blob = new Blob([txt], { type: 'text/plain' });
     document.getElementById('boardroom-export-btn').href = URL.createObjectURL(blob);
     document.getElementById('boardroom-export-btn').style.display = '';
+    _labConcepts.boardroom = { topic, transcript: txt };
+    document.getElementById('boardroom-lab-btn').style.display = '';
   }
 }
 
@@ -742,14 +749,52 @@ async function runBuilder() {
   if (!task) return;
   const out = document.getElementById('builder-out');
   out.innerHTML = '';
-  const btn = document.querySelector('#panel-projects .btn');
+  const labBtnBl = document.getElementById('builder-lab-btn');
+  labBtnBl.style.display = 'none'; labBtnBl.disabled = false; labBtnBl.textContent = '[ SEND TO VIDEO LAB ]';
+  const btn = document.getElementById('builder-go-btn');
   btn.disabled = true; btn.textContent = '[ BUILDING... ]';
+  let builderTurns = [];
   try {
-    await streamSession('/api/builder', { task, system_prompt: S.get('p_builder', '') }, out);
+    builderTurns = await streamSession('/api/builder', { task, system_prompt: S.get('p_builder', '') }, out);
   } catch(e) {
     out.innerHTML += '<p style="color:#f44">' + e + '</p>';
   }
   btn.disabled = false; btn.textContent = '[ RUN BUILDER ]';
+  if (builderTurns.length) {
+    const txt = builderTurns.map(t => t.speaker + ': ' + t.text).join('\n\n');
+    _labConcepts.builder = { task, output: txt };
+    document.getElementById('builder-lab-btn').style.display = '';
+  }
+}
+
+/* ─────────────────────────────────────────
+   VIDEO LAB BRIDGE
+───────────────────────────────────────── */
+async function sendToVideoLab(source) {
+  const data = _labConcepts[source];
+  if (!data) return;
+  const concept = source === 'boardroom'
+    ? `BOARDROOM SESSION\nTOPIC: ${data.topic}\n\n${data.transcript}`
+    : `BUILDER TASK: ${data.task}\n\n${data.output}`;
+  const btn = document.getElementById(source + '-lab-btn');
+  btn.disabled = true; btn.textContent = '[ SENDING... ]';
+  try {
+    const res = await fetch('/api/lab/concept', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ concept, source }),
+    });
+    const json = await res.json();
+    if (json.ok) {
+      btn.textContent = '[ CONCEPT QUEUED \u2192 open /lab to review ]';
+    } else {
+      btn.textContent = '[ SEND FAILED ]';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    btn.textContent = '[ SEND FAILED ]';
+    btn.disabled = false;
+  }
 }
 
 /* ─────────────────────────────────────────
