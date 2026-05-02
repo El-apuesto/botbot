@@ -6,6 +6,7 @@ All handlers including part7 command layer.
 from __future__ import annotations
 import os
 import time
+import socket
 from pathlib import Path
 from threading import Thread
 
@@ -35,10 +36,19 @@ ALLOWED_IDS: set[int] = {int(x) for x in _raw_ids.split(",") if x.strip()} if _r
 
 orch = Orchestrator()
 
+def _find_port(start: int = 5000) -> int:
+    for p in range(start, start + 10):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            if s.connect_ex(('0.0.0.0', p)) != 0:
+                return p
+    return start
+
 _flask = Flask("TwinShadow")
 @_flask.route("/")
 def _home(): return "Twin Shadow AWAKE"
-Thread(target=lambda: _flask.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000))), daemon=True).start()
+_port = _find_port(int(os.environ.get("PORT", 5000)))
+Thread(target=lambda: _flask.run(host="0.0.0.0", port=_port, debug=False, use_reloader=False), daemon=True).start()
 
 _rate_cache: dict[int, float] = {}
 def _is_rate_limited(chat_id: int) -> bool:
