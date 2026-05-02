@@ -362,6 +362,10 @@ def api_builder():
             yield f"[BUILDER offline: {e}]"
         yield "\x1eEND\x1f"
 
+        # Persist last builder output for /deploy command
+        if code and len(code) > 20:
+            _last_builder_code['web'] = code
+
         # Pass 1 review: MiniMax M2.5
         if code and len(code) > 20:
             review_msgs = [
@@ -393,42 +397,28 @@ def api_builder():
     return _sse_stream(_run)
 
 
-# ── /api/builder/deploy ───────────────────────────────────────────────────────
+# ── Builder deploy — shared logic (called from Flask route AND Telegram command) ─
 _SAFE_SCRIPT_NAME = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')
 _MAX_DEPLOY_BYTES = 65_536   # 64 KB
+_last_builder_code: dict = {}   # keyed by chat_id (int) or 'web' (str)
 
-@_flask.route("/api/builder/deploy", methods=["POST"])
-def api_builder_deploy():
+
+def _do_deploy_script(name: str, code: str) -> dict:
     """
-    Loopback-only endpoint — only callable from server-side code (Telegram bot commands).
-    Browser requests are rejected at the network layer because the Replit proxy rewrites
-    the remote_addr to a non-loopback address.
-
-    Body: { "name": "my_script", "code": "..." }
-    Writes code to scripts/<name>.py and registers it in pipeline.json.
-    Returns: { "ok": true, "path": "scripts/my_script.py" }
+    Write code to scripts/<name>.py and register a pipeline job.
+    Returns {"ok": True, "path": ...} or {"error": ...}.
+    Called directly (no HTTP hop) from both the Flask route and Telegram /deploy.
     """
-    if request.remote_addr not in ("127.0.0.1", "::1"):
-        return jsonify({"error": "Forbidden: server-side only"}), 403
-
-    name = (request.json or {}).get("name", "").strip()
-    code = (request.json or {}).get("code", "").strip()
-    if not name or not code:
-        return jsonify({"error": "name and code required"}), 400
     if not _SAFE_SCRIPT_NAME.match(name):
-        return jsonify({"error": "name must be 1-64 chars: letters, digits, _ or -"}), 400
+        return {"error": "name must be 1-64 chars: letters, digits, _ or -"}
     if len(code.encode()) > _MAX_DEPLOY_BYTES:
-        return jsonify({"error": f"code exceeds {_MAX_DEPLOY_BYTES // 1024} KB limit"}), 400
-
+        return {"error": f"code exceeds {_MAX_DEPLOY_BYTES // 1024} KB limit"}
     scripts_dir = Path(__file__).parent / "scripts"
     scripts_dir.mkdir(exist_ok=True)
-    script_path = scripts_dir / f"{name}.py"
     try:
-        script_path.write_text(code)
+        (scripts_dir / f"{name}.py").write_text(code)
     except Exception as e:
-        return jsonify({"error": f"Write failed: {e}"}), 500
-
-    jobs = _pipeline_load()
+        return {"error": f"Write failed: {e}"}
     job = {
         "id":         int(time.time() * 1000),
         "name":       name,
@@ -436,10 +426,28 @@ def api_builder_deploy():
         "path":       f"scripts/{name}.py",
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
+    jobs = _pipeline_load()
     jobs.append(job)
     _pipeline_save(jobs)
+    return {"ok": True, "path": f"scripts/{name}.py", "job": job}
 
-    return jsonify({"ok": True, "path": f"scripts/{name}.py", "job": job})
+
+@_flask.route("/api/builder/deploy", methods=["POST"])
+def api_builder_deploy():
+    """
+    Loopback-only endpoint — callable from server-side code only.
+    Browser requests via the Replit proxy arrive with a non-loopback remote_addr and are rejected.
+    Body: { "name": "my_script", "code": "..." }
+    """
+    if request.remote_addr not in ("127.0.0.1", "::1"):
+        return jsonify({"error": "Forbidden: server-side only"}), 403
+    data = request.json or {}
+    name = data.get("name", "").strip()
+    code = data.get("code", "").strip()
+    if not name or not code:
+        return jsonify({"error": "name and code required"}), 400
+    result = _do_deploy_script(name, code)
+    return jsonify(result), (200 if result.get("ok") else 400)
 
 # ── /api/pipeline ─────────────────────────────────────────────────────────────
 @_flask.route("/api/pipeline", methods=["GET"])
@@ -719,6 +727,26 @@ async def extend_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await _check_auth(update): return
     await handle_extend(update.message.chat_id, context.args or [], _make_reply_fn(update), _make_stream_fn(update))
 
+async def deploy_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    /deploy <name>  — deploy the last /build output as scripts/<name>.py.
+    Called from Telegram; invokes _do_deploy_script() directly (no HTTP hop).
+    """
+    if not await _check_auth(update): return
+    if not context.args:
+        await update.message.reply_text("Usage: /deploy <script_name>\nDeploys the last builder output.")
+        return
+    name    = context.args[0].strip()
+    chat_id = update.message.chat_id
+    code    = _last_builder_code.get(chat_id) or _last_builder_code.get('web', '')
+    if not code:
+        await update.message.reply_text("No builder output found. Run /build <idea> first."); return
+    result = _do_deploy_script(name, code)
+    if result.get("ok"):
+        await update.message.reply_text(f"✅ Deployed → {result['path']}\nJob ID: {result['job']['id']}")
+    else:
+        await update.message.reply_text(f"❌ Deploy failed: {result.get('error','unknown error')}")
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
@@ -734,7 +762,7 @@ def main():
         ("model_set", model_set_cmd), ("model_traits", model_traits_cmd), ("model_end", model_end_cmd),
         ("boardroom", boardroom_cmd), ("brainstorm", brainstorm_cmd),
         ("shadow", shadow_cmd), ("boss_voice", boss_voice_cmd),
-        ("end", end_cmd), ("extend", extend_cmd),
+        ("end", end_cmd), ("extend", extend_cmd), ("deploy", deploy_cmd),
     ]:
         app.add_handler(CommandHandler(cmd, fn))
 
