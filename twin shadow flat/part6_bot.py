@@ -974,6 +974,8 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/model_set <key> <persona>  → set traits\n"
         "/model_traits [key]         → view traits\n"
         "/model_end <key>            → wipe traits\n\n"
+        "── Video Lab ──\n"
+        "/vlab <concept>             → storyboard + queue for /lab\n\n"
         "── Misc ──\n"
         "/forget   /modify <inst>   /wake"
     )
@@ -1173,6 +1175,53 @@ async def deploy_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(f"❌ Deploy failed: {result.get('error','unknown error')}")
 
+# ── /vlab command ─────────────────────────────────────────────────────────────
+
+async def vlab_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await _check_auth(update): return
+    if not context.args:
+        await update.message.reply_text("Usage: /vlab <concept>\nExample: /vlab a dark occult cooking show"); return
+    chat_id = update.message.chat_id
+    concept = " ".join(context.args).strip()
+    if _is_rate_limited(chat_id):
+        await update.message.reply_text(f"⏱ Wait {RATE_LIMIT_S}s."); return
+
+    _lab_concept_store.clear()
+    _lab_concept_store.update({"concept": concept})
+
+    sent = await update.message.reply_text("🎬 Generating storyboard...")
+
+    msgs = [
+        {"role": "system", "content": _STORYBOARD_SYSTEM},
+        {"role": "user",   "content": f"Video concept: {concept}"},
+    ]
+    try:
+        result = await call_task("twin", msgs)
+        text   = result.get("output", "") if isinstance(result, dict) else str(result)
+        start  = text.find("{")
+        end    = text.rfind("}") + 1
+        if start == -1 or end == 0:
+            await sent.edit_text("⚠️ Model did not return a valid storyboard.\nYour concept was queued — open /lab to continue."); return
+        board = json.loads(text[start:end])
+        if "scenes" not in board:
+            await sent.edit_text("⚠️ Storyboard missing 'scenes' key.\nYour concept was queued — open /lab to continue."); return
+    except json.JSONDecodeError as e:
+        await sent.edit_text(f"⚠️ JSON parse error: {e}\nYour concept was queued — open /lab to continue."); return
+    except Exception as e:
+        await sent.edit_text(f"⚠️ Storyboard failed: {e}\nYour concept was queued — open /lab to continue."); return
+
+    lines = [f"🎬 Storyboard — {concept}\n"]
+    for s in board["scenes"]:
+        lines.append(
+            f"Scene {s.get('id','?')} [{s.get('duration','?')}s | {s.get('style','?')}]\n"
+            f"📽 {s.get('description','')}\n"
+            f"🎙 {s.get('voiceover','')}\n"
+        )
+    lines.append("→ Open /lab to continue the pipeline.")
+    reply = "\n".join(lines)
+    await sent.edit_text(reply[:4000])
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
@@ -1189,6 +1238,7 @@ def main():
         ("boardroom", boardroom_cmd), ("brainstorm", brainstorm_cmd),
         ("shadow", shadow_cmd), ("boss_voice", boss_voice_cmd),
         ("end", end_cmd), ("extend", extend_cmd), ("deploy", deploy_cmd),
+        ("vlab", vlab_cmd),
     ]:
         app.add_handler(CommandHandler(cmd, fn))
 
