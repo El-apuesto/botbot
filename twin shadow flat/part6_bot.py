@@ -28,6 +28,7 @@ from part5_orchestrator import (
     vault_clear, vault_last, vault_undo,
 )
 from part2_router import stream_task, call_task, direct_call
+import part9_supabase as _sb
 from part4_video import (
     fal_generate_image, extract_last_frame, download_file,
     images_to_slideshow, concatenate_clips, concatenate_clips_with_fade,
@@ -560,6 +561,14 @@ def api_lab_upload():
         file_type = "image"
         duration  = 0.0
 
+    size_bytes = dest.stat().st_size
+
+    def _bg_upload(lpath, fname, ftype, dur, sz):
+        url, spath = _sb.upload_file(lpath, folder="uploads")
+        _sb.log_upload(fname, ftype, sz, dur, url, spath)
+
+    Thread(target=_bg_upload, args=(str(dest), safe_name, file_type, duration, size_bytes), daemon=True).start()
+
     return jsonify({
         "ok":        True,
         "name":      safe_name,
@@ -872,6 +881,17 @@ def api_lab_render():
             else:
                 shutil.copy2(tmp_video, final_out)
 
+            # Step 3: Upload to Supabase Storage (persistent backup)
+            final_path = Path(final_out)
+            if final_path.exists() and _sb.is_configured():
+                yield "UPLOADING TO SUPABASE..."
+                try:
+                    sb_url, sb_path = _sb.upload_file(str(final_path), folder="renders")
+                    _sb.log_render(output_name + ".mp4", final_path.stat().st_size, sb_url, sb_path)
+                    yield f"✓ SAVED TO SUPABASE"
+                except Exception as sb_err:
+                    yield f"⚠ SUPABASE UPLOAD FAILED: {str(sb_err)[:80]} — FILE STILL IN LOCAL RENDERS"
+
             yield f"DONE:/renders/{output_name}.mp4"
 
         except Exception as e:
@@ -902,6 +922,38 @@ def api_lab_concept_set():
     return jsonify({"ok": True})
 
 
+# ── /api/lab/storage — Supabase-backed file library ──────────────────────────
+
+@_flask.route("/api/lab/storage/uploads", methods=["GET"])
+def api_lab_storage_uploads():
+    """Return all upload records from Supabase DB (newest first)."""
+    if not _sb.is_configured():
+        return jsonify({"error": "Supabase not configured", "records": []}), 200
+    records = _sb.list_uploads(limit=int(request.args.get("limit", 100)))
+    return jsonify({"records": records, "count": len(records)})
+
+
+@_flask.route("/api/lab/storage/renders", methods=["GET"])
+def api_lab_storage_renders():
+    """Return all render records from Supabase DB (newest first)."""
+    if not _sb.is_configured():
+        return jsonify({"error": "Supabase not configured", "records": []}), 200
+    records = _sb.list_renders(limit=int(request.args.get("limit", 50)))
+    return jsonify({"records": records, "count": len(records)})
+
+
+@_flask.route("/api/lab/storage/delete", methods=["POST"])
+def api_lab_storage_delete():
+    """Delete a file from Supabase Storage by storage_path."""
+    data         = request.json or {}
+    storage_path = data.get("storage_path", "").strip()
+    if not storage_path:
+        return jsonify({"error": "storage_path required"}), 400
+    ok = _sb.delete_file(storage_path)
+    return jsonify({"ok": ok})
+
+
+Thread(target=_sb.setup_bucket, daemon=True).start()
 Thread(target=lambda: _flask.run(host="0.0.0.0", port=_port, debug=False, use_reloader=False), daemon=True).start()
 
 _rate_cache: dict[int, float] = {}
