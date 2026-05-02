@@ -254,6 +254,7 @@
         <button class="btn" id="boardroom-go-btn" onclick="runBoardroom()">[ CONVENE BOARD ]</button>
         <button class="btn" id="boardroom-audio-btn" style="display:none" onclick="renderTTS('boardroom')">[ PLAY AUDIO ]</button>
         <a id="boardroom-export-btn" style="display:none;font-family:var(--font);font-size:7px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="boardroom_transcript.txt">[ EXPORT ]</a>
+        <a id="boardroom-mp3-btn" style="display:none;font-family:var(--font);font-size:7px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="boardroom_audio.mp3">[ DL MP3 ]</a>
       </div>
       <audio id="boardroom-audio" controls></audio>
       <div id="boardroom-out" class="session-out"></div>
@@ -288,6 +289,7 @@
         <button class="btn" id="brainstorm-go-btn" onclick="runBrainstorm()">[ START SESSION ]</button>
         <button class="btn" id="brainstorm-audio-btn" style="display:none" onclick="renderTTS('brainstorm')">[ PLAY AUDIO ]</button>
         <a id="brainstorm-export-btn" style="display:none;font-family:var(--font);font-size:7px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="brainstorm_transcript.txt">[ EXPORT ]</a>
+        <a id="brainstorm-mp3-btn" style="display:none;font-family:var(--font);font-size:7px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="brainstorm_audio.mp3">[ DL MP3 ]</a>
       </div>
       <audio id="brainstorm-audio" controls></audio>
       <div id="brainstorm-out" class="session-out"></div>
@@ -625,6 +627,7 @@ async function runBoardroom() {
   document.getElementById('boardroom-audio').style.display = 'none';
   document.getElementById('boardroom-audio-btn').style.display = 'none';
   document.getElementById('boardroom-export-btn').style.display = 'none';
+  document.getElementById('boardroom-mp3-btn').style.display = 'none';
 
   try {
     boardTurns = await streamSession('/api/boardroom',
@@ -671,6 +674,7 @@ async function runBrainstorm() {
   document.getElementById('brainstorm-audio').style.display = 'none';
   document.getElementById('brainstorm-audio-btn').style.display = 'none';
   document.getElementById('brainstorm-export-btn').style.display = 'none';
+  document.getElementById('brainstorm-mp3-btn').style.display = 'none';
 
   try {
     bsTurns = await streamSession('/api/brainstorm',
@@ -716,6 +720,9 @@ async function renderTTS(mode) {
       el.src = data.url;
       el.style.display = 'block';
       el.play();
+      const mp3btn = document.getElementById(mode + '-mp3-btn');
+      mp3btn.href = data.url;
+      mp3btn.style.display = '';
     } else {
       alert('TTS failed: ' + (data.error || 'unknown'));
     }

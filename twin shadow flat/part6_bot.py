@@ -360,21 +360,71 @@ def api_builder():
             yield f"[BUILDER offline: {e}]"
         yield "\x1eEND\x1f"
 
-        # Quick review by QWEN
+        # Pass 1 review: MiniMax M2.5
         if code and len(code) > 20:
             review_msgs = [
+                {"role": "system", "content": "You are a senior code reviewer. In 2-3 sentences flag any critical bugs, security holes, or incomplete logic only. Skip style nits."},
+                {"role": "user",   "content": code[:3000]},
+            ]
+            yield f"\x1eSPEAKER:MINIMAX\x1f"
+            try:
+                async for chunk in stream_task("builder_review", review_msgs):
+                    yield chunk
+            except Exception as e:
+                yield f"[MINIMAX review skipped: {e}]"
+            yield "\x1eEND\x1f"
+
+        # Pass 2 review: Qwen 3 235B
+        if code and len(code) > 20:
+            review_msgs2 = [
                 {"role": "system", "content": "Review this code in 2 sentences. Flag any critical bugs only."},
                 {"role": "user",   "content": code[:3000]},
             ]
             yield f"\x1eSPEAKER:QWEN\x1f"
             try:
-                async for chunk in stream_task("builder_check", review_msgs):
+                async for chunk in stream_task("builder_check", review_msgs2):
                     yield chunk
             except Exception as e:
                 yield f"[QWEN review skipped: {e}]"
             yield "\x1eEND\x1f"
 
     return _sse_stream(_run)
+
+
+# ── /api/builder/deploy ───────────────────────────────────────────────────────
+@_flask.route("/api/builder/deploy", methods=["POST"])
+def api_builder_deploy():
+    """
+    Body: { "name": "my_script", "code": "..." }
+    Writes code to scripts/<name>.py and registers it in pipeline.json.
+    Returns: { "ok": true, "path": "scripts/my_script.py" }
+    """
+    data = request.json or {}
+    name = data.get("name", "").strip().replace(" ", "_").replace("/", "_")
+    code = data.get("code", "").strip()
+    if not name or not code:
+        return jsonify({"error": "name and code required"}), 400
+
+    scripts_dir = Path(__file__).parent / "scripts"
+    scripts_dir.mkdir(exist_ok=True)
+    script_path = scripts_dir / f"{name}.py"
+    try:
+        script_path.write_text(code)
+    except Exception as e:
+        return jsonify({"error": f"Write failed: {e}"}), 500
+
+    jobs = _pipeline_load()
+    job = {
+        "id":         int(time.time() * 1000),
+        "name":       name,
+        "status":     "deployed",
+        "path":       f"scripts/{name}.py",
+        "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    jobs.append(job)
+    _pipeline_save(jobs)
+
+    return jsonify({"ok": True, "path": f"scripts/{name}.py", "job": job})
 
 # ── /api/pipeline ─────────────────────────────────────────────────────────────
 @_flask.route("/api/pipeline", methods=["GET"])
