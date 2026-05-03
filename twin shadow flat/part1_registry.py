@@ -64,13 +64,13 @@ PROVIDERS: dict = {
         "api_key_env":    "NVIDIA_API_KEY",
         "openai_compat":  True,
         "models": {
+            "deepseek_flash":   "deepseek-ai/deepseek-v4-flash",
+            "deepseek_v3":      "deepseek-ai/deepseek-v3.2",
             "llama_70b":        "meta/llama-3.3-70b-instruct",
             "llama_maverick":   "meta/llama-4-maverick-17b-128e-instruct",
             "nemotron_49b":     "nvidia/llama-3.3-nemotron-super-49b-v1",
             "nemotron_120b":    "nvidia/nemotron-3-super-120b-a12b",
             "qwen_coder_480":   "qwen/qwen3-coder-480b-a35b-instruct",
-            "deepseek_v3":      "deepseek-ai/deepseek-v3.2",
-            "deepseek_flash":   "deepseek-ai/deepseek-v4-flash",
             "kimi_k2":          "moonshotai/kimi-k2-instruct",
             "kimi_k2_6":        "moonshotai/kimi-k2.6",
             "devstral":         "mistralai/devstral-2-123b-instruct-2512",
@@ -187,35 +187,50 @@ PROVIDERS: dict = {
 }
 
 TASK_MODELS: dict = {
-    "twin":             ("groq",        "llama"),
-    "brief":            ("groq",        "llama"),
-    "relay":            ("openrouter",  "hermes3"),
-    "shadow":           ("ollama_cloud","qwen"),
-    "shadow_chat":      ("openrouter",  "dolphin_venice"),
-    "creative":         ("openrouter",  "qwen_free"),
-    "creative_alt":     ("openrouter",  "mistral_free"),
-    "creative_dolphin": ("openrouter",  "dolphin_venice"),
-    "code":             ("aiml",        "glm"),
-    "code_check":       ("openrouter",  "minimax"),
-    "code_check_v2":    ("openrouter",  "minimax_m25"),
-    "code_reason":      ("openrouter",  "gpt_oss_120b"),
-    "business":         ("openrouter",  "legal"),
-    "business_deep":    ("openrouter",  "gpt_oss_120b"),
-    "board_hermes":     ("openrouter",  "hermes3"),
-    "board_gptoss":     ("openrouter",  "gpt_oss_120b"),
-    "board_qwen":       ("openrouter",  "qwen_free"),
-    "board_mistral":    ("openrouter",  "mistral_free"),
-    "board_minimax":    ("openrouter",  "minimax"),
-    "board_dolphin":    ("openrouter",  "dolphin_venice"),
-    "local_shadow":     ("ollama_local","dolphin"),
-    "local_adolphus":   ("ollama_local","dolphin_venice"),
-    "multimodal":       ("openrouter",  "qwen_free"),
-    "chat_specialist":  ("openrouter",  "dolphin_venice"),
-    "fast_reasoning":   ("openrouter",  "minimax_m25"),
-    "legal_finance":    ("openrouter",  "gpt_oss_120b"),
-    "builder":          ("aiml",        "glm"),
-    "builder_review":   ("openrouter",  "minimax_m25"),
-    "builder_check":    ("openrouter",  "qwen_free"),
+    # ── core hierarchy ────────────────────────────────────────────────────────
+    "twin":             ("groq",   "llama"),            # TWIN — Groq Llama 70B
+    "brief":            ("groq",   "llama"),            # briefing — Groq
+    "shadow":           ("ollama_cloud", "qwen"),       # SHADOW — Ollama Qwen Coder 480B
+
+    # ── relay / routing ───────────────────────────────────────────────────────
+    "relay":            ("nvidia", "kimi_k2"),          # was: openrouter/hermes3
+
+    # ── shadow chat / dark persona ────────────────────────────────────────────
+    "shadow_chat":      ("nvidia", "deepseek_v3"),      # was: openrouter/dolphin_venice
+    "board_dolphin":    ("nvidia", "deepseek_v3"),      # was: openrouter/dolphin_venice
+    "chat_specialist":  ("nvidia", "deepseek_v3"),      # was: openrouter/dolphin_venice
+    "local_shadow":     ("ollama_local", "dolphin"),
+    "local_adolphus":   ("ollama_local", "dolphin_venice"),
+
+    # ── creative / occult comedy content ─────────────────────────────────────
+    "creative":         ("nvidia", "glm51"),            # was: openrouter/qwen_free
+    "creative_alt":     ("nvidia", "mistral_large3"),   # was: openrouter/mistral_free — now 675B!
+    "creative_dolphin": ("nvidia", "deepseek_v3"),      # was: openrouter/dolphin_venice
+    "multimodal":       ("nvidia", "glm51"),            # was: openrouter/qwen_free
+
+    # ── code ──────────────────────────────────────────────────────────────────
+    "code":             ("nvidia", "devstral"),         # was: aiml/glm — Devstral 123B code specialist
+    "code_check":       ("nvidia", "minimax_m25"),      # was: openrouter/minimax
+    "code_check_v2":    ("nvidia", "minimax_m25"),      # was: openrouter/minimax_m25
+    "code_reason":      ("nvidia", "kimi_k2"),          # was: openrouter/gpt_oss_120b — Kimi K2 = top coder
+    "builder":          ("nvidia", "devstral"),         # was: aiml/glm
+    "builder_review":   ("nvidia", "minimax_m25"),      # was: openrouter/minimax_m25
+    "builder_check":    ("nvidia", "glm51"),            # was: openrouter/qwen_free
+
+    # ── business / legal / SEO ────────────────────────────────────────────────
+    "business":         ("nvidia", "mistral_large3"),   # was: openrouter/legal — Mistral 675B
+    "business_deep":    ("nvidia", "deepseek_v3"),      # was: openrouter/gpt_oss_120b
+    "legal_finance":    ("nvidia", "mistral_large3"),   # was: openrouter/gpt_oss_120b — Mistral best for legal
+    "fast_reasoning":   ("nvidia", "minimax_m25"),      # was: openrouter/minimax_m25
+
+    # ── boardroom members ─────────────────────────────────────────────────────
+    "board_hermes":     ("nvidia", "kimi_k2"),          # Creative & Occult — was: openrouter/hermes3
+    "board_gptoss":     ("nvidia", "deepseek_v3"),      # Marketing & SEO — was: openrouter/gpt_oss_120b
+    "board_qwen":       ("nvidia", "glm51"),            # Strategic Advisor — was: openrouter/qwen_free
+    "board_mistral":    ("nvidia", "mistral_large3"),   # Practical Critic — was: openrouter/mistral_free
+    "board_minimax":    ("nvidia", "minimax_m25"),      # Analytics & Data — was: openrouter/minimax
+
+    # ── video ─────────────────────────────────────────────────────────────────
     "video":            ("fal",         "wan21"),
     "video_fallback":   ("huggingface", "wan21"),
     "video_alt":        ("replicate",   "minimax_video"),

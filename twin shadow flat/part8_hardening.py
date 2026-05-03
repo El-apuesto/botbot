@@ -18,7 +18,7 @@ _endpoint_status: dict = {}
 _monitor_thread: threading.Thread | None = None
 
 
-async def verify_endpoint(provider_key: str, timeout_s: int = 10):
+async def verify_endpoint(provider_key: str, timeout_s: int = 15):
     cfg = get_provider_cfg(provider_key)
     now = datetime.now(timezone.utc).isoformat()
 
@@ -81,7 +81,7 @@ async def verify_endpoint(provider_key: str, timeout_s: int = 10):
         return False, f"❌ {provider_key}: {err[:80]}"
 
 
-async def verify_all_endpoints(timeout_s: int = 10) -> dict:
+async def verify_all_endpoints(timeout_s: int = 15) -> dict:
     tasks   = [verify_endpoint(k, timeout_s) for k in PROVIDERS]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
