@@ -31,16 +31,19 @@ async def verify_endpoint(provider_key: str, timeout_s: int = 10):
         return None, f"— {provider_key} skipped"
 
     # Use first rotation key if available, otherwise fall back to default
+    def _clean(s: str) -> str:
+        return (s or "").strip().replace(" ", "").replace("\n", "").replace("\r", "").replace("\t", "")
+
     rotation_envs = cfg.get("key_rotation", [])
     api_key = None
     for env_var in rotation_envs:
-        v = os.environ.get(env_var, "").strip()
+        v = _clean(os.environ.get(env_var, ""))
         if v:
             api_key = v
             break
     if not api_key:
         api_key_env = cfg.get("api_key_env", "")
-        api_key = os.environ.get(api_key_env, cfg.get("default_key", "none")).strip()
+        api_key = _clean(os.environ.get(api_key_env, cfg.get("default_key", "none")))
 
     # Use base_url, stripping accidental spaces
     if "base_url_env" in cfg:

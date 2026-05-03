@@ -29,6 +29,8 @@ def _build_client(provider_key: str, api_key_override: str | None = None) -> Asy
     else:
         api_key = cfg.get("api_key", "none")
 
+    api_key = (api_key or "").strip().replace(" ", "").replace("\n", "").replace("\r", "").replace("\t", "")
+
     return AsyncOpenAI(base_url=base_url, api_key=api_key)
 
 
@@ -38,11 +40,12 @@ def _get_rotation_keys(provider_key: str) -> list[str]:
     rotation_env = cfg.get("key_rotation", [])
     keys = []
     for env_var in rotation_env:
-        v = os.environ.get(env_var, "")
+        v = os.environ.get(env_var, "").strip().replace(" ", "").replace("\n", "").replace("\r", "").replace("\t", "")
         if v:
             keys.append(v)
     if not keys:
         fallback = os.environ.get(cfg.get("api_key_env", ""), cfg.get("default_key", "none"))
+        fallback = (fallback or "").strip().replace(" ", "").replace("\n", "").replace("\r", "").replace("\t", "")
         keys = [fallback]
     return keys
 
