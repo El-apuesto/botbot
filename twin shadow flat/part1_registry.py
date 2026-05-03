@@ -172,13 +172,14 @@ PROVIDERS: dict = {
 
     "grok": {
         "role": "shadow_video",
-        "desc": "Grok beta + aurora. Shadow Video division.",
+        "desc": "Grok 3 + aurora image gen. Shadow Video division.",
         "base_url":      "https://api.x.ai/v1",
         "api_key_env":   "GROK_API_KEY",
         "openai_compat": True,
         "models": {
-            "grok_beta": "grok-beta",
-            "aurora":    "aurora",
+            "grok_3":     "grok-3",
+            "grok_mini":  "grok-3-mini",
+            "aurora":     "aurora",
         },
     },
 

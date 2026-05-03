@@ -477,7 +477,7 @@ async def grok_imagine(prompt: str, n: int = 1) -> list[str]:
 async def grok_direct(prompt: str) -> str:
     client = _grok_client()
     resp   = await client.chat.completions.create(
-        model="grok-beta",
+        model="grok-3",
         messages=[
             {"role": "system", "content": "You are a creative video director. Raw, visual, precise."},
             {"role": "user",   "content": prompt},

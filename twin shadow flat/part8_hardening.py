@@ -22,6 +22,15 @@ async def verify_endpoint(provider_key: str, timeout_s: int = 20):
     cfg = get_provider_cfg(provider_key)
     now = datetime.now(timezone.utc).isoformat()
 
+    # Grok: key-presence only — aurora image gen doesn't need a chat ping
+    if provider_key == "grok":
+        key = os.environ.get("GROK_API_KEY", "")
+        if key:
+            _endpoint_status[provider_key] = {"online": True, "last_check": now, "note": "key present (aurora image gen)"}
+            return True, "✅ grok (key present — aurora)"
+        _endpoint_status[provider_key] = {"online": False, "error": "GROK_API_KEY not set", "last_check": now}
+        return False, "❌ grok: GROK_API_KEY not set"
+
     if not cfg.get("openai_compat"):
         # Ping video providers directly with their native SDKs
         if provider_key == "fal":

@@ -796,6 +796,7 @@ def api_tts():
                 "TWIN":         "Ava-PlayAI",
                 "SHADOW":       "Fritz-PlayAI",
                 "CAPI":         "Atlas-PlayAI",
+                "BUILDER":      "Chip-PlayAI",
                 "GEMMA":        "Celeste-PlayAI",
                 "HERMES":       "Briggs-PlayAI",
                 "NARRATOR":     "Ava-PlayAI",
@@ -1345,7 +1346,7 @@ async def _run_video_job(job_id: str, prompt: str, image_url: str | None):
     _lab_jobs[job_id] = {"status": "processing", "provider": "huggingface"}
     try:
         from huggingface_hub import InferenceClient
-        client = InferenceClient(token=os.environ.get("HUGGINGFACE_API_KEY", ""))
+        client = InferenceClient(token=os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_API_KEY", ""))
         loop   = asyncio.get_event_loop()
         result = await loop.run_in_executor(
             None, lambda: client.text_to_video(prompt, model="Wan-AI/Wan2.1-T2V-14B")
@@ -1391,8 +1392,9 @@ def api_lab_video_status(job_id):
 # ── /api/lab/voice ────────────────────────────────────────────────────────────
 @_flask.route("/api/lab/voice", methods=["POST"])
 def api_lab_voice():
-    data = request.json or {}
-    text = data.get("text", "").strip()
+    data    = request.json or {}
+    text    = data.get("text", "").strip()
+    speaker = data.get("speaker", "NARRATOR").upper()
     if not text:
         return jsonify({"error": "No text"}), 400
 
@@ -1400,13 +1402,36 @@ def api_lab_voice():
     fname    = f"lab_vo_{int(time.time())}.mp3"
     out_path = _audio_dir / fname
 
+    PLAYAI_VOICES = {
+        "TWIN": "Ava-PlayAI", "SHADOW": "Fritz-PlayAI", "CAPI": "Atlas-PlayAI",
+        "GEMMA": "Celeste-PlayAI", "HERMES": "Briggs-PlayAI", "NARRATOR": "Ava-PlayAI",
+    }
+
+    groq_key = os.environ.get("GROQ_API_KEY_1", "") or os.environ.get("GROQ_API_KEY_3", "")
+    if groq_key:
+        try:
+            import httpx as _httpx
+            voice = PLAYAI_VOICES.get(speaker, "Ava-PlayAI")
+            resp  = _httpx.post(
+                "https://api.groq.com/openai/v1/audio/speech",
+                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                json={"model": "playai-tts", "input": text[:4096], "voice": voice},
+                timeout=30,
+            )
+            if resp.status_code == 200:
+                out_path.write_bytes(resp.content)
+                return jsonify({"url": f"/audio/{fname}", "path": str(out_path), "provider": "groq_playai"})
+            print(f"[LAB VOICE] PlayAI {resp.status_code} — falling back to gTTS")
+        except Exception as e:
+            print(f"[LAB VOICE] PlayAI failed: {e} — falling back to gTTS")
+
     try:
         from gtts import gTTS
         tts = gTTS(text=text[:2000], lang="en", slow=False)
         tts.save(str(out_path))
-        return jsonify({"url": f"/audio/{fname}", "path": str(out_path)})
+        return jsonify({"url": f"/audio/{fname}", "path": str(out_path), "provider": "gtts"})
     except Exception as e:
-        return jsonify({"error": f"gTTS failed: {e}"}), 500
+        return jsonify({"error": f"TTS failed: {e}"}), 500
 
 
 # ── /api/lab/render (SSE) ─────────────────────────────────────────────────────
