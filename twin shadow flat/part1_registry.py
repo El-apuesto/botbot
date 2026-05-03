@@ -53,6 +53,9 @@ TOKEN_LIMITS: dict[str, int] = {
     "shadow_chat":          800,
     "code":                 4000,
     "brief":                300,
+    "twin":                 300,
+    # Embed / search (NVIDIA nv-embedqa, non-chat — token limit unused but kept for consistency)
+    "embed_search":         0,
 }
 
 PROVIDERS: dict = {
@@ -341,6 +344,7 @@ TASK_MODELS: dict = {
     "doc_parse":            ("nvidia",   "nemoretriever_parse"),
     "safety_gate":          ("nvidia",   "nemoguard_content"),
     "quality_score":        ("nvidia",   "nemotron_reward"),
+    "embed_search":         ("nvidia",   "nv_embedqa"),
 
     # ── video ─────────────────────────────────────────────────────────────────
     "video":            ("fal",          "wan21"),
@@ -422,11 +426,11 @@ SHADOW_BRAINSTORM_MEMBERS = [
     {"key": "shadow_chat",         "name": "SHADOW"},
     {"key": "board_hermes_capped", "name": "HERMES"},
     {"key": "capi",                "name": "CAPI"},
-    {"key": "board_dolphin",       "name": "GEMMA"},
     {"key": "board_venice_llama",  "name": "VENICE70"},
     {"key": "brainstorm_glm",      "name": "GLM"},
     {"key": "brainstorm_kimi",     "name": "STRATEGY"},
     {"key": "brainstorm_mistral",  "name": "FINANCE"},
+    {"key": "brainstorm_minimax",  "name": "MINIMAX"},
     {"key": "brainstorm_qwq",      "name": "QWQ"},
 ]
 
