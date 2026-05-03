@@ -7,16 +7,17 @@ All providers, models, task routing, TTS voice assignments.
 # Used by /api/tts for multi-voice boardroom / brainstorm / podcast audio.
 # Overridable in Settings via localStorage (sent as JSON in the TTS request).
 TTS_VOICES: dict[str, str] = {
-    "TWIN":     "en-US-Neural2-D",
-    "SHADOW":   "en-US-Neural2-A",
-    "CAPI":     "en-US-Wavenet-B",
-    "HERMES":   "en-US-Neural2-J",
-    "GPTOSS":   "en-US-Neural2-G",
-    "QWEN":     "en-US-Wavenet-D",
-    "MISTRAL":  "en-US-Neural2-F",
-    "MINIMAX":  "en-US-Wavenet-A",
-    "BUILDER":  "en-US-Neural2-I",
-    "NARRATOR": "en-US-Neural2-C",
+    "TWIN":        "en-US-Neural2-D",
+    "SHADOW":      "en-US-Neural2-A",   # authoritarian real Shadow (Venice 1.2)
+    "GEMMA":       "en-US-Wavenet-C",   # uncensored chat Shadow persona (Gemma 4)
+    "CAPI":        "en-US-Wavenet-B",
+    "HERMES":      "en-US-Neural2-J",
+    "GPTOSS":      "en-US-Neural2-G",
+    "QWEN":        "en-US-Wavenet-D",
+    "MISTRAL":     "en-US-Neural2-F",
+    "MINIMAX":     "en-US-Wavenet-A",
+    "BUILDER":     "en-US-Neural2-I",
+    "NARRATOR":    "en-US-Neural2-C",
 }
 
 PROVIDERS: dict = {
@@ -184,6 +185,20 @@ PROVIDERS: dict = {
             "svd":           "stability-ai/stable-video-diffusion:3f0457e4619daac51203dedb472816f3af3d23aaa2332d691ca2413d8fbdcb65",
         },
     },
+
+    "venice": {
+        "role": "shadow",
+        "desc": "Venice.ai uncensored. Gemma 4 Uncensored (chat persona) + Venice 1.2 Uncensored (authoritarian SHADOW).",
+        "base_url":      "https://api.venice.ai/api/v1",
+        "api_key_env":   "VENICE_ADMIN_KEY",
+        "openai_compat": True,
+        "models": {
+            "gemma4_uncensored":      "gemma-4-uncensored",       # GEMMA — uncensored chat persona
+            "venice_uncensored_12":   "venice-uncensored-1-2",    # SHADOW — authoritarian dark authority
+            "venice_uncensored":      "venice-uncensored",        # general uncensored fallback
+            "venice_roleplay":        "venice-uncensored-role-play", # roleplay uncensored
+        },
+    },
 }
 
 TASK_MODELS: dict = {
@@ -195,18 +210,18 @@ TASK_MODELS: dict = {
     # ── relay / routing ───────────────────────────────────────────────────────
     "relay":            ("nvidia", "kimi_k2"),          # was: openrouter/hermes3
 
-    # ── shadow chat / dark persona ────────────────────────────────────────────
-    "shadow_chat":      ("nvidia", "deepseek_v3"),      # was: openrouter/dolphin_venice
-    "board_dolphin":    ("nvidia", "deepseek_v3"),      # was: openrouter/dolphin_venice
-    "chat_specialist":  ("nvidia", "deepseek_v3"),      # was: openrouter/dolphin_venice
+    # ── shadow chat / dark personas ───────────────────────────────────────────
+    "shadow_chat":      ("venice", "venice_uncensored_12"),  # SHADOW — authoritarian dark authority (Venice 1.2)
+    "board_dolphin":    ("venice", "gemma4_uncensored"),     # GEMMA — uncensored chat persona
+    "chat_specialist":  ("venice", "gemma4_uncensored"),     # GEMMA — uncensored specialist
     "local_shadow":     ("ollama_local", "dolphin"),
     "local_adolphus":   ("ollama_local", "dolphin_venice"),
 
     # ── creative / occult comedy content ─────────────────────────────────────
-    "creative":         ("nvidia", "glm51"),            # was: openrouter/qwen_free
-    "creative_alt":     ("nvidia", "mistral_large3"),   # was: openrouter/mistral_free — now 675B!
-    "creative_dolphin": ("nvidia", "deepseek_v3"),      # was: openrouter/dolphin_venice
-    "multimodal":       ("nvidia", "glm51"),            # was: openrouter/qwen_free
+    "creative":         ("nvidia", "glm51"),            # GLM 5.1 — creative/occult
+    "creative_alt":     ("nvidia", "mistral_large3"),   # Mistral 675B — creative alt
+    "creative_dolphin": ("venice", "gemma4_uncensored"),# GEMMA — uncensored creative
+    "multimodal":       ("nvidia", "glm51"),            # GLM 5.1 — multimodal tasks
 
     # ── code ──────────────────────────────────────────────────────────────────
     "code":             ("nvidia", "kimi_k2"),           # Kimi K2 — top coder
@@ -246,8 +261,8 @@ BOARD_MEMBERS = [
 ]
 
 SHADOW_BOARD_MEMBERS = [
-    {"key": "board_dolphin", "name": "DOLPHIN",  "role": "Uncensored Strategist"},
-    {"key": "shadow_chat",   "name": "SHADOW",   "role": "Dark Authority"},
+    {"key": "shadow_chat",   "name": "SHADOW",   "role": "Authoritarian Dark Authority (Venice 1.2)"},
+    {"key": "board_dolphin", "name": "GEMMA",    "role": "Uncensored Persona (Gemma 4)"},
     {"key": "board_qwen",    "name": "QWEN",     "role": "Free Thinker"},
     {"key": "board_mistral", "name": "MISTRAL",  "role": "Shadow Critic"},
 ]
@@ -260,8 +275,8 @@ BRAINSTORM_MEMBERS = [
 ]
 
 SHADOW_BRAINSTORM_MEMBERS = [
-    {"key": "shadow_chat",   "name": "SHADOW"},
-    {"key": "board_dolphin", "name": "DOLPHIN"},
+    {"key": "shadow_chat",   "name": "SHADOW"},  # Venice 1.2 — authoritarian
+    {"key": "board_dolphin", "name": "GEMMA"},   # Gemma 4 — uncensored persona
     {"key": "board_qwen",    "name": "QWEN"},
     {"key": "board_mistral", "name": "MISTRAL"},
 ]
