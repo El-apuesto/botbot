@@ -73,6 +73,9 @@ PROVIDERS: dict = {
             "nemotron_49b":     "nvidia/llama-3.3-nemotron-super-49b-v1",
             "nemotron_120b":    "nvidia/nemotron-3-super-120b-a12b",
             "qwen_coder_480":   "qwen/qwen3-coder-480b-a35b-instruct",
+            "vision_90b":       "meta/llama-3.2-90b-vision-instruct",   # VISION — image analysis
+            "vision_11b":       "meta/llama-3.2-11b-vision-instruct",   # VISION — fast/light
+            "phi4_multimodal":  "microsoft/phi-4-multimodal-instruct",  # VISION — phi-4 multimodal
             "kimi_k2":          "moonshotai/kimi-k2-instruct",
             "kimi_k2_6":        "moonshotai/kimi-k2.6",
             "devstral":         "mistralai/devstral-2-123b-instruct-2512",
@@ -194,14 +197,18 @@ PROVIDERS: dict = {
         "api_key_env":   "VENICE_ADMIN_KEY",
         "openai_compat": True,
         "models": {
-            "gemma4_uncensored":      "gemma-4-uncensored",            # GEMMA — uncensored chat persona
-            "venice_uncensored_12":   "venice-uncensored-1-2",         # SHADOW — authoritarian dark authority
-            "venice_uncensored_11":   "venice-uncensored",             # ORACLE — 1.1 shadow boardroom strategist
-            "venice_roleplay":        "venice-uncensored-role-play",   # roleplay uncensored
-            "hermes_405b":            "hermes-3-llama-3.1-405b",       # SPECIALIST — marketing, SEO, legal
-            "mistral_small":          "mistral-small-3-2-24b-instruct",# SPECIALIST — legal, budget
-            "deepseek_flash":         "deepseek-v4-flash",             # SPECIALIST — fast marketing analysis
-            "llama_70b":              "llama-3.3-70b",                 # SPECIALIST — legal/SEO backup
+            "gemma4_uncensored":      "gemma-4-uncensored",                    # GEMMA — uncensored chat persona
+            "venice_uncensored_12":   "venice-uncensored-1-2",                 # SHADOW — authoritarian dark authority
+            "venice_uncensored_11":   "venice-uncensored",                     # ORACLE — 1.1 shadow boardroom strategist
+            "venice_roleplay":        "venice-uncensored-role-play",           # roleplay uncensored
+            "hermes_405b":            "hermes-3-llama-3.1-405b",               # SPECIALIST — marketing, SEO, legal
+            "mistral_small":          "mistral-small-3-2-24b-instruct",        # SPECIALIST — legal, budget
+            "deepseek_flash":         "deepseek-v4-flash",                     # SPECIALIST — fast marketing analysis
+            "llama_70b":              "llama-3.3-70b",                         # SPECIALIST — legal/SEO backup
+            "qwen_coder_480_turbo":   "qwen3-coder-480b-a35b-instruct-turbo",  # BUILDER — uncensored coder 480B turbo
+            "qwen_coder_480":         "qwen3-coder-480b-a35b-instruct",        # BUILDER — uncensored coder 480B
+            "gpt_codex_52":           "openai-gpt-52-codex",                   # BUILDER — structured codex output
+            "qwen_vl_235b":           "qwen3-vl-235b-a22b",                    # VISION — multimodal coder (image + code)
         },
     },
 }
@@ -229,13 +236,18 @@ TASK_MODELS: dict = {
     "multimodal":       ("nvidia", "glm51"),            # GLM 5.1 — multimodal tasks
 
     # ── code ──────────────────────────────────────────────────────────────────
-    "code":             ("nvidia", "kimi_k2"),           # Kimi K2 — top coder
-    "code_check":       ("nvidia", "kimi_k2"),           # Kimi K2 — review
-    "code_check_v2":    ("nvidia", "kimi_k2"),           # Kimi K2 — deep review
-    "code_reason":      ("nvidia", "kimi_k2"),           # Kimi K2 — reasoning
-    "builder":          ("nvidia", "kimi_k2"),           # Kimi K2 — builder bot
-    "builder_review":   ("nvidia", "kimi_k2"),           # Kimi K2 — builder review
-    "builder_check":    ("nvidia", "kimi_k2"),           # Kimi K2 — builder check
+    "code":             ("venice", "qwen_coder_480_turbo"), # UNCENSORED coder — Venice Qwen 480B Turbo
+    "code_check":       ("venice", "qwen_coder_480_turbo"), # UNCENSORED code review
+    "code_check_v2":    ("venice", "gpt_codex_52"),         # Codex 52 — structured deep review
+    "code_reason":      ("nvidia", "kimi_k2"),              # Kimi K2 — reasoning (stays on NVIDIA)
+    "builder":          ("venice", "qwen_coder_480_turbo"), # UNCENSORED builder bot
+    "builder_review":   ("venice", "qwen_coder_480_turbo"), # UNCENSORED builder review
+    "builder_check":    ("venice", "gpt_codex_52"),         # Codex 52 — final structured check
+
+    # ── vision / multimodal ───────────────────────────────────────────────────
+    "vision":           ("nvidia", "vision_90b"),           # NVIDIA 90B vision — image analysis
+    "vision_fast":      ("nvidia", "vision_11b"),           # NVIDIA 11B vision — fast/light
+    "vision_uncensored":("venice", "qwen_vl_235b"),         # Venice VL 235B — uncensored vision+code
 
     # ── business / legal / SEO ────────────────────────────────────────────────
     "business":         ("venice", "hermes_405b"),      # Hermes 405B — marketing/legal/SEO specialist
