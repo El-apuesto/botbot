@@ -32,7 +32,7 @@
     #chat-panel {
       position: absolute; display: flex; flex-direction: column;
       top: 44%; left: 3%; right: 3%;
-      bottom: calc(20% + env(safe-area-inset-bottom, 0px));
+      bottom: calc(20% + env(safe-area-inset-bottom, 0px) / 2);
       background: rgba(6, 0, 18, 0.5); overflow: hidden;
     }
     @media (orientation: landscape) and (min-width: 700px) {
@@ -100,7 +100,7 @@
     #send-btn img { width: 100%; height: 100%; object-fit: cover; }
 
     /* ── MENU BAR ── */
-    #menu-bar { position: absolute; bottom: env(safe-area-inset-bottom, 0px); left: 0; right: 0; height: 20%;
+    #menu-bar { position: absolute; bottom: calc(env(safe-area-inset-bottom, 0px) / 2); left: 0; right: 0; height: 20%;
       display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 1fr);
       padding: 2px 6% 4px; gap: 1px 0; pointer-events: none; }
     @media (orientation: landscape) and (min-width: 700px) {
