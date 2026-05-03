@@ -394,18 +394,6 @@ BOARD_SPECIALISTS = [
         "role": "Marketing Analyst (DeepSeek Flash)",
         "trigger_topics": ["marketing", "seo", "campaign", "ad", "brand", "audience", "funnel", "viral"],
     },
-    {
-        "key": "translation",
-        "name": "TRANSLATOR",
-        "role": "Translation (Riva)",
-        "trigger_topics": ["translate", "translation", "language", "localize", "international"],
-    },
-    {
-        "key": "doc_parse",
-        "name": "DOCPARSER",
-        "role": "Document Analyst (NemoRetriever)",
-        "trigger_topics": ["document", "pdf", "parse", "extract", "report"],
-    },
 ]
 
 # ── Brainstorm: 9 members ──────────────────────────────────────────────────────

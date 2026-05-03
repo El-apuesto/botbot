@@ -34,6 +34,7 @@ MODEL_NAMES: dict[str, str] = {
     "business":             "LEGAL (Hermes 405B)",
     "business_deep":        "BUDGET (Mistral Small)",
     "shadow":               "CAPI (Consultant)",
+    "capi":                 "CAPI (Consultant)",
     "shadow_chat":          "SHADOW (Venice 1.2)",
     "board_dolphin":        "GEMMA (Gemma 4)",
     "local_shadow":         "Dolphin Local",
@@ -99,7 +100,7 @@ DEFAULT_BOARDROOM = [
     "board_distribution",
     "shadow_chat",        # SHADOW
     "board_dolphin",      # GEMMA
-    "shadow",             # CAPI (appears as Consultant)
+    "capi",               # CAPI (appears as Consultant)
 ]
 
 # Default shadow boardroom: all uncensored, no CAPI

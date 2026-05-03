@@ -62,13 +62,7 @@ def _get_rotation_keys(provider_key: str) -> list[str]:
         if _is_ascii_safe(v):
             keys.append(v)
         else:
-            # Strip non-ASCII, use what remains
-            scrubbed = v.encode("ascii", "ignore").decode("ascii").strip()
-            if scrubbed:
-                print(f"[ROUTER] {env_var}: non-ASCII chars stripped — using scrubbed key")
-                keys.append(scrubbed)
-            else:
-                print(f"[ROUTER] {env_var}: non-ASCII key skipped entirely (no safe chars remain)")
+            print(f"[ROUTER] {env_var}: non-ASCII key skipped (strict ASCII policy)")
 
     if not keys:
         fallback_env = cfg.get("api_key_env", "")
@@ -77,8 +71,8 @@ def _get_rotation_keys(provider_key: str) -> list[str]:
         if fb and _is_ascii_safe(fb):
             keys = [fb]
         elif fb:
-            scrubbed = fb.encode("ascii", "ignore").decode("ascii").strip()
-            keys = [scrubbed] if scrubbed else ["none"]
+            print(f"[ROUTER] fallback key {fallback_env}: non-ASCII — skipped (strict ASCII policy)")
+            keys = ["none"]
         else:
             keys = ["none"]
 

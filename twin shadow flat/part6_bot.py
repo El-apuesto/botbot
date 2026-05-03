@@ -244,8 +244,8 @@ def api_boardroom():
                     if isinstance(result, str) and result:
                         committee_context[m["key"]] = result
 
-        # Step 4: Each board member responds
-        context = f"Topic: {topic}\n\nTWIN's brief: {brief}"
+        # Step 4: Each board member responds (rolling 8-turn context cap)
+        context_turns: list[str] = [f"Topic: {topic}", f"TWIN brief: {brief}"]
         hermes_turn_count = 0
         for member in all_members:
             name = member["name"]
@@ -254,6 +254,7 @@ def api_boardroom():
 
             # HERMES gets the capped dialogue protocol instead of stream_task
             if name == "HERMES":
+                context = "\n\n".join(context_turns[-8:])
                 yield f"\x1eSPEAKER:HERMES\x1f"
                 try:
                     exchange = await hermes_exchange(topic, context, session_type="boardroom", turn_count=hermes_turn_count)
@@ -273,7 +274,7 @@ def api_boardroom():
                         yield f"\n\n[Revised] {retry_interp}"
                     if silenced:
                         yield "\n\n[HERMES silenced — intent unresolved]"
-                    context += f"\n\nHERMES: {spark[:200]}"
+                    context_turns.append(f"HERMES: {spark[:200]}")
                 except Exception as e:
                     yield f"[HERMES offline: {e}]"
                 yield "\x1eEND\x1f"
@@ -282,6 +283,9 @@ def api_boardroom():
             # Build system prompt with CAPI identity injection for non-HERMES members
             sys_p = sys_override or board_member_system(name, role, shadow_mode)
             sys_p = inject_capi_identity(sys_p, name)
+
+            # Rolling 8-turn context window
+            context = "\n\n".join(context_turns[-8:])
 
             # Prepend committee brief for NVIDIA seats
             user_content = context + f"\n\nYour response as {name} ({role}):"
@@ -304,13 +308,14 @@ def api_boardroom():
             except Exception as e:
                 yield f"[{name} offline: {e}]"
             yield "\x1eEND\x1f"
-            context += f"\n\n{name}: {member_resp[:300]}"
+            context_turns.append(f"{name}: {member_resp[:300]}")
 
         # Step 5: SHADOW final word (always, unless shadow_mode already included SHADOW)
         if not shadow_mode:
+            final_context = "\n\n".join(context_turns[-8:])
             shadow_msgs = [
                 {"role": "system", "content": inject_capi_identity(SHADOW_SYSTEM, "shadow")},
-                {"role": "user",   "content": f"Boardroom discussed: {topic}\n\nContext:\n{context[-1500:]}\n\nYour final word:"},
+                {"role": "user",   "content": f"Boardroom discussed: {topic}\n\nContext:\n{final_context}\n\nYour final word:"},
             ]
             yield f"\x1eSPEAKER:SHADOW\x1f"
             try:
