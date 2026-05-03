@@ -413,7 +413,7 @@ async def _hf_generate(prompt: str) -> str:
     import asyncio
     from huggingface_hub import InferenceClient
 
-    client = InferenceClient(token=os.environ.get("HUGGINGFACE_API_KEY", ""))
+    client = InferenceClient(token=os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_API_KEY", ""))
     loop   = asyncio.get_event_loop()
     result = await loop.run_in_executor(
         None,

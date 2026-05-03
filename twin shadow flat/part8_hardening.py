@@ -38,9 +38,9 @@ async def verify_endpoint(provider_key: str, timeout_s: int = 20):
         if provider_key == "huggingface":
             try:
                 from huggingface_hub import InferenceClient
-                key = os.environ.get("HUGGINGFACE_API_KEY", "")
+                key = os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_API_KEY", "")
                 if not key:
-                    raise RuntimeError("HUGGINGFACE_API_KEY not set")
+                    raise RuntimeError("HF_TOKEN not set")
                 _endpoint_status[provider_key] = {"online": True, "last_check": now, "note": "key present"}
                 return True, f"✅ huggingface (key present)"
             except Exception as e:
