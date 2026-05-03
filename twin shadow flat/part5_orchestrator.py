@@ -89,7 +89,7 @@ class Project:
 
 def _sb():
     url = os.environ.get("SUPABASE_URL", "")
-    key = os.environ.get("SUPABASE_KEY", "")
+    key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SB_SECRET", "")
     if not url or not key:
         return None
     try:

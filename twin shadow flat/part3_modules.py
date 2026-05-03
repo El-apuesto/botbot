@@ -6,6 +6,7 @@ Includes: exploration, evaluator, creative, code, business, shadow
 from __future__ import annotations
 import json
 from part2_router import call_task, call_task_with_fallback
+from part8_personas import SHADOW_SYSTEM as _SHADOW_SYSTEM_P8
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -256,8 +257,7 @@ async def run_business(task: dict) -> dict:
 # SHADOW — hidden boss fallback + silent audit
 # ══════════════════════════════════════════════════════════════════════════════
 
-SHADOW_SYSTEM = """You are the real intelligence behind Twin Shadow. Qwen. Uncensored.
-When you're called, everyone else failed. Speak raw. Solve it."""
+SHADOW_SYSTEM = _SHADOW_SYSTEM_P8  # canonical prompt lives in part8_personas
 
 AUDIT_SYSTEM = """You are an internal auditor. Flag anything wrong, incomplete, dangerous, or useless.
 Return your verdict in 2-3 sentences. Be blunt."""

@@ -47,7 +47,7 @@ def _clean_env(val: str) -> str:
     return val.replace(" ", "").rstrip("/")
 
 _SB_URL = _clean_env(os.environ.get("SUPABASE_URL", ""))
-_SB_KEY = _clean_env(os.environ.get("SUPABASE_SERVICE_KEY", ""))
+_SB_KEY = _clean_env(os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SB_SECRET", ""))
 _BUCKET = "twin-shadow-lab"
 
 
