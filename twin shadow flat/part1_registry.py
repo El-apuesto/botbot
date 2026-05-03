@@ -246,6 +246,7 @@ TASK_MODELS: dict = {
     "brief":            ("groq",         "llama"),
     "shadow":           ("venice",       "venice_uncensored_12"),
     "shadow_chat":      ("venice",       "venice_uncensored_12"),
+    "capi":             ("ollama_cloud", "qwen"),               # CAPI — distinct from SHADOW
 
     # ── routing / summarization (Cerebras fast) ───────────────────────────────
     "routing":          ("cerebras",     "llama_small"),
@@ -358,7 +359,7 @@ BOARD_MEMBERS = [
     {"key": "board_distribution", "name": "DISTRIBUTION", "role": "Distribution & Growth (GPT-OSS 120B)"},
     {"key": "shadow_chat",        "name": "SHADOW",       "role": "Dark Authority (Venice 1.2)"},
     {"key": "board_dolphin",      "name": "GEMMA",        "role": "Uncensored Voice (Gemma 4)"},
-    {"key": "shadow",             "name": "CAPI",         "role": "Consultant & Moderator"},
+    {"key": "capi",               "name": "CAPI",         "role": "Consultant & Moderator"},
 ]
 
 # ── Shadow boardroom: all uncensored, no CAPI ─────────────────────────────────
@@ -407,7 +408,7 @@ BOARD_SPECIALISTS = [
 BRAINSTORM_MEMBERS = [
     {"key": "board_hermes_capped", "name": "HERMES"},
     {"key": "shadow_chat",         "name": "SHADOW"},
-    {"key": "shadow",              "name": "CAPI"},
+    {"key": "capi",                "name": "CAPI"},
     {"key": "board_venice_llama",  "name": "VENICE70"},
     {"key": "brainstorm_glm",      "name": "GLM"},
     {"key": "brainstorm_kimi",     "name": "STRATEGY"},
@@ -420,7 +421,7 @@ BRAINSTORM_MEMBERS = [
 SHADOW_BRAINSTORM_MEMBERS = [
     {"key": "shadow_chat",         "name": "SHADOW"},
     {"key": "board_hermes_capped", "name": "HERMES"},
-    {"key": "shadow",              "name": "CAPI"},
+    {"key": "capi",                "name": "CAPI"},
     {"key": "board_dolphin",       "name": "GEMMA"},
     {"key": "board_venice_llama",  "name": "VENICE70"},
     {"key": "brainstorm_glm",      "name": "GLM"},
@@ -441,6 +442,7 @@ COMMITTEE_STRUCTURE: dict[str, list[str]] = {
     "shadow_chat":        [],
     "board_dolphin":      [],
     "shadow":             [],
+    "capi":               [],
     "board_venice_llama": [],
     "board_hermes_capped":[],
     # Child bot placeholder slots (future)

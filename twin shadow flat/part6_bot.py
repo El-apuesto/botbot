@@ -26,6 +26,7 @@ from part5_orchestrator import (
     Orchestrator,
     vault_list, vault_get, vault_delete,
     vault_clear, vault_last, vault_undo,
+    inject_capi_identity, hermes_exchange, committee_discuss,
 )
 from part2_router import stream_task, call_task, direct_call
 import part9_supabase as _sb
@@ -38,7 +39,7 @@ from part1_registry import (
     get_task_routing, get_provider_cfg,
     BOARD_MEMBERS, SHADOW_BOARD_MEMBERS,
     BRAINSTORM_MEMBERS, SHADOW_BRAINSTORM_MEMBERS,
-    TTS_VOICES,
+    TTS_VOICES, TOKEN_LIMITS, get_specialists_for_topic, COMMITTEE_STRUCTURE,
 )
 import part8_hardening as _hardening
 from part8_personas import (
@@ -209,7 +210,8 @@ def api_boardroom():
     if not topic:
         return jsonify({"error": "No topic"}), 400
 
-    members = SHADOW_BOARD_MEMBERS if shadow_mode else BOARD_MEMBERS
+    base_members = SHADOW_BOARD_MEMBERS if shadow_mode else BOARD_MEMBERS
+    main_token_cap = TOKEN_LIMITS["shadow_board"] if shadow_mode else TOKEN_LIMITS["board_main"]
 
     async def _run():
         # Step 1: TWIN briefs the topic
@@ -220,26 +222,83 @@ def api_boardroom():
         ]
         yield f"\x1eSPEAKER:TWIN\x1f"
         brief = ""
-        async for chunk in stream_task("twin", brief_msgs):
+        async for chunk in stream_task("twin", brief_msgs, max_tokens=TOKEN_LIMITS["twin"]):
             brief += chunk
             yield chunk
         yield "\x1eEND\x1f"
 
-        # Step 2: Each board member responds
+        # Step 2: Get topic-matched specialists (non-shadow mode only)
+        specialist_members = [] if shadow_mode else get_specialists_for_topic(topic)
+        all_members = base_members + specialist_members
+
+        # Step 3: Run pre-discussion committees for NVIDIA seats in background
+        committee_context: dict[str, str] = {}
+        if not shadow_mode:
+            nvidia_seats = [m for m in base_members if COMMITTEE_STRUCTURE.get(m["key"])]
+            if nvidia_seats:
+                pre_results = await asyncio.gather(
+                    *[committee_discuss(m["key"], topic, brief) for m in nvidia_seats],
+                    return_exceptions=True,
+                )
+                for m, result in zip(nvidia_seats, pre_results):
+                    if isinstance(result, str) and result:
+                        committee_context[m["key"]] = result
+
+        # Step 4: Each board member responds
         context = f"Topic: {topic}\n\nTWIN's brief: {brief}"
-        for member in members:
+        hermes_turn_count = 0
+        for member in all_members:
             name = member["name"]
             role = member.get("role", name)
-            sys_p = board_member_system(name, role, shadow_mode)
-            provider_key, model_key = get_task_routing(member["key"])
+            member_key = member["key"]
+
+            # HERMES gets the capped dialogue protocol instead of stream_task
+            if name == "HERMES":
+                yield f"\x1eSPEAKER:HERMES\x1f"
+                try:
+                    exchange = await hermes_exchange(topic, context, session_type="boardroom", turn_count=hermes_turn_count)
+                    hermes_turn_count = exchange.get("turns_used", hermes_turn_count + 1)
+                    spark = exchange.get("hermes_spark", "")
+                    interp = exchange.get("interpretation", "")
+                    clarify = exchange.get("clarification")
+                    retry_interp = exchange.get("retry_interpretation")
+                    silenced = exchange.get("silenced", False)
+                    if spark:
+                        yield spark
+                    if interp:
+                        yield f"\n\n[Interpretation]\n{interp}"
+                    if clarify:
+                        yield f"\n\n[Hermes clarifies] {clarify}"
+                    if retry_interp:
+                        yield f"\n\n[Revised] {retry_interp}"
+                    if silenced:
+                        yield "\n\n[HERMES silenced — intent unresolved]"
+                    context += f"\n\nHERMES: {spark[:200]}"
+                except Exception as e:
+                    yield f"[HERMES offline: {e}]"
+                yield "\x1eEND\x1f"
+                continue
+
+            # Build system prompt with CAPI identity injection for non-HERMES members
+            sys_p = sys_override or board_member_system(name, role, shadow_mode)
+            sys_p = inject_capi_identity(sys_p, name)
+
+            # Prepend committee brief for NVIDIA seats
+            user_content = context + f"\n\nYour response as {name} ({role}):"
+            if member_key in committee_context:
+                user_content = (
+                    f"[Pre-session committee brief]\n{committee_context[member_key]}\n\n"
+                    + user_content
+                )
+
             msgs = [
                 {"role": "system", "content": sys_p},
-                {"role": "user",   "content": context + f"\n\nYour response as {name} ({role}):"},
+                {"role": "user",   "content": user_content},
             ]
             yield f"\x1eSPEAKER:{name}\x1f"
             member_resp = ""
             try:
-                async for chunk in stream_task(member["key"], msgs):
+                async for chunk in stream_task(member_key, msgs, max_tokens=main_token_cap):
                     member_resp += chunk
                     yield chunk
             except Exception as e:
@@ -247,18 +306,19 @@ def api_boardroom():
             yield "\x1eEND\x1f"
             context += f"\n\n{name}: {member_resp[:300]}"
 
-        # Step 3: SHADOW final word (always)
-        shadow_msgs = [
-            {"role": "system", "content": SHADOW_SYSTEM},
-            {"role": "user",   "content": f"Boardroom discussed: {topic}\n\nContext:\n{context[:1500]}\n\nYour final word:"},
-        ]
-        yield f"\x1eSPEAKER:SHADOW\x1f"
-        try:
-            async for chunk in stream_task("shadow_chat", shadow_msgs):
-                yield chunk
-        except Exception as e:
-            yield f"[SHADOW offline: {e}]"
-        yield "\x1eEND\x1f"
+        # Step 5: SHADOW final word (always, unless shadow_mode already included SHADOW)
+        if not shadow_mode:
+            shadow_msgs = [
+                {"role": "system", "content": inject_capi_identity(SHADOW_SYSTEM, "shadow")},
+                {"role": "user",   "content": f"Boardroom discussed: {topic}\n\nContext:\n{context[-1500:]}\n\nYour final word:"},
+            ]
+            yield f"\x1eSPEAKER:SHADOW\x1f"
+            try:
+                async for chunk in stream_task("shadow_chat", shadow_msgs, max_tokens=TOKEN_LIMITS["shadow_board"]):
+                    yield chunk
+            except Exception as e:
+                yield f"[SHADOW offline: {e}]"
+            yield "\x1eEND\x1f"
 
     return _sse_stream(_run)
 
@@ -275,13 +335,50 @@ def api_brainstorm():
         return jsonify({"error": "No topic"}), 400
 
     members = SHADOW_BRAINSTORM_MEMBERS if shadow_mode else BRAINSTORM_MEMBERS
+    brainstorm_cap = TOKEN_LIMITS.get("brainstorm", TOKEN_LIMITS["board_main"])
 
     async def _run():
-        context = f"Topic: {topic}"
+        # Rolling context — keep last 8 turns worth of text
+        context_turns: list[str] = [f"Topic: {topic}"]
+        hermes_turn_count = 0
+
         for rnd in range(1, rounds + 1):
             for member in members:
-                name = member["name"]
+                name       = member["name"]
+                member_key = member["key"]
+                context    = "\n\n".join(context_turns[-8:])
+
+                # HERMES: capped dialogue protocol
+                if name == "HERMES":
+                    yield f"\x1eSPEAKER:HERMES\x1f"
+                    try:
+                        exchange = await hermes_exchange(topic, context, session_type="brainstorm", turn_count=hermes_turn_count)
+                        hermes_turn_count = exchange.get("turns_used", hermes_turn_count + 1)
+                        spark = exchange.get("hermes_spark", "")
+                        interp = exchange.get("interpretation", "")
+                        clarify = exchange.get("clarification")
+                        retry_interp = exchange.get("retry_interpretation")
+                        silenced = exchange.get("silenced", False)
+                        if spark:
+                            yield spark
+                        if interp:
+                            yield f"\n\n[Interpretation]\n{interp}"
+                        if clarify:
+                            yield f"\n\n[Hermes clarifies] {clarify}"
+                        if retry_interp:
+                            yield f"\n\n[Revised] {retry_interp}"
+                        if silenced:
+                            yield "\n\n[HERMES silenced — intent unresolved]"
+                        context_turns.append(f"HERMES (round {rnd}): {spark[:200]}")
+                    except Exception as e:
+                        yield f"[HERMES offline: {e}]"
+                    yield "\x1eEND\x1f"
+                    continue
+
+                # All other members: apply inject_capi_identity on system prompt
                 sys_p = sys_override or brainstorm_system(name, podcast_mode)
+                sys_p = inject_capi_identity(sys_p, name)
+
                 msgs = [
                     {"role": "system", "content": sys_p},
                     {"role": "user",   "content": context + f"\n\nRound {rnd} — {name}:"},
@@ -289,30 +386,31 @@ def api_brainstorm():
                 yield f"\x1eSPEAKER:{name}\x1f"
                 resp = ""
                 try:
-                    async for chunk in stream_task(member["key"], msgs):
+                    async for chunk in stream_task(member_key, msgs, max_tokens=brainstorm_cap):
                         resp += chunk
                         yield chunk
                 except Exception as e:
                     yield f"[{name} offline: {e}]"
                 yield "\x1eEND\x1f"
-                context += f"\n\n{name} (round {rnd}): {resp[:250]}"
+                context_turns.append(f"{name} (round {rnd}): {resp[:250]}")
 
             # TWIN moderates between rounds
             if rnd < rounds:
+                context = "\n\n".join(context_turns[-8:])
                 mod_msgs = [
-                    {"role": "system", "content": MODERATOR_SYSTEM},
-                    {"role": "user",   "content": context[-1200:]},
+                    {"role": "system", "content": inject_capi_identity(MODERATOR_SYSTEM, "twin")},
+                    {"role": "user",   "content": context},
                 ]
                 yield f"\x1eSPEAKER:TWIN\x1f"
                 mod = ""
                 try:
-                    async for chunk in stream_task("twin", mod_msgs):
+                    async for chunk in stream_task("twin", mod_msgs, max_tokens=TOKEN_LIMITS["twin"]):
                         mod += chunk
                         yield chunk
                 except Exception as e:
                     yield f"[TWIN offline: {e}]"
                 yield "\x1eEND\x1f"
-                context += f"\n\nTWIN (mod): {mod[:200]}"
+                context_turns.append(f"TWIN (mod): {mod[:200]}")
 
     return _sse_stream(_run)
 

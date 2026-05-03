@@ -472,15 +472,31 @@ async def hermes_exchange(
     except Exception as e:
         retry_interpretation = f"[Retry error: {e}]"
 
+    # Second YES/NO — if Hermes still says NO, silence them for this session
+    yesno2_msgs = [
+        {"role": "system", "content": "You are HERMES. Respond ONLY with YES or NO. Nothing else."},
+        {"role": "user", "content": (
+            f"Your words: \"{hermes_spark}\"\n"
+            f"Your clarification: \"{clarification}\"\n"
+            f"Revised interpretation:\n{retry_interpretation}\n\n"
+            "Does this now capture your intent? YES or NO:"
+        )},
+    ]
+    try:
+        yesno2_raw = await direct_call("venice", "hermes_405b", yesno2_msgs, TOKEN_LIMITS["hermes_yesno"])
+        final_accepted = "yes" in yesno2_raw.lower()
+    except Exception:
+        final_accepted = False  # silent on error after retry
+
     return {
         "hermes_spark": hermes_spark,
         "interpretation": interpretation,
         "accepted": False,
         "clarification": clarification,
         "retry_interpretation": retry_interpretation,
-        "final_accepted": True,
+        "final_accepted": final_accepted,
         "turns_used": turn_count + 1,
-        "silenced": False,
+        "silenced": not final_accepted,
     }
 
 

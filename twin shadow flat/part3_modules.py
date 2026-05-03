@@ -193,7 +193,7 @@ async def run_code(task: dict) -> dict:
     ]
 
     try:
-        code_output, was_fallback = await call_task_with_fallback("code", build_messages)
+        code_output, was_fallback = await call_task_with_fallback("code", build_messages, fallback_task_type="code_fallback")
     except Exception as e:
         return {"output": f"Builder failed: {e}", "module": "code", "shadow": True, "error": str(e)}
 
