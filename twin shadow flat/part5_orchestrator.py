@@ -343,6 +343,25 @@ def inject_capi_identity(system_prompt: str, receiver_name: str) -> str:
 # HERMES CAPPED DIALOGUE PROTOCOL
 # ═════════════════════════════════════════════════════════════════════════════
 
+_MARKETING_KEYWORDS = frozenset({
+    "marketing", "seo", "campaign", "ad", "ads", "brand", "audience",
+    "funnel", "viral", "launch", "promo", "promotion", "growth", "conversion",
+})
+
+
+def _detect_hermes_session_type(topic: str, explicit_type: str) -> str:
+    """
+    Derive hermes session_type from topic keywords if explicit_type == "boardroom".
+    marketing topics → "marketing" (90 token cap instead of 30).
+    """
+    if explicit_type != "boardroom":
+        return explicit_type
+    topic_lower = topic.lower()
+    if any(kw in topic_lower for kw in _MARKETING_KEYWORDS):
+        return "marketing"
+    return "boardroom"
+
+
 async def hermes_exchange(
     topic: str,
     context: str,
@@ -372,6 +391,9 @@ async def hermes_exchange(
             "turns_used": turn_count,
             "silenced": True,
         }
+
+    # Resolve topic-sensitive session type (marketing topics → 90-token cap)
+    session_type = _detect_hermes_session_type(topic, session_type)
 
     hermes_token_key = f"hermes_{session_type}" if session_type in ("boardroom", "brainstorm", "marketing") else "hermes_boardroom"
     hermes_max = TOKEN_LIMITS.get(hermes_token_key, TOKEN_LIMITS["hermes_boardroom"])
@@ -415,7 +437,11 @@ async def hermes_exchange(
             direct_call("ollama_cloud", "qwen", capi_msgs, interpret_max),
             direct_call("venice", "venice_uncensored_12", shadow_msgs, interpret_max),
         )
-        interpretation = f"CAPI: {capi_interp.strip()}\nSHADOW: {shadow_interp.strip()}"
+        # Unified interpretation artifact — synthesise both voices into one statement
+        interpretation = (
+            f"{capi_interp.strip()} "
+            f"[Shadow confirms: {shadow_interp.strip()[:120]}]"
+        )
     except Exception as e:
         interpretation = f"[Interpretation error: {e}]"
 

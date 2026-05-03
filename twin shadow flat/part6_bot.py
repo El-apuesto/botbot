@@ -310,8 +310,9 @@ def api_boardroom():
             yield "\x1eEND\x1f"
             context_turns.append(f"{name}: {member_resp[:300]}")
 
-        # Step 5: SHADOW final word (always, unless shadow_mode already included SHADOW)
-        if not shadow_mode:
+        # Step 5: SHADOW final word — only if SHADOW is not already a regular board member
+        board_names = {m["name"] for m in base_members}
+        if not shadow_mode and "SHADOW" not in board_names:
             final_context = "\n\n".join(context_turns[-8:])
             shadow_msgs = [
                 {"role": "system", "content": inject_capi_identity(SHADOW_SYSTEM, "shadow")},
@@ -768,6 +769,50 @@ def api_tts():
         except Exception as e:
             print(f"[TTS] Google Cloud TTS failed: {e} — falling back to gTTS")
 
+    # Groq PlayAI TTS — multi-voice via Groq audio endpoint
+    groq_key = os.environ.get("GROQ_API_KEY_1", "") or os.environ.get("GROQ_API_KEY_3", "")
+    if groq_key:
+        try:
+            import httpx as _httpx
+            from pydub import AudioSegment
+            import io
+
+            PLAYAI_VOICES = {
+                "TWIN":         "Ava-PlayAI",
+                "SHADOW":       "Fritz-PlayAI",
+                "CAPI":         "Atlas-PlayAI",
+                "GEMMA":        "Celeste-PlayAI",
+                "HERMES":       "Briggs-PlayAI",
+                "NARRATOR":     "Ava-PlayAI",
+            }
+            segments = []
+            for turn in turns:
+                speaker = turn.get("speaker", "NARRATOR").upper()
+                text    = turn.get("text", "").strip()
+                if not text:
+                    continue
+                voice = voice_overrides.get(speaker) or PLAYAI_VOICES.get(speaker, "Ava-PlayAI")
+                resp = _httpx.post(
+                    "https://api.groq.com/openai/v1/audio/speech",
+                    headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                    json={"model": "playai-tts", "input": text[:4096], "voice": voice},
+                    timeout=30,
+                )
+                if resp.status_code == 200:
+                    seg = AudioSegment.from_mp3(io.BytesIO(resp.content))
+                    segments.append(seg)
+                else:
+                    print(f"[TTS] PlayAI {speaker} failed: {resp.status_code} {resp.text[:200]}")
+
+            if segments:
+                combined = segments[0]
+                for seg in segments[1:]:
+                    combined += seg
+                combined.export(str(out_path), format="mp3")
+                return jsonify({"url": f"/audio/{fname}", "provider": "groq_playai"})
+        except Exception as e:
+            print(f"[TTS] Groq PlayAI failed: {e} — falling back to gTTS")
+
     # gTTS fallback — single narrator voice, concatenate all text
     try:
         from gtts import gTTS
@@ -776,7 +821,7 @@ def api_tts():
         )
         tts = gTTS(text=full_text, lang="en", slow=False)
         tts.save(str(out_path))
-        return jsonify({"url": f"/audio/{fname}"})
+        return jsonify({"url": f"/audio/{fname}", "provider": "gtts"})
     except Exception as e:
         return jsonify({"error": f"TTS failed: {e}"}), 500
 

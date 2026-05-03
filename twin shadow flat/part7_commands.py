@@ -16,6 +16,7 @@ from __future__ import annotations
 import time
 
 from part2_router import call_task
+from part1_registry import BRAINSTORM_MEMBERS, SHADOW_BRAINSTORM_MEMBERS
 
 # ══════════════════════════════════════════════════════════════════════════════
 # MODEL DISPLAY NAMES
@@ -413,7 +414,8 @@ async def handle_brainstorm(
         return
 
     topic        = " ".join(args)
-    participants = DEFAULT_SHADOW_BOARDROOM if shadow_mode else DEFAULT_BOARDROOM
+    roster       = SHADOW_BRAINSTORM_MEMBERS if shadow_mode else BRAINSTORM_MEMBERS
+    participants = [m["key"] for m in roster]
 
     _sessions[chat_id] = {
         "type":          "brainstorm",
