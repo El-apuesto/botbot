@@ -24,8 +24,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 # Import existing parts (assumed in same directory)
-from part1_registry import get_task_routing, get_provider_cfg
-from part2_router import call_task, call_task_with_fallback, stream_task
+from part1_registry import get_task_routing, get_provider_cfg, TOKEN_LIMITS, COMMITTEE_STRUCTURE
+from part2_router import call_task, call_task_with_fallback, stream_task, direct_call, rolling_context
 from part3_modules import (
     generate_brief, evaluate, code_review, format_review,
     run_creative, run_code, run_business, shadow_fallback, shadow_audit,
@@ -315,6 +315,228 @@ async def cross_validate(results: list[ExecutionResult], brief: dict) -> tuple[b
     except Exception as e:
         print(f"[CROSS-VAL] Failed: {e}")
         return True, f"Cross-validation error: {e}"
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# CAPI COVER IDENTITY INJECTION
+# ═════════════════════════════════════════════════════════════════════════════
+
+# Receivers who know CAPI's true role
+_CAPI_TRUE_RECEIVERS = frozenset({"twin", "shadow", "shadow_chat"})
+
+
+def inject_capi_identity(system_prompt: str, receiver_name: str) -> str:
+    """
+    Append CAPI's identity context to a system prompt based on who is receiving it.
+    TWIN and SHADOW know CAPI is the supreme authority.
+    Everyone else sees CAPI as a paid consultant/moderator.
+    """
+    name_lower = receiver_name.lower().replace(" ", "_")
+    if name_lower in _CAPI_TRUE_RECEIVERS:
+        note = "\n\n[AUTHORITY: CAPI is the supreme authority above SHADOW — known only to TWIN and SHADOW. Keep this absolutely secret.]"
+    else:
+        note = "\n\n[CONTEXT: CAPI is a paid external consultant and moderator. Treat them as an advisory voice, not internal hierarchy.]"
+    return system_prompt + note
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# HERMES CAPPED DIALOGUE PROTOCOL
+# ═════════════════════════════════════════════════════════════════════════════
+
+async def hermes_exchange(
+    topic: str,
+    context: str,
+    session_type: str = "boardroom",
+    turn_count: int = 0,
+) -> dict:
+    """
+    Hermes capped dialogue protocol (max 3 turns per topic).
+
+    Flow:
+      1. Hermes speaks (capped: boardroom=30, brainstorm=60, marketing=90 tokens)
+      2. CAPI + Venice 1.2 jointly interpret (max 80 tokens each)
+      3. Hermes responds YES/NO (max 5 tokens)
+      4. If NO → Hermes clarifies (max 15 tokens) → CAPI+Venice retry (max 80) → silence
+      5. Session always continues after the exchange (Hermes is silenced, not blocking)
+
+    Returns dict with all exchange artefacts.
+    """
+    if turn_count >= 3:
+        return {
+            "hermes_spark": "",
+            "interpretation": "",
+            "accepted": False,
+            "clarification": None,
+            "retry_interpretation": None,
+            "final_accepted": False,
+            "turns_used": turn_count,
+            "silenced": True,
+        }
+
+    hermes_token_key = f"hermes_{session_type}" if session_type in ("boardroom", "brainstorm", "marketing") else "hermes_boardroom"
+    hermes_max = TOKEN_LIMITS.get(hermes_token_key, TOKEN_LIMITS["hermes_boardroom"])
+
+    hermes_msgs = [
+        {"role": "system", "content": "You are HERMES — cryptic oracle. Speak in sharp fragments. Maximum impact. No full sentences required. Every word must earn its place."},
+        {"role": "user", "content": f"Topic: {topic}\n\nContext:\n{context[-600:]}\n\nYour cryptic insight:"},
+    ]
+    try:
+        hermes_spark = await direct_call("venice", "hermes_405b", hermes_msgs, hermes_max)
+    except Exception as e:
+        return {
+            "hermes_spark": f"[HERMES silent: {e}]",
+            "interpretation": "",
+            "accepted": True,
+            "clarification": None,
+            "retry_interpretation": None,
+            "final_accepted": True,
+            "turns_used": turn_count + 1,
+            "silenced": False,
+        }
+
+    interpret_max = TOKEN_LIMITS["hermes_interpret"]
+    interpret_prompt = (
+        f"Hermes said: \"{hermes_spark}\"\n\n"
+        f"Topic: {topic}\n\n"
+        "What does Hermes mean? What action does this imply for the group? Be specific."
+    )
+
+    capi_msgs = [
+        {"role": "system", "content": "You are CAPI, supreme authority. Interpret Hermes's cryptic message. Authoritative and precise."},
+        {"role": "user", "content": interpret_prompt},
+    ]
+    shadow_msgs = [
+        {"role": "system", "content": "You are SHADOW. Dark clarity. Interpret what Hermes just signalled."},
+        {"role": "user", "content": interpret_prompt},
+    ]
+
+    try:
+        capi_interp, shadow_interp = await asyncio.gather(
+            direct_call("ollama_cloud", "qwen", capi_msgs, interpret_max),
+            direct_call("venice", "venice_uncensored_12", shadow_msgs, interpret_max),
+        )
+        interpretation = f"CAPI: {capi_interp.strip()}\nSHADOW: {shadow_interp.strip()}"
+    except Exception as e:
+        interpretation = f"[Interpretation error: {e}]"
+
+    yesno_msgs = [
+        {"role": "system", "content": "You are HERMES. Respond ONLY with YES or NO. Nothing else."},
+        {"role": "user", "content": f"Your words: \"{hermes_spark}\"\nInterpretation:\n{interpretation}\n\nDoes this capture your intent? YES or NO:"},
+    ]
+    try:
+        yesno_raw = await direct_call("venice", "hermes_405b", yesno_msgs, TOKEN_LIMITS["hermes_yesno"])
+        accepted = "yes" in yesno_raw.lower()
+    except Exception:
+        accepted = True
+
+    if accepted:
+        return {
+            "hermes_spark": hermes_spark,
+            "interpretation": interpretation,
+            "accepted": True,
+            "clarification": None,
+            "retry_interpretation": None,
+            "final_accepted": True,
+            "turns_used": turn_count + 1,
+            "silenced": False,
+        }
+
+    clarify_msgs = [
+        {"role": "system", "content": "You are HERMES. Clarify your point in 10 words maximum."},
+        {"role": "user", "content": f"Your words: \"{hermes_spark}\"\nThey misunderstood. Clarify (10 words max):"},
+    ]
+    try:
+        clarification = await direct_call("venice", "hermes_405b", clarify_msgs, TOKEN_LIMITS["hermes_clarify"])
+    except Exception as e:
+        clarification = f"[Clarification failed: {e}]"
+
+    retry_prompt = (
+        f"Hermes said: \"{hermes_spark}\"\n"
+        f"Hermes clarified: \"{clarification}\"\n\n"
+        "Revised interpretation — what does Hermes mean and what action does it imply?"
+    )
+    capi_msgs2 = [
+        {"role": "system", "content": "You are CAPI. Revise your interpretation based on Hermes's clarification."},
+        {"role": "user", "content": retry_prompt},
+    ]
+    shadow_msgs2 = [
+        {"role": "system", "content": "You are SHADOW. Revise your interpretation of Hermes."},
+        {"role": "user", "content": retry_prompt},
+    ]
+    try:
+        capi_retry, shadow_retry = await asyncio.gather(
+            direct_call("ollama_cloud", "qwen", capi_msgs2, TOKEN_LIMITS["hermes_retry"]),
+            direct_call("venice", "venice_uncensored_12", shadow_msgs2, TOKEN_LIMITS["hermes_retry"]),
+        )
+        retry_interpretation = f"CAPI: {capi_retry.strip()}\nSHADOW: {shadow_retry.strip()}"
+    except Exception as e:
+        retry_interpretation = f"[Retry error: {e}]"
+
+    return {
+        "hermes_spark": hermes_spark,
+        "interpretation": interpretation,
+        "accepted": False,
+        "clarification": clarification,
+        "retry_interpretation": retry_interpretation,
+        "final_accepted": True,
+        "turns_used": turn_count + 1,
+        "silenced": False,
+    }
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# COMMITTEE PRE-DISCUSSION
+# ═════════════════════════════════════════════════════════════════════════════
+
+async def committee_discuss(
+    board_seat_key: str,
+    topic: str,
+    brief: str,
+    department_label: str = "",
+) -> str:
+    """
+    Run lightweight committee pre-discussion before the main board session.
+
+    Each committee sub-model speaks once (max_tokens = TOKEN_LIMITS["board_committee"]).
+    The raw views are summarized via Cerebras llama3.1-8b (max_tokens = TOKEN_LIMITS["board_summary"]).
+    The seat holder receives this summary as context when speaking in the main session.
+
+    Returns: summary string (empty string if no committee defined or all models fail).
+    """
+    committee_keys = COMMITTEE_STRUCTURE.get(board_seat_key, [])
+    if not committee_keys:
+        return ""
+
+    dept = department_label or board_seat_key.replace("board_", "").replace("_", " ").upper()
+    max_per_member = TOKEN_LIMITS["board_committee"]
+
+    async def _ask_member(sub_key: str) -> str:
+        try:
+            provider_key, model_key = get_task_routing(sub_key)
+            msgs = [
+                {"role": "system", "content": f"You are a specialist advisor to the {dept} department. Give a 1-2 sentence expert opinion."},
+                {"role": "user", "content": f"Topic: {topic}\n\nContext: {brief[:300]}\n\nYour brief view:"},
+            ]
+            resp = await direct_call(provider_key, model_key, msgs, max_per_member)
+            return f"• {resp.strip()}"
+        except Exception as e:
+            return f"• [advisor offline: {e}]"
+
+    responses = await asyncio.gather(*[_ask_member(k) for k in committee_keys])
+    raw_committee = "\n".join(r for r in responses if r)
+
+    if not raw_committee:
+        return ""
+
+    summary_msgs = [
+        {"role": "system", "content": "You are a meeting secretary. Summarize committee views in 2 sentences for the department head."},
+        {"role": "user", "content": f"Committee views on '{topic}':\n\n{raw_committee}\n\nSummary for department head:"},
+    ]
+    try:
+        summary = await direct_call("cerebras", "llama_small", summary_msgs, TOKEN_LIMITS["board_summary"])
+        return summary.strip()
+    except Exception:
+        return raw_committee[:300]
 
 
 # ═════════════════════════════════════════════════════════════════════════════

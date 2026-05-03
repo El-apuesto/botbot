@@ -1,31 +1,65 @@
 """
 Twin Shadow — Part 1: Model Registry
 All providers, models, task routing, TTS voice assignments.
+Task #13: Boardroom & Committee System Overhaul
 """
 
 # ── TTS Voice assignments per persona ──────────────────────────────────────────
-# Used by /api/tts for multi-voice boardroom / brainstorm / podcast audio.
-# Overridable in Settings via localStorage (sent as JSON in the TTS request).
 TTS_VOICES: dict[str, str] = {
-    "TWIN":        "en-US-Neural2-D",
-    "SHADOW":      "en-US-Neural2-A",   # authoritarian real Shadow (Venice 1.2)
-    "GEMMA":       "en-US-Wavenet-C",   # uncensored chat Shadow persona (Gemma 4)
-    "ORACLE":      "en-US-Neural2-E",   # Venice 1.1 — shadow boardroom strategist
-    "CAPI":        "en-US-Wavenet-B",
-    "HERMES":      "en-US-Neural2-J",
-    "GPTOSS":      "en-US-Neural2-G",
-    "QWEN":        "en-US-Wavenet-D",
-    "MISTRAL":     "en-US-Neural2-F",
-    "MINIMAX":     "en-US-Wavenet-A",
-    "BUILDER":     "en-US-Neural2-I",
-    "NARRATOR":    "en-US-Neural2-C",
+    "TWIN":         "en-US-Neural2-D",
+    "SHADOW":       "en-US-Neural2-A",
+    "GEMMA":        "en-US-Wavenet-C",
+    "CAPI":         "en-US-Wavenet-B",
+    "HERMES":       "en-US-Neural2-J",
+    "GPTOSS":       "en-US-Neural2-G",
+    "QWEN":         "en-US-Wavenet-D",
+    "MISTRAL":      "en-US-Neural2-F",
+    "MINIMAX":      "en-US-Wavenet-A",
+    "BUILDER":      "en-US-Neural2-I",
+    "NARRATOR":     "en-US-Neural2-C",
+    "STRATEGY":     "en-US-Neural2-B",
+    "FINANCE":      "en-US-Neural2-H",
+    "CREATIVE":     "en-US-Wavenet-E",
+    "TECH":         "en-US-Wavenet-F",
+    "OPS":          "en-US-Wavenet-G",
+    "DISTRIBUTION": "en-US-Wavenet-H",
+    "VENICE70":     "en-US-Neural2-E",
+    "QWQ":          "en-US-Wavenet-I",
+}
+
+# ── Hard token limits per role category ────────────────────────────────────────
+TOKEN_LIMITS: dict[str, int] = {
+    # Board roles
+    "board_main":           200,
+    "board_committee":      50,
+    "board_summary":        100,
+    # Shadow board (slightly longer turns)
+    "shadow_board":         250,
+    # Brainstorm
+    "brainstorm":           150,
+    "brainstorm_moderator": 100,
+    # Hermes capped dialogue protocol
+    "hermes_boardroom":     30,
+    "hermes_brainstorm":    60,
+    "hermes_marketing":     90,
+    "hermes_interpret":     80,
+    "hermes_yesno":         5,
+    "hermes_clarify":       15,
+    "hermes_retry":         80,
+    # General
+    "routing":              50,
+    "audit":                200,
+    "chat":                 800,
+    "shadow_chat":          800,
+    "code":                 4000,
+    "brief":                300,
 }
 
 PROVIDERS: dict = {
 
     "ollama_cloud": {
         "role": "capi",
-        "desc": "CAPI. The real top authority. Known only to TWIN and SHADOW.",
+        "desc": "CAPI. Supreme authority. Known only to TWIN and SHADOW.",
         "base_url_env":  "OLLAMA_BASE_URL",
         "api_key_env":   "OLLAMA_API_KEY",
         "default_key":   "ollama",
@@ -37,7 +71,7 @@ PROVIDERS: dict = {
 
     "ollama_local": {
         "role": "local_shadow",
-        "desc": "Dolphin local. Shadow board seat. Desktop only.",
+        "desc": "Dolphin local. Desktop only.",
         "base_url":      "http://localhost:11434/v1",
         "api_key":       "ollama",
         "openai_compat": True,
@@ -49,7 +83,7 @@ PROVIDERS: dict = {
 
     "cerebras": {
         "role": "specialist",
-        "desc": "Cerebras ultra-fast inference. Llama, Qwen, GPT-OSS at high TPS.",
+        "desc": "Cerebras ultra-fast. Routing, summaries, committee condensing.",
         "base_url":       "https://api.cerebras.ai/v1",
         "api_key_env":    "CEREBRAS_API_KEY",
         "openai_compat":  True,
@@ -61,88 +95,73 @@ PROVIDERS: dict = {
 
     "nvidia": {
         "role": "specialist",
-        "desc": "NVIDIA NIM. Llama, Qwen Coder 480B, Nemotron Super 49B.",
+        "desc": "NVIDIA NIM. Free chat boardroom seats + specialized non-chat models.",
         "base_url":       "https://integrate.api.nvidia.com/v1",
         "api_key_env":    "NVIDIA_API_KEY",
         "openai_compat":  True,
         "models": {
-            "llama_maverick":   "meta/llama-4-maverick-17b-128e-instruct",
-            "llama_70b":        "meta/llama-3.3-70b-instruct",
-            "deepseek_flash":   "deepseek-ai/deepseek-v4-flash",
-            "deepseek_v3":      "deepseek-ai/deepseek-v3.2",
-            "nemotron_49b":     "nvidia/llama-3.3-nemotron-super-49b-v1",
-            "nemotron_120b":    "nvidia/nemotron-3-super-120b-a12b",
-            "qwen_coder_480":   "qwen/qwen3-coder-480b-a35b-instruct",
-            "vision_90b":       "meta/llama-3.2-90b-vision-instruct",   # VISION — image analysis
-            "vision_11b":       "meta/llama-3.2-11b-vision-instruct",   # VISION — fast/light
-            "phi4_multimodal":  "microsoft/phi-4-multimodal-instruct",  # VISION — phi-4 multimodal
-            "kimi_k2":          "moonshotai/kimi-k2-instruct",
-            "kimi_k2_6":        "moonshotai/kimi-k2.6",
-            "devstral":         "mistralai/devstral-2-123b-instruct-2512",
-            "mistral_large3":   "mistralai/mistral-large-3-675b-instruct-2512",
-            "mistral_medium35": "mistralai/mistral-medium-3.5-128b",
-            "minimax_m25":      "minimaxai/minimax-m2.5",
-            "glm51":            "z-ai/glm-5.1",
-            "glm5":             "z-ai/glm5",
+            # ── Boardroom seats (free chat) ────────────────────────────────────
+            "kimi_k2":              "moonshotai/kimi-k2-instruct",
+            "kimi_k2_6":            "moonshotai/kimi-k2.6",
+            "kimi_k2_thinking":     "moonshotai/kimi-k2-thinking",
+            "mistral_large3":       "mistralai/mistral-large-3-675b-instruct-2512",
+            "mistral_medium35":     "mistralai/mistral-medium-3.5-128b",
+            "magistral_small":      "mistralai/magistral-small-2506",
+            "palmyra_creative_122b":"writer/palmyra-creative-122b",
+            "palmyra_fin_70b":      "writer/palmyra-fin-70b",
+            "devstral":             "mistralai/devstral-2-123b-instruct-2512",
+            "codestral_22b":        "mistralai/codestral-2501",
+            "nemotron_49b":         "nvidia/llama-3.3-nemotron-super-49b-v1",
+            "nemotron_120b":        "nvidia/nemotron-3-super-120b-a12b",
+            "nemotron_ultra_253b":  "nvidia/llama-3.1-nemotron-ultra-253b-v1",
+            "gpt_oss_120b":         "openai/gpt-oss-120b",
+            "gpt_oss_20b":          "openai/gpt-oss-20b",
+            "qwen_coder_480":       "qwen/qwen3-coder-480b-a35b-instruct",
+            "qwen35_397b":          "qwen/qwen3.5-397b-a54b",
+            "glm51":                "z-ai/glm-5.1",
+            "glm5":                 "z-ai/glm5",
+            "minimax_m25":          "minimaxai/minimax-m2.5",
+            "deepseek_flash":       "deepseek-ai/deepseek-v4-flash",
+            "deepseek_v3":          "deepseek-ai/deepseek-v3.2",
+            "llama_70b":            "meta/llama-3.3-70b-instruct",
+            "llama_maverick":       "meta/llama-4-maverick-17b-128e-instruct",
+            "granite_34b_code":     "ibm/granite-34b-code-instruct",
+            "seed_oss_36b":         "bytedance-research/seed-oss-36b",
+            "stepfun_flash":        "stepfun/step-3-mini-flash-turbo",
+            # ── Vision ────────────────────────────────────────────────────────
+            "vision_90b":           "meta/llama-3.2-90b-vision-instruct",
+            "vision_11b":           "meta/llama-3.2-11b-vision-instruct",
+            "phi4_multimodal":      "microsoft/phi-4-multimodal-instruct",
+            # ── Specialized non-chat ──────────────────────────────────────────
+            "riva_translate":       "nvidia/riva-translate",
+            "nemoretriever_parse":  "nvidia/nemoretriever-parse",
+            "nv_embedqa":           "nvidia/nv-embedqa-e5-v5",
+            "nv_embedcode":         "nvidia/nv-embedqa-mistral-7b-v2",
+            "ai_video_detector":    "nv-us-east-1/ai-video-detector",
+            "nemotron_reward":      "nvidia/nemotron-4-reward",
+            "nemoguard_content":    "nvidia/nemoguard-8b-content-safety",
+            "deplot":               "microsoft/deplot",
         },
     },
 
     "groq": {
         "role": "twin",
-        "desc": "TWIN. Groq Llama 3.3 70B. Briefs tasks, routes bots, main chat.",
+        "desc": "TWIN. Groq Llama 70B + Whisper transcription + PlayAI TTS + QwQ 32B.",
         "base_url":       "https://api.groq.com/openai/v1",
         "api_key_env":    "GROQ_API_KEY",
         "key_rotation":   ["GROQ_API_KEY", "GROQ_API_KEY_1", "GROQ_API_KEY_2", "GROQ_API_KEY_3"],
         "openai_compat":  True,
         "models": {
-            "llama": "llama-3.3-70b-versatile",
-        },
-    },
-
-    "openrouter": {
-        "role": "intermediary",
-        "desc": "OpenRouter. Board members, creative, legal, SHADOW.",
-        "base_url":      "https://openrouter.ai/api/v1",
-        "api_key_env":   "OPENROUTER_API_KEY",
-        "openai_compat": True,
-        "models": {
-            "hermes3":        "nousresearch/hermes-3-llama-3.1-405b:free",
-            "minimax":        "minimax/minimax-01:free",
-            "minimax_m25":    "minimax/minimax-m2.5:free",
-            "qwen_free":      "qwen/qwen3-235b-a22b:free",
-            "mistral_free":   "mistralai/mistral-7b-instruct:free",
-            "dolphin_venice": "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
-            "llama_free":     "meta-llama/llama-3.2-11b-vision-instruct:free",
-            "legal":          "mistralai/mixtral-8x7b-instruct:free",
-            "gpt_oss_120b":   "openai/gpt-oss-120b:free",
-            "sheel_m":        "sao10k/l3.3-euryale-70b:free",
-        },
-    },
-
-    "aiml": {
-        "role": "builder",
-        "desc": "AIML. Builder bot coder. Key rotation x3.",
-        "base_url":       "https://api.aimlapi.com/v1",
-        "api_key_env":    "AIML_API_KEY_1",
-        "key_rotation":   ["AIML_API_KEY_1", "AIML_API_KEY_2", "AIML_API_KEY_3"],
-        "openai_compat":  True,
-        "models": {
-            "glm":     "glm-5.1",
-            "sheel_m": "gpt-4o",
-        },
-    },
-
-    "deepinfra": {
-        "role": "specialist",
-        "desc": "DeepInfra specialist models.",
-        "base_url":      "https://api.deepinfra.com/v1/openai",
-        "api_key_env":   "DEEPINFRA_API_KEY",
-        "openai_compat": True,
-        "models": {
-            "nemotron":     "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-            "dolphin":      "cognitivecomputations/dolphin-mistral-24b-venice-edition",
-            "minimax_m2_5": "minimax/minimax-m2.5",
-            "gpt_oss_120b": "openai/gpt-oss-120b",
+            # Chat
+            "llama":            "llama-3.3-70b-versatile",
+            "qwq_32b":          "qwq-32b",
+            "deepseek_r1_70b":  "deepseek-r1-distill-llama-70b",
+            "gemma2_9b":        "gemma2-9b-it",
+            "mixtral_8x7b":     "mixtral-8x7b-32768",
+            # Specialized (non-chat — called via dedicated endpoints)
+            "whisper_v3":       "whisper-large-v3",
+            "whisper_turbo":    "whisper-large-v3-turbo",
+            "playai_tts":       "playai-tts",
         },
     },
 
@@ -192,114 +211,243 @@ PROVIDERS: dict = {
 
     "venice": {
         "role": "shadow",
-        "desc": "Venice.ai uncensored. Gemma 4 Uncensored (chat persona) + Venice 1.2 Uncensored (authoritarian SHADOW).",
+        "desc": "Venice.ai uncensored. SHADOW (1.2), GEMMA (Gemma 4), Hermes 405B, Llama 70B.",
         "base_url":      "https://api.venice.ai/api/v1",
         "api_key_env":   "VENICE_ADMIN_KEY",
         "openai_compat": True,
         "models": {
-            "gemma4_uncensored":      "gemma-4-uncensored",                    # GEMMA — uncensored chat persona
-            "venice_uncensored_12":   "venice-uncensored-1-2",                 # SHADOW — authoritarian dark authority
-            "venice_uncensored_11":   "venice-uncensored",                     # ORACLE — 1.1 shadow boardroom strategist
-            "venice_roleplay":        "venice-uncensored-role-play",           # roleplay uncensored
-            "hermes_405b":            "hermes-3-llama-3.1-405b",               # SPECIALIST — marketing, SEO, legal
-            "mistral_small":          "mistral-small-3-2-24b-instruct",        # SPECIALIST — legal, budget
-            "deepseek_flash":         "deepseek-v4-flash",                     # SPECIALIST — fast marketing analysis
-            "llama_70b":              "llama-3.3-70b",                         # SPECIALIST — legal/SEO backup
-            "qwen_coder_480_turbo":   "qwen3-coder-480b-a35b-instruct-turbo",  # BUILDER — uncensored coder 480B turbo
-            "qwen_coder_480":         "qwen3-coder-480b-a35b-instruct",        # BUILDER — uncensored coder 480B
-            "gpt_codex_52":           "openai-gpt-52-codex",                   # BUILDER — structured codex output
-            "qwen_vl_235b":           "qwen3-vl-235b-a22b",                    # VISION — multimodal coder (image + code)
+            "gemma4_uncensored":      "gemma-4-uncensored",
+            "venice_uncensored_12":   "venice-uncensored-1-2",
+            "venice_uncensored_11":   "venice-uncensored",
+            "venice_roleplay":        "venice-uncensored-role-play",
+            "hermes_405b":            "hermes-3-llama-3.1-405b",
+            "mistral_small":          "mistral-small-3-2-24b-instruct",
+            "deepseek_flash":         "deepseek-v4-flash",
+            "llama_70b":              "llama-3.3-70b",
+            "qwen_coder_480_turbo":   "qwen3-coder-480b-a35b-instruct-turbo",
+            "qwen_coder_480":         "qwen3-coder-480b-a35b-instruct",
+            "gpt_codex_52":           "openai-gpt-52-codex",
+            "qwen_vl_235b":           "qwen3-vl-235b-a22b",
         },
     },
 }
 
+# ── Non-chat model keys — skip standard chat ping in health checks ─────────────
+NVIDIA_NON_CHAT = frozenset({
+    "riva_translate", "nemoretriever_parse", "nv_embedqa", "nv_embedcode",
+    "ai_video_detector", "nemotron_reward", "nemoguard_content", "deplot",
+})
+
+GROQ_NON_CHAT = frozenset({"whisper_v3", "whisper_turbo", "playai_tts"})
+
 TASK_MODELS: dict = {
     # ── core hierarchy ────────────────────────────────────────────────────────
-    "twin":             ("groq",   "llama"),            # TWIN — Groq Llama 70B
-    "brief":            ("groq",   "llama"),            # briefing — Groq
-    "shadow":           ("ollama_cloud", "qwen"),       # SHADOW — Ollama Qwen Coder 480B
+    "twin":             ("groq",         "llama"),
+    "brief":            ("groq",         "llama"),
+    "shadow":           ("venice",       "venice_uncensored_12"),
+    "shadow_chat":      ("venice",       "venice_uncensored_12"),
 
-    # ── relay / routing ───────────────────────────────────────────────────────
-    "relay":            ("nvidia", "kimi_k2"),          # was: openrouter/hermes3
+    # ── routing / summarization (Cerebras fast) ───────────────────────────────
+    "routing":          ("cerebras",     "llama_small"),
+    "summarize":        ("cerebras",     "llama_small"),
+    "relay":            ("nvidia",       "kimi_k2"),
 
-    # ── shadow chat / dark personas ───────────────────────────────────────────
-    "shadow_chat":      ("venice", "venice_uncensored_12"),  # SHADOW — authoritarian dark authority (Venice 1.2)
-    "board_dolphin":    ("venice", "gemma4_uncensored"),     # GEMMA — uncensored chat persona
-    "chat_specialist":  ("venice", "gemma4_uncensored"),     # GEMMA — uncensored specialist
+    # ── shadow / dark personas ────────────────────────────────────────────────
+    "board_dolphin":    ("venice",       "gemma4_uncensored"),
+    "chat_specialist":  ("venice",       "gemma4_uncensored"),
     "local_shadow":     ("ollama_local", "dolphin"),
     "local_adolphus":   ("ollama_local", "dolphin_venice"),
 
-    # ── creative / occult comedy content ─────────────────────────────────────
-    "creative":         ("nvidia", "glm51"),            # GLM 5.1 — creative/occult
-    "creative_alt":     ("nvidia", "mistral_large3"),   # Mistral 675B — creative alt
-    "creative_dolphin": ("venice", "gemma4_uncensored"),# GEMMA — uncensored creative
-    "multimodal":       ("nvidia", "glm51"),            # GLM 5.1 — multimodal tasks
+    # ── creative / occult comedy ─────────────────────────────────────────────
+    "creative":         ("nvidia",       "glm51"),
+    "creative_alt":     ("nvidia",       "mistral_large3"),
+    "creative_dolphin": ("venice",       "gemma4_uncensored"),
+    "multimodal":       ("nvidia",       "glm51"),
 
-    # ── code ──────────────────────────────────────────────────────────────────
-    "code":             ("venice", "qwen_coder_480_turbo"), # UNCENSORED coder — Venice Qwen 480B Turbo
-    "code_check":       ("venice", "qwen_coder_480_turbo"), # UNCENSORED code review
-    "code_check_v2":    ("venice", "gpt_codex_52"),         # Codex 52 — structured deep review
-    "code_reason":      ("nvidia", "kimi_k2"),              # Kimi K2 — reasoning (stays on NVIDIA)
-    "builder":          ("venice", "qwen_coder_480_turbo"), # UNCENSORED builder bot
-    "builder_review":   ("venice", "qwen_coder_480_turbo"), # UNCENSORED builder review
-    "builder_check":    ("venice", "gpt_codex_52"),         # Codex 52 — final structured check
+    # ── code chain: CAPI (Ollama, free, uncensored) → NVIDIA free fallback ────
+    "code":             ("ollama_cloud", "qwen"),
+    "code_fallback":    ("nvidia",       "qwen_coder_480"),
+    "code_check":       ("ollama_cloud", "qwen"),
+    "code_check_v2":    ("venice",       "gpt_codex_52"),
+    "code_reason":      ("nvidia",       "kimi_k2"),
+    "builder":          ("ollama_cloud", "qwen"),
+    "builder_review":   ("ollama_cloud", "qwen"),
+    "builder_check":    ("venice",       "gpt_codex_52"),
 
-    # ── vision / multimodal ───────────────────────────────────────────────────
-    "vision":           ("nvidia", "vision_90b"),           # NVIDIA 90B vision — image analysis
-    "vision_fast":      ("nvidia", "vision_11b"),           # NVIDIA 11B vision — fast/light
-    "vision_uncensored":("venice", "qwen_vl_235b"),         # Venice VL 235B — uncensored vision+code
+    # ── vision ────────────────────────────────────────────────────────────────
+    "vision":           ("nvidia",       "vision_90b"),
+    "vision_fast":      ("nvidia",       "vision_11b"),
+    "vision_uncensored":("venice",       "qwen_vl_235b"),
 
     # ── business / legal / SEO ────────────────────────────────────────────────
-    "business":         ("venice", "hermes_405b"),      # Hermes 405B — marketing/legal/SEO specialist
-    "business_deep":    ("venice", "mistral_small"),    # Mistral Small 24B — budget legal analysis
-    "legal_finance":    ("venice", "hermes_405b"),      # Hermes 405B — best for legal on Venice
-    "fast_reasoning":   ("venice", "deepseek_flash"),   # DeepSeek Flash — fast marketing analysis
+    "business":         ("venice",       "hermes_405b"),
+    "business_deep":    ("venice",       "mistral_small"),
+    "legal_finance":    ("venice",       "hermes_405b"),
+    "fast_reasoning":   ("venice",       "deepseek_flash"),
 
-    # ── boardroom members ─────────────────────────────────────────────────────
-    "board_hermes":     ("nvidia", "kimi_k2"),          # Creative & Occult Consultant
-    "board_gptoss":     ("venice", "hermes_405b"),      # Marketing & SEO Lead — Hermes 405B
-    "board_qwen":       ("nvidia", "glm51"),            # Strategic Advisor
-    "board_mistral":    ("nvidia", "mistral_large3"),   # Practical Critic — Mistral 675B
-    "board_minimax":    ("nvidia", "minimax_m25"),      # Analytics & Data
-    "board_venice":     ("venice", "venice_uncensored_11"), # ORACLE — Venice 1.1 shadow boardroom
+    # ── regular boardroom seats (6 free NVIDIA) ───────────────────────────────
+    "board_strategy":       ("nvidia",   "kimi_k2"),
+    "board_finance":        ("nvidia",   "mistral_large3"),
+    "board_creative":       ("nvidia",   "palmyra_creative_122b"),
+    "board_tech":           ("nvidia",   "devstral"),
+    "board_ops":            ("nvidia",   "nemotron_49b"),
+    "board_distribution":   ("nvidia",   "gpt_oss_120b"),
+
+    # ── shadow boardroom only ─────────────────────────────────────────────────
+    "board_venice_llama":   ("venice",   "llama_70b"),
+    "board_hermes_capped":  ("venice",   "hermes_405b"),
+
+    # ── brainstorm extras ─────────────────────────────────────────────────────
+    "brainstorm_qwq":       ("groq",     "qwq_32b"),
+    "brainstorm_minimax":   ("nvidia",   "minimax_m25"),
+    "brainstorm_glm":       ("nvidia",   "glm51"),
+    "brainstorm_kimi":      ("nvidia",   "kimi_k2"),
+    "brainstorm_mistral":   ("nvidia",   "mistral_large3"),
+
+    # ── legacy board keys (back-compat with part6/part7) ──────────────────────
+    "board_hermes":     ("nvidia",       "kimi_k2"),
+    "board_gptoss":     ("venice",       "hermes_405b"),
+    "board_qwen":       ("nvidia",       "glm51"),
+    "board_mistral":    ("nvidia",       "mistral_large3"),
+    "board_minimax":    ("nvidia",       "minimax_m25"),
+    "board_venice":     ("venice",       "venice_uncensored_11"),
+
+    # ── committee sub-model slots (pre-discussion) ────────────────────────────
+    "committee_strategy_1": ("nvidia",   "nemotron_ultra_253b"),
+    "committee_strategy_2": ("nvidia",   "qwen35_397b"),
+    "committee_strategy_3": ("nvidia",   "kimi_k2_thinking"),
+    "committee_finance_1":  ("nvidia",   "palmyra_fin_70b"),
+    "committee_finance_2":  ("nvidia",   "magistral_small"),
+    "committee_finance_3":  ("nvidia",   "mistral_medium35"),
+    "committee_creative_1": ("nvidia",   "palmyra_creative_122b"),
+    "committee_creative_2": ("cerebras", "qwen_instruct"),
+    "committee_creative_3": ("nvidia",   "glm51"),
+    "committee_tech_1":     ("nvidia",   "codestral_22b"),
+    "committee_tech_2":     ("nvidia",   "granite_34b_code"),
+    "committee_tech_3":     ("nvidia",   "gpt_oss_20b"),
+    "committee_ops_1":      ("nvidia",   "seed_oss_36b"),
+    "committee_ops_2":      ("nvidia",   "stepfun_flash"),
+    "committee_ops_3":      ("nvidia",   "nemotron_49b"),
+    "committee_dist_1":     ("nvidia",   "gpt_oss_120b"),
+    "committee_dist_2":     ("nvidia",   "deepseek_v3"),
+    "committee_dist_3":     ("venice",   "deepseek_flash"),
+
+    # ── specialized non-chat services ─────────────────────────────────────────
+    "transcription":        ("groq",     "whisper_v3"),
+    "transcription_fast":   ("groq",     "whisper_turbo"),
+    "tts_groq":             ("groq",     "playai_tts"),
+    "translation":          ("nvidia",   "riva_translate"),
+    "doc_parse":            ("nvidia",   "nemoretriever_parse"),
+    "safety_gate":          ("nvidia",   "nemoguard_content"),
+    "quality_score":        ("nvidia",   "nemotron_reward"),
 
     # ── video ─────────────────────────────────────────────────────────────────
-    "video":            ("fal",         "wan21"),
-    "video_fallback":   ("huggingface", "wan21"),
-    "video_alt":        ("replicate",   "minimax_video"),
-    "shadow_video":     ("grok",        "aurora"),
+    "video":            ("fal",          "wan21"),
+    "video_fallback":   ("huggingface",  "wan21"),
+    "video_alt":        ("replicate",    "minimax_video"),
+    "shadow_video":     ("grok",         "aurora"),
 }
 
+# ── Regular boardroom: 6 free NVIDIA seats + SHADOW + GEMMA + CAPI (cover) ────
 BOARD_MEMBERS = [
-    {"key": "board_hermes",  "name": "HERMES",   "role": "Creative & Occult Consultant"},
-    {"key": "board_gptoss",  "name": "GPTOSS",   "role": "Marketing & SEO Lead"},
-    {"key": "board_qwen",    "name": "QWEN",     "role": "Strategic Advisor"},
-    {"key": "board_mistral", "name": "MISTRAL",  "role": "Practical Critic"},
-    {"key": "board_minimax", "name": "MINIMAX",  "role": "Analytics & Data"},
+    {"key": "board_strategy",     "name": "STRATEGY",     "role": "Strategic Advisor (Kimi K2)"},
+    {"key": "board_finance",      "name": "FINANCE",      "role": "Finance & Risk Analyst (Mistral 675B)"},
+    {"key": "board_creative",     "name": "CREATIVE",     "role": "Creative Director (Palmyra 122B)"},
+    {"key": "board_tech",         "name": "TECH",         "role": "Tech Lead (Devstral 123B)"},
+    {"key": "board_ops",          "name": "OPS",          "role": "Operations (Nemotron 49B)"},
+    {"key": "board_distribution", "name": "DISTRIBUTION", "role": "Distribution & Growth (GPT-OSS 120B)"},
+    {"key": "shadow_chat",        "name": "SHADOW",       "role": "Dark Authority (Venice 1.2)"},
+    {"key": "board_dolphin",      "name": "GEMMA",        "role": "Uncensored Voice (Gemma 4)"},
+    {"key": "shadow",             "name": "CAPI",         "role": "Consultant & Moderator"},
 ]
 
+# ── Shadow boardroom: all uncensored, no CAPI ─────────────────────────────────
 SHADOW_BOARD_MEMBERS = [
-    {"key": "shadow_chat",   "name": "SHADOW",   "role": "Authoritarian Dark Authority (Venice 1.2)"},
-    {"key": "board_venice",  "name": "ORACLE",   "role": "Shadow Boardroom Strategist (Venice 1.1)"},
-    {"key": "board_dolphin", "name": "GEMMA",    "role": "Uncensored Persona (Gemma 4)"},
-    {"key": "board_qwen",    "name": "QWEN",     "role": "Free Thinker"},
-    {"key": "board_mistral", "name": "MISTRAL",  "role": "Shadow Critic"},
+    {"key": "shadow_chat",         "name": "SHADOW",   "role": "Authoritarian Dark Authority (Venice 1.2)"},
+    {"key": "board_dolphin",       "name": "GEMMA",    "role": "Uncensored Chat Persona (Gemma 4)"},
+    {"key": "board_venice_llama",  "name": "VENICE70", "role": "Venice Llama 70B Uncensored"},
+    {"key": "board_hermes_capped", "name": "HERMES",   "role": "Oracle / Cryptic Spark (405B, capped)"},
 ]
 
+# ── Trigger-based specialists (only called when topic matches) ─────────────────
+BOARD_SPECIALISTS = [
+    {
+        "key": "business",
+        "name": "LEGAL",
+        "role": "Legal Advisor (Hermes 405B)",
+        "trigger_topics": ["legal", "compliance", "contract", "trademark", "copyright", "privacy", "gdpr"],
+    },
+    {
+        "key": "business_deep",
+        "name": "BUDGET",
+        "role": "Budget Analyst (Mistral Small)",
+        "trigger_topics": ["budget", "cost", "pricing", "financial", "invoice", "revenue", "profit"],
+    },
+    {
+        "key": "fast_reasoning",
+        "name": "MARKETING",
+        "role": "Marketing Analyst (DeepSeek Flash)",
+        "trigger_topics": ["marketing", "seo", "campaign", "ad", "brand", "audience", "funnel", "viral"],
+    },
+    {
+        "key": "translation",
+        "name": "TRANSLATOR",
+        "role": "Translation (Riva)",
+        "trigger_topics": ["translate", "translation", "language", "localize", "international"],
+    },
+    {
+        "key": "doc_parse",
+        "name": "DOCPARSER",
+        "role": "Document Analyst (NemoRetriever)",
+        "trigger_topics": ["document", "pdf", "parse", "extract", "report"],
+    },
+]
+
+# ── Brainstorm: 9 members ──────────────────────────────────────────────────────
 BRAINSTORM_MEMBERS = [
-    {"key": "twin",          "name": "TWIN"},
-    {"key": "board_hermes",  "name": "HERMES"},
-    {"key": "board_qwen",    "name": "QWEN"},
-    {"key": "board_mistral", "name": "MISTRAL"},
+    {"key": "board_hermes_capped", "name": "HERMES"},
+    {"key": "shadow_chat",         "name": "SHADOW"},
+    {"key": "shadow",              "name": "CAPI"},
+    {"key": "board_venice_llama",  "name": "VENICE70"},
+    {"key": "brainstorm_glm",      "name": "GLM"},
+    {"key": "brainstorm_kimi",     "name": "STRATEGY"},
+    {"key": "brainstorm_mistral",  "name": "FINANCE"},
+    {"key": "brainstorm_minimax",  "name": "MINIMAX"},
+    {"key": "brainstorm_qwq",      "name": "QWQ"},
 ]
 
+# ── Shadow brainstorm: SHADOW leads, CAPI interprets Hermes ───────────────────
 SHADOW_BRAINSTORM_MEMBERS = [
-    {"key": "shadow_chat",   "name": "SHADOW"},   # Venice 1.2 — authoritarian
-    {"key": "board_venice",  "name": "ORACLE"},   # Venice 1.1 — shadow boardroom strategist
-    {"key": "board_dolphin", "name": "GEMMA"},    # Gemma 4 — uncensored persona
-    {"key": "board_qwen",    "name": "QWEN"},
-    {"key": "board_mistral", "name": "MISTRAL"},
+    {"key": "shadow_chat",         "name": "SHADOW"},
+    {"key": "board_hermes_capped", "name": "HERMES"},
+    {"key": "shadow",              "name": "CAPI"},
+    {"key": "board_dolphin",       "name": "GEMMA"},
+    {"key": "board_venice_llama",  "name": "VENICE70"},
+    {"key": "brainstorm_glm",      "name": "GLM"},
+    {"key": "brainstorm_kimi",     "name": "STRATEGY"},
+    {"key": "brainstorm_mistral",  "name": "FINANCE"},
+    {"key": "brainstorm_qwq",      "name": "QWQ"},
 ]
+
+# ── Committee structure: each board seat → 2-3 pre-discussion sub-models ──────
+COMMITTEE_STRUCTURE: dict[str, list[str]] = {
+    "board_strategy":     ["committee_strategy_1", "committee_strategy_2", "committee_strategy_3"],
+    "board_finance":      ["committee_finance_1",  "committee_finance_2",  "committee_finance_3"],
+    "board_creative":     ["committee_creative_1", "committee_creative_2", "committee_creative_3"],
+    "board_tech":         ["committee_tech_1",      "committee_tech_2",     "committee_tech_3"],
+    "board_ops":          ["committee_ops_1",        "committee_ops_2",      "committee_ops_3"],
+    "board_distribution": ["committee_dist_1",       "committee_dist_2",     "committee_dist_3"],
+    # No committees for these seats
+    "shadow_chat":        [],
+    "board_dolphin":      [],
+    "shadow":             [],
+    "board_venice_llama": [],
+    "board_hermes_capped":[],
+    # Child bot placeholder slots (future)
+    "_child_bot_1":       [],
+    "_child_bot_2":       [],
+    "_child_bot_3":       [],
+}
 
 
 def get_provider_cfg(provider_key: str) -> dict:
@@ -314,3 +462,12 @@ def get_task_routing(task_type: str) -> tuple[str, str]:
     if not routing:
         raise ValueError(f"Unknown task type: {task_type}")
     return routing
+
+
+def get_specialists_for_topic(topic: str) -> list[dict]:
+    """Return specialist members whose trigger_topics match the given topic."""
+    topic_lower = topic.lower()
+    return [
+        s for s in BOARD_SPECIALISTS
+        if any(t in topic_lower for t in s["trigger_topics"])
+    ]

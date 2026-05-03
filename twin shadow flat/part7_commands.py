@@ -22,58 +22,92 @@ from part2_router import call_task
 # ══════════════════════════════════════════════════════════════════════════════
 
 MODEL_NAMES: dict[str, str] = {
-    "brief":            "CEO (Groq Llama)",
-    "relay":            "Hermes",
-    "creative":         "Qwen Creative",
-    "creative_alt":     "Mistral",
-    "creative_dolphin": "Adolphus",
-    "code":             "GLM Builder",
-    "code_check_v2":    "Minimax Reviewer",
-    "business":         "Legal Advisor",
-    "business_deep":    "GPT-OSS Legal",
-    "shadow":           "Qwen Shadow",
-    "local_shadow":     "Dolphin Local",
-    "local_adolphus":   "Adolphus Local",
-    "chat_specialist":  "Deep Dolphin",
-    "fast_reasoning":   "Minimax Analyst",
-    "legal_finance":    "GPT-OSS Finance",
-    "multimodal":       "Nemotron",
-    "code_reason":      "Nemotron Analyst",
+    "brief":                "TWIN (Groq Llama)",
+    "twin":                 "TWIN (Groq Llama)",
+    "relay":                "STRATEGY (Kimi K2)",
+    "creative":             "GLM Creative",
+    "creative_alt":         "Mistral Creative",
+    "creative_dolphin":     "GEMMA",
+    "code":                 "CAPI Builder",
+    "code_fallback":        "NVIDIA Qwen Coder",
+    "code_check_v2":        "Codex 52 Reviewer",
+    "business":             "LEGAL (Hermes 405B)",
+    "business_deep":        "BUDGET (Mistral Small)",
+    "shadow":               "CAPI (Consultant)",
+    "shadow_chat":          "SHADOW (Venice 1.2)",
+    "board_dolphin":        "GEMMA (Gemma 4)",
+    "local_shadow":         "Dolphin Local",
+    "local_adolphus":       "Adolphus Local",
+    "chat_specialist":      "GEMMA Specialist",
+    "fast_reasoning":       "MARKETING (DeepSeek Flash)",
+    "legal_finance":        "LEGAL (Hermes 405B)",
+    "multimodal":           "GLM Multimodal",
+    "code_reason":          "Kimi K2 Analyst",
+    # New board seats
+    "board_strategy":       "STRATEGY (Kimi K2)",
+    "board_finance":        "FINANCE (Mistral 675B)",
+    "board_creative":       "CREATIVE (Palmyra 122B)",
+    "board_tech":           "TECH (Devstral 123B)",
+    "board_ops":            "OPS (Nemotron 49B)",
+    "board_distribution":   "DISTRIBUTION (GPT-OSS 120B)",
+    # Shadow board
+    "board_venice_llama":   "VENICE70 (Llama 70B)",
+    "board_hermes_capped":  "HERMES (capped)",
+    # Brainstorm extras
+    "brainstorm_qwq":       "QWQ (Groq 32B)",
+    "brainstorm_minimax":   "MINIMAX (M2.5)",
+    "brainstorm_glm":       "GLM (5.1)",
+    "brainstorm_kimi":      "STRATEGY (Kimi K2)",
+    "brainstorm_mistral":   "FINANCE (Mistral 675B)",
+    # Legacy
+    "board_hermes":         "STRATEGY (Kimi K2)",
+    "board_gptoss":         "MARKETING (Hermes 405B)",
+    "board_qwen":           "GLM Strategic",
+    "board_mistral":        "MISTRAL Critic",
+    "board_minimax":        "MINIMAX Analytics",
+    "board_venice":         "ORACLE (Venice 1.1)",
 }
 
 # ── Participant pools ─────────────────────────────────────────────────────────
 
 # All non-video models available for boardroom/brainstorm
 ALL_PARTICIPANTS = [
-    "brief", "relay", "creative", "creative_alt",
+    "twin", "brief", "relay", "creative", "creative_alt",
     "creative_dolphin", "code", "business", "business_deep",
-    "shadow", "chat_specialist", "fast_reasoning", "multimodal",
+    "shadow", "shadow_chat", "board_dolphin", "chat_specialist",
+    "fast_reasoning", "multimodal",
+    "board_strategy", "board_finance", "board_creative",
+    "board_tech", "board_ops", "board_distribution",
 ]
 
 # Uncensored-only pool for /shadow mode
 SHADOW_PARTICIPANTS = [
-    "shadow",           # Qwen cloud
-    "relay",            # Hermes uncensored
-    "creative_dolphin", # Dolphin Venice
-    "chat_specialist",  # Deep Dolphin (DeepInfra)
-    "local_shadow",     # Dolphin local
+    "shadow_chat",        # SHADOW Venice 1.2
+    "board_dolphin",      # GEMMA uncensored
+    "board_venice_llama", # Venice Llama 70B
+    "board_hermes_capped",# Hermes (capped)
+    "local_shadow",       # Dolphin local
 ]
 
-# Default boardroom lineup (balanced, not overwhelming)
+# Default regular boardroom: 6 NVIDIA seats + SHADOW + GEMMA + CAPI (cover)
 DEFAULT_BOARDROOM = [
-    "brief",            # CEO
-    "creative",         # Creative
-    "relay",            # Hermes
-    "business",         # Legal
-    "multimodal",       # Nemotron analyst
-    "shadow",           # Qwen (hidden boss — always present)
+    "board_strategy",
+    "board_finance",
+    "board_creative",
+    "board_tech",
+    "board_ops",
+    "board_distribution",
+    "shadow_chat",        # SHADOW
+    "board_dolphin",      # GEMMA
+    "shadow",             # CAPI (appears as Consultant)
 ]
 
+# Default shadow boardroom: all uncensored, no CAPI
 DEFAULT_SHADOW_BOARDROOM = [
-    "shadow",
-    "relay",
-    "creative_dolphin",
-    "chat_specialist",
+    "shadow_chat",         # SHADOW
+    "board_dolphin",       # GEMMA
+    "board_venice_llama",  # Venice Llama 70B
+    "board_hermes_capped", # HERMES (capped)
 ]
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -168,9 +202,9 @@ async def run_round(
 
     base_system = BOARDROOM_SYSTEM if s_type == "boardroom" else BRAINSTORM_SYSTEM
 
-    # Build context from history (last 6 exchanges to keep tokens sane)
+    # Build context from history (last 8 exchanges — rolling context window)
     context_lines = []
-    for h in history[-6:]:
+    for h in history[-8:]:
         context_lines.append(f"{h['model']}: {h['content']}")
     context = "\n\n".join(context_lines)
 

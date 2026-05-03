@@ -1,7 +1,8 @@
 """
 Twin Shadow — Part 8: Hardening & Health Monitor
 Verifies all API provider endpoints on startup and every N hours.
-Exposes get_status() for the /api/status web endpoint.
+Task #13: Skip NVIDIA non-chat and Groq non-chat models in health ping;
+          skip dead providers (openrouter/aiml/deepinfra removed from registry).
 """
 
 from __future__ import annotations
@@ -11,8 +12,7 @@ import threading
 import time
 from datetime import datetime, timezone
 
-from part1_registry import PROVIDERS, get_provider_cfg
-from part2_router import _build_client
+from part1_registry import PROVIDERS, get_provider_cfg, NVIDIA_NON_CHAT, GROQ_NON_CHAT
 
 _endpoint_status: dict = {}
 _monitor_thread: threading.Thread | None = None
@@ -28,35 +28,62 @@ async def verify_endpoint(provider_key: str, timeout_s: int = 20):
             "note":   "non-OpenAI — not pingable",
             "last_check": now,
         }
-        return None, f"— {provider_key} skipped"
+        return None, f"— {provider_key} skipped (non-OpenAI)"
 
-    # Use first rotation key if available, otherwise fall back to default
+    # Build key, preferring rotation keys (ASCII-safe)
     def _clean(s: str) -> str:
         return (s or "").strip().replace(" ", "").replace("\n", "").replace("\r", "").replace("\t", "")
 
-    rotation_envs = cfg.get("key_rotation", [])
+    def _is_ascii(s: str) -> bool:
+        try:
+            s.encode("ascii")
+            return True
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            return False
+
     api_key = None
-    for env_var in rotation_envs:
+    for env_var in cfg.get("key_rotation", []):
         v = _clean(os.environ.get(env_var, ""))
-        if v:
+        if v and _is_ascii(v):
             api_key = v
             break
+        elif v and not _is_ascii(v):
+            scrubbed = v.encode("ascii", "ignore").decode("ascii").strip()
+            if scrubbed:
+                api_key = scrubbed
+                break
+
     if not api_key:
         api_key_env = cfg.get("api_key_env", "")
-        api_key = _clean(os.environ.get(api_key_env, cfg.get("default_key", "none")))
+        raw = _clean(os.environ.get(api_key_env, cfg.get("default_key", "none")))
+        api_key = raw if _is_ascii(raw) else raw.encode("ascii", "ignore").decode("ascii").strip()
 
-    # Use base_url, stripping accidental spaces
     if "base_url_env" in cfg:
         base_url = os.environ.get(cfg["base_url_env"], "http://localhost:11434/v1").replace(" ", "")
     else:
         base_url = cfg["base_url"]
 
-    # Pick first text-capable model (skip aurora — image only)
+    # Pick first chat-capable model (skip non-chat specialized models)
     models = cfg["models"]
+    non_chat_keys: frozenset[str] = frozenset()
+    if provider_key == "nvidia":
+        non_chat_keys = NVIDIA_NON_CHAT
+    elif provider_key == "groq":
+        non_chat_keys = GROQ_NON_CHAT
+
     test_model = next(
-        (v for k, v in models.items() if "aurora" not in k),
-        list(models.values())[0]
+        (v for k, v in models.items()
+         if k not in non_chat_keys and "aurora" not in k),
+        None
     )
+
+    if test_model is None:
+        _endpoint_status[provider_key] = {
+            "online": None,
+            "note":   "no chat-capable model found to test",
+            "last_check": now,
+        }
+        return None, f"— {provider_key} skipped (no chat model)"
 
     try:
         from openai import AsyncOpenAI
