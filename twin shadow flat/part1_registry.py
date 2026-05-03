@@ -10,6 +10,7 @@ TTS_VOICES: dict[str, str] = {
     "TWIN":        "en-US-Neural2-D",
     "SHADOW":      "en-US-Neural2-A",   # authoritarian real Shadow (Venice 1.2)
     "GEMMA":       "en-US-Wavenet-C",   # uncensored chat Shadow persona (Gemma 4)
+    "ORACLE":      "en-US-Neural2-E",   # Venice 1.1 — shadow boardroom strategist
     "CAPI":        "en-US-Wavenet-B",
     "HERMES":      "en-US-Neural2-J",
     "GPTOSS":      "en-US-Neural2-G",
@@ -193,10 +194,14 @@ PROVIDERS: dict = {
         "api_key_env":   "VENICE_ADMIN_KEY",
         "openai_compat": True,
         "models": {
-            "gemma4_uncensored":      "gemma-4-uncensored",       # GEMMA — uncensored chat persona
-            "venice_uncensored_12":   "venice-uncensored-1-2",    # SHADOW — authoritarian dark authority
-            "venice_uncensored":      "venice-uncensored",        # general uncensored fallback
-            "venice_roleplay":        "venice-uncensored-role-play", # roleplay uncensored
+            "gemma4_uncensored":      "gemma-4-uncensored",            # GEMMA — uncensored chat persona
+            "venice_uncensored_12":   "venice-uncensored-1-2",         # SHADOW — authoritarian dark authority
+            "venice_uncensored_11":   "venice-uncensored",             # ORACLE — 1.1 shadow boardroom strategist
+            "venice_roleplay":        "venice-uncensored-role-play",   # roleplay uncensored
+            "hermes_405b":            "hermes-3-llama-3.1-405b",       # SPECIALIST — marketing, SEO, legal
+            "mistral_small":          "mistral-small-3-2-24b-instruct",# SPECIALIST — legal, budget
+            "deepseek_flash":         "deepseek-v4-flash",             # SPECIALIST — fast marketing analysis
+            "llama_70b":              "llama-3.3-70b",                 # SPECIALIST — legal/SEO backup
         },
     },
 }
@@ -233,17 +238,18 @@ TASK_MODELS: dict = {
     "builder_check":    ("nvidia", "kimi_k2"),           # Kimi K2 — builder check
 
     # ── business / legal / SEO ────────────────────────────────────────────────
-    "business":         ("nvidia", "mistral_large3"),   # was: openrouter/legal — Mistral 675B
-    "business_deep":    ("nvidia", "deepseek_v3"),      # was: openrouter/gpt_oss_120b
-    "legal_finance":    ("nvidia", "mistral_large3"),   # was: openrouter/gpt_oss_120b — Mistral best for legal
-    "fast_reasoning":   ("nvidia", "minimax_m25"),      # was: openrouter/minimax_m25
+    "business":         ("venice", "hermes_405b"),      # Hermes 405B — marketing/legal/SEO specialist
+    "business_deep":    ("venice", "mistral_small"),    # Mistral Small 24B — budget legal analysis
+    "legal_finance":    ("venice", "hermes_405b"),      # Hermes 405B — best for legal on Venice
+    "fast_reasoning":   ("venice", "deepseek_flash"),   # DeepSeek Flash — fast marketing analysis
 
     # ── boardroom members ─────────────────────────────────────────────────────
-    "board_hermes":     ("nvidia", "kimi_k2"),          # Creative & Occult — was: openrouter/hermes3
-    "board_gptoss":     ("nvidia", "deepseek_v3"),      # Marketing & SEO — was: openrouter/gpt_oss_120b
-    "board_qwen":       ("nvidia", "glm51"),            # Strategic Advisor — was: openrouter/qwen_free
-    "board_mistral":    ("nvidia", "mistral_large3"),   # Practical Critic — was: openrouter/mistral_free
-    "board_minimax":    ("nvidia", "minimax_m25"),      # Analytics & Data — was: openrouter/minimax
+    "board_hermes":     ("nvidia", "kimi_k2"),          # Creative & Occult Consultant
+    "board_gptoss":     ("venice", "hermes_405b"),      # Marketing & SEO Lead — Hermes 405B
+    "board_qwen":       ("nvidia", "glm51"),            # Strategic Advisor
+    "board_mistral":    ("nvidia", "mistral_large3"),   # Practical Critic — Mistral 675B
+    "board_minimax":    ("nvidia", "minimax_m25"),      # Analytics & Data
+    "board_venice":     ("venice", "venice_uncensored_11"), # ORACLE — Venice 1.1 shadow boardroom
 
     # ── video ─────────────────────────────────────────────────────────────────
     "video":            ("fal",         "wan21"),
@@ -262,6 +268,7 @@ BOARD_MEMBERS = [
 
 SHADOW_BOARD_MEMBERS = [
     {"key": "shadow_chat",   "name": "SHADOW",   "role": "Authoritarian Dark Authority (Venice 1.2)"},
+    {"key": "board_venice",  "name": "ORACLE",   "role": "Shadow Boardroom Strategist (Venice 1.1)"},
     {"key": "board_dolphin", "name": "GEMMA",    "role": "Uncensored Persona (Gemma 4)"},
     {"key": "board_qwen",    "name": "QWEN",     "role": "Free Thinker"},
     {"key": "board_mistral", "name": "MISTRAL",  "role": "Shadow Critic"},
@@ -275,8 +282,9 @@ BRAINSTORM_MEMBERS = [
 ]
 
 SHADOW_BRAINSTORM_MEMBERS = [
-    {"key": "shadow_chat",   "name": "SHADOW"},  # Venice 1.2 — authoritarian
-    {"key": "board_dolphin", "name": "GEMMA"},   # Gemma 4 — uncensored persona
+    {"key": "shadow_chat",   "name": "SHADOW"},   # Venice 1.2 — authoritarian
+    {"key": "board_venice",  "name": "ORACLE"},   # Venice 1.1 — shadow boardroom strategist
+    {"key": "board_dolphin", "name": "GEMMA"},    # Gemma 4 — uncensored persona
     {"key": "board_qwen",    "name": "QWEN"},
     {"key": "board_mistral", "name": "MISTRAL"},
 ]
