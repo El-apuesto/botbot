@@ -40,6 +40,7 @@ from part1_registry import (
     BRAINSTORM_MEMBERS, SHADOW_BRAINSTORM_MEMBERS,
     TTS_VOICES,
 )
+import part8_hardening as _hardening
 from part8_personas import (
     TWIN_SYSTEM, SHADOW_SYSTEM, CAPI_SYSTEM,
     board_member_system, brainstorm_system, BUILDER_SYSTEM, MODERATOR_SYSTEM,
@@ -1393,6 +1394,12 @@ def api_lab_storage_renders():
     return jsonify({"records": records, "count": len(records)})
 
 
+@_flask.route("/api/status", methods=["GET"])
+def api_status():
+    """Provider health status — updated every 6h by part8_hardening monitor."""
+    return jsonify(_hardening.get_status())
+
+
 @_flask.route("/api/lab/storage/delete", methods=["POST"])
 def api_lab_storage_delete():
     """Delete a file from Supabase Storage by storage_path."""
@@ -1807,6 +1814,7 @@ def main():
         app.add_handler(CommandHandler(cmd, fn))
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, freetext_handler))
+    _hardening.start_monitor(interval_hours=6)
     print("🌑 Twin Shadow online.")
     import asyncio as _asyncio
     from telegram.error import Conflict as _TGConflict
