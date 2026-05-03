@@ -44,3 +44,7 @@ timeoutMs = 60000
 [userenv]
 
 [userenv.shared]
+
+[deployment]
+deploymentTarget = "vm"
+run = ["bash", "-c", "cd 'twin shadow flat' && python3 main.py"]
