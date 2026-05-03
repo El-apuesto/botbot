@@ -29,7 +29,7 @@ PROVIDERS: dict = {
         "default_key":   "ollama",
         "openai_compat": True,
         "models": {
-            "qwen": "deepseek-v3.1:671b",
+            "qwen": "qwen3-coder:480b",
         },
     },
 
