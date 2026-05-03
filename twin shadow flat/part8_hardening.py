@@ -5,6 +5,7 @@ Exposes get_status() for the /api/status web endpoint.
 """
 
 from __future__ import annotations
+import os
 import asyncio
 import threading
 import time
@@ -29,19 +30,44 @@ async def verify_endpoint(provider_key: str, timeout_s: int = 10):
         }
         return None, f"— {provider_key} skipped"
 
+    # Use first rotation key if available, otherwise fall back to default
+    rotation_envs = cfg.get("key_rotation", [])
+    api_key = None
+    for env_var in rotation_envs:
+        v = os.environ.get(env_var, "").strip()
+        if v:
+            api_key = v
+            break
+    if not api_key:
+        api_key_env = cfg.get("api_key_env", "")
+        api_key = os.environ.get(api_key_env, cfg.get("default_key", "none")).strip()
+
+    # Use base_url, stripping accidental spaces
+    if "base_url_env" in cfg:
+        base_url = os.environ.get(cfg["base_url_env"], "http://localhost:11434/v1").replace(" ", "")
+    else:
+        base_url = cfg["base_url"]
+
+    # Pick first text-capable model (skip aurora — image only)
+    models = cfg["models"]
+    test_model = next(
+        (v for k, v in models.items() if "aurora" not in k),
+        list(models.values())[0]
+    )
+
     try:
-        client     = _build_client(provider_key)
-        test_model = list(cfg["models"].values())[0]
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(base_url=base_url, api_key=api_key)
         await asyncio.wait_for(
             client.chat.completions.create(
                 model=test_model,
                 messages=[{"role": "user", "content": "ping"}],
-                max_tokens=1,
+                max_tokens=5,
             ),
             timeout=timeout_s,
         )
-        _endpoint_status[provider_key] = {"online": True, "last_check": now}
-        return True, f"✅ {provider_key}"
+        _endpoint_status[provider_key] = {"online": True, "last_check": now, "model": test_model}
+        return True, f"✅ {provider_key} ({test_model})"
     except Exception as e:
         err = str(e)[:150]
         _endpoint_status[provider_key] = {

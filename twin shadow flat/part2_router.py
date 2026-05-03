@@ -18,7 +18,7 @@ def _build_client(provider_key: str, api_key_override: str | None = None) -> Asy
         raise ValueError(f"{provider_key} is not OpenAI-compatible. Use its native module.")
 
     if "base_url_env" in cfg:
-        base_url = os.environ.get(cfg["base_url_env"], "http://localhost:11434/v1")
+        base_url = os.environ.get(cfg["base_url_env"], "http://localhost:11434/v1").replace(" ", "")
     else:
         base_url = cfg["base_url"]
 
@@ -57,7 +57,7 @@ async def _rotate_stream(
     keys = _get_rotation_keys(provider_key)
     cfg = get_provider_cfg(provider_key)
     if "base_url_env" in cfg:
-        base_url = os.environ.get(cfg["base_url_env"], "http://localhost:11434/v1")
+        base_url = os.environ.get(cfg["base_url_env"], "http://localhost:11434/v1").replace(" ", "")
     else:
         base_url = cfg["base_url"]
 
