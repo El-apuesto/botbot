@@ -23,6 +23,40 @@ async def verify_endpoint(provider_key: str, timeout_s: int = 20):
     now = datetime.now(timezone.utc).isoformat()
 
     if not cfg.get("openai_compat"):
+        # Ping video providers directly with their native SDKs
+        if provider_key == "fal":
+            try:
+                import fal_client  # noqa: F401
+                key = os.environ.get("FAL_KEY", "")
+                if not key:
+                    raise RuntimeError("FAL_KEY not set")
+                _endpoint_status[provider_key] = {"online": True, "last_check": now, "note": "key present"}
+                return True, f"✅ fal (key present)"
+            except Exception as e:
+                _endpoint_status[provider_key] = {"online": False, "error": str(e)[:80], "last_check": now}
+                return False, f"❌ fal: {str(e)[:80]}"
+        if provider_key == "huggingface":
+            try:
+                from huggingface_hub import InferenceClient
+                key = os.environ.get("HUGGINGFACE_API_KEY", "")
+                if not key:
+                    raise RuntimeError("HUGGINGFACE_API_KEY not set")
+                _endpoint_status[provider_key] = {"online": True, "last_check": now, "note": "key present"}
+                return True, f"✅ huggingface (key present)"
+            except Exception as e:
+                _endpoint_status[provider_key] = {"online": False, "error": str(e)[:80], "last_check": now}
+                return False, f"❌ huggingface: {str(e)[:80]}"
+        if provider_key == "replicate":
+            try:
+                import replicate  # noqa: F401
+                key = os.environ.get("REPLICATE_API_TOKEN", "")
+                if not key:
+                    raise RuntimeError("REPLICATE_API_TOKEN not set")
+                _endpoint_status[provider_key] = {"online": True, "last_check": now, "note": "key present"}
+                return True, f"✅ replicate (key present)"
+            except Exception as e:
+                _endpoint_status[provider_key] = {"online": False, "error": str(e)[:80], "last_check": now}
+                return False, f"❌ replicate: {str(e)[:80]}"
         _endpoint_status[provider_key] = {
             "online": None,
             "note":   "non-OpenAI — not pingable",

@@ -443,9 +443,9 @@ async def run_video(task: dict) -> dict:
     errors    = {}
 
     for provider, fn in [
+        ("huggingface", _hf_generate),
         ("fal",         lambda p: _fal_generate(p, image_url=image_url)),
         ("replicate",   lambda p: _replicate_generate(p, image_url=image_url)),
-        ("huggingface", _hf_generate),
     ]:
         try:
             url = await fn(prompt)
