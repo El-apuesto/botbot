@@ -52,11 +52,8 @@ PROVIDERS: dict = {
         "api_key_env":    "CEREBRAS_API_KEY",
         "openai_compat":  True,
         "models": {
-            "llama":         "llama-3.3-70b",
-            "qwen_coder":    "qwen-3-coder-480b",
-            "qwen_thinking": "qwen-3-235b-a22b-thinking-2507",
+            "llama_small":   "llama3.1-8b",
             "qwen_instruct": "qwen-3-235b-a22b-instruct-2507",
-            "gpt_oss_120b":  "gpt-oss-120b",
         },
     },
 
