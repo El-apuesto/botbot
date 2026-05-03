@@ -194,6 +194,9 @@ def api_chat():
     # Apply CAPI identity context based on who is receiving the message
     sys_prompt = inject_capi_identity(sys_prompt, bot)
 
+    from part1_registry import TOKEN_LIMITS as _TL
+    chat_max_tokens = _TL.get("capi" if bot == "capi" else "shadow" if bot == "shadow" else "twin", 300)
+
     msgs = [{"role": "system", "content": sys_prompt}]
     for h in history[-20:]:
         if h.get("role") in ("user", "assistant"):
@@ -201,7 +204,7 @@ def api_chat():
     msgs.append({"role": "user", "content": message})
 
     async def _gen():
-        async for chunk in stream_task(task_type, msgs):
+        async for chunk in stream_task(task_type, msgs, max_tokens=chat_max_tokens):
             yield chunk
 
     return _sse_stream(_gen)

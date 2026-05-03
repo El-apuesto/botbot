@@ -47,16 +47,12 @@ async def verify_endpoint(provider_key: str, timeout_s: int = 20):
         if v and _is_ascii(v):
             api_key = v
             break
-        elif v and not _is_ascii(v):
-            scrubbed = v.encode("ascii", "ignore").decode("ascii").strip()
-            if scrubbed:
-                api_key = scrubbed
-                break
+        # non-ASCII rotation keys are skipped entirely (consistent with router policy)
 
     if not api_key:
         api_key_env = cfg.get("api_key_env", "")
         raw = _clean(os.environ.get(api_key_env, cfg.get("default_key", "none")))
-        api_key = raw if _is_ascii(raw) else raw.encode("ascii", "ignore").decode("ascii").strip()
+        api_key = raw if _is_ascii(raw) else None
 
     if "base_url_env" in cfg:
         base_url = os.environ.get(cfg["base_url_env"], "http://localhost:11434/v1").replace(" ", "")

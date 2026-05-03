@@ -336,7 +336,7 @@ TASK_MODELS: dict = {
     "committee_ops_3":      ("nvidia",   "qwen3_next_80b"),
     "committee_dist_1":     ("nvidia",   "gpt_oss_120b"),
     "committee_dist_2":     ("nvidia",   "qwen35_122b"),
-    "committee_dist_3":     ("nvidia",   "qwen3_next_80b"),
+    "committee_dist_3":     ("nvidia",   "deepseek_v3"),
 
     # ── specialized non-chat services ─────────────────────────────────────────
     "transcription":        ("groq",     "whisper_v3"),
