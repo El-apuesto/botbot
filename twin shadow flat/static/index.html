@@ -17,11 +17,11 @@
       --white:       #ffffff;
     }
 
-    html, body { width: 100%; height: 100%; overflow: hidden;
+    html, body { width: 100%; height: 100%; height: 100dvh; overflow: hidden;
       background: #000; font-family: var(--font); color: var(--white); }
 
     /* ── BACKGROUND ── */
-    #app { position: fixed; inset: 0;
+    #app { position: fixed; inset: 0; height: 100dvh;
       background-image: url('/static/mobile_bg.jpg');
       background-size: cover; background-position: center top; background-repeat: no-repeat; }
     @media (orientation: landscape) and (min-width: 700px) {
@@ -31,8 +31,8 @@
     /* ── CHAT PANEL ── */
     #chat-panel {
       position: absolute; display: flex; flex-direction: column;
-      top: 44%; left: 3%; right: 3%;
-      bottom: calc(20% + env(safe-area-inset-bottom, 0px) / 2);
+      top: 44%; top: 44dvh; left: 3%; right: 3%;
+      bottom: 20%; bottom: 20dvh;
       background: rgba(6, 0, 18, 0.5); overflow: hidden;
     }
     @media (orientation: landscape) and (min-width: 700px) {
@@ -100,7 +100,7 @@
     #send-btn img { width: 100%; height: 100%; object-fit: cover; }
 
     /* ── MENU BAR ── */
-    #menu-bar { position: absolute; bottom: calc(env(safe-area-inset-bottom, 0px) / 2); left: 0; right: 0; height: 20%;
+    #menu-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 20%; height: 20dvh;
       display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 1fr);
       padding: 2px 6% 4px; gap: 1px 0; pointer-events: none; }
     @media (orientation: landscape) and (min-width: 700px) {
