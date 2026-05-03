@@ -57,6 +57,20 @@ PROVIDERS: dict = {
         },
     },
 
+    "nvidia": {
+        "role": "specialist",
+        "desc": "NVIDIA NIM. Llama, Qwen Coder 480B, Nemotron Super 49B.",
+        "base_url":       "https://integrate.api.nvidia.com/v1",
+        "api_key_env":    "NVIDIA_API_KEY",
+        "openai_compat":  True,
+        "models": {
+            "llama_70b":      "meta/llama-3.3-70b-instruct",
+            "llama_maverick": "meta/llama-4-maverick-17b-128e-instruct",
+            "nemotron_49b":   "nvidia/llama-3.3-nemotron-super-49b-v1",
+            "qwen_coder_480": "qwen/qwen3-coder-480b-a35b-instruct",
+        },
+    },
+
     "groq": {
         "role": "twin",
         "desc": "TWIN. Groq Llama 3.3 70B. Briefs tasks, routes bots, main chat.",
