@@ -101,7 +101,7 @@ PROVIDERS: dict = {
         "desc": "NVIDIA NIM. Free chat boardroom seats + specialized non-chat models.",
         "base_url":       "https://integrate.api.nvidia.com/v1",
         "api_key_env":    "NVIDIA_API_KEY",
-        "key_rotation":   ["NVIDIA_API_KEY", "NVIDIA_API_KEY_1"],
+        "key_rotation":   ["NVIDIA_API_KEY", "NIVIDIA_API_KEY1"],
         "openai_compat":  True,
         "models": {
             # ── Boardroom seats (free chat) ────────────────────────────────────
