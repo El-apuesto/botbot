@@ -153,7 +153,7 @@ TASK_MODELS: dict = {
     "twin":             ("groq",        "llama"),
     "brief":            ("groq",        "llama"),
     "relay":            ("openrouter",  "hermes3"),
-    "shadow":           ("openrouter",  "dolphin_venice"),
+    "shadow":           ("ollama_cloud","qwen"),
     "shadow_chat":      ("openrouter",  "dolphin_venice"),
     "creative":         ("openrouter",  "qwen_free"),
     "creative_alt":     ("openrouter",  "mistral_free"),
