@@ -29,7 +29,7 @@ PROVIDERS: dict = {
         "default_key":   "ollama",
         "openai_compat": True,
         "models": {
-            "qwen": "leckminartor/qwen3.5-uncensored:397b-cloud",
+            "qwen": "deepseek-v3.1:671b",
         },
     },
 
@@ -49,8 +49,8 @@ PROVIDERS: dict = {
         "role": "twin",
         "desc": "TWIN. Groq Llama 3.3 70B. Briefs tasks, routes bots, main chat.",
         "base_url":       "https://api.groq.com/openai/v1",
-        "api_key_env":    "GROQ_API_KEY_1",
-        "key_rotation":   ["GROQ_API_KEY_1", "GROQ_API_KEY_2", "GROQ_API_KEY_3"],
+        "api_key_env":    "GROQ_API_KEY",
+        "key_rotation":   ["GROQ_API_KEY", "GROQ_API_KEY_1", "GROQ_API_KEY_2", "GROQ_API_KEY_3"],
         "openai_compat":  True,
         "models": {
             "llama": "llama-3.3-70b-versatile",
