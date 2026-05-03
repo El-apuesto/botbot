@@ -130,7 +130,7 @@ PROVIDERS: dict = {
     "huggingface": {
         "role": "video_fallback",
         "desc": "HuggingFace wan-2.1 fallback.",
-        "api_key_env":   "HUGGINGFACE_API_KEY",
+        "api_key_env":   "HF_TOKEN",
         "openai_compat": False,
         "models": {
             "wan21": "Wan-AI/Wan2.1-T2V-14B",
