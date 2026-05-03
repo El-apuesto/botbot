@@ -18,7 +18,7 @@ _endpoint_status: dict = {}
 _monitor_thread: threading.Thread | None = None
 
 
-async def verify_endpoint(provider_key: str, timeout_s: int = 15):
+async def verify_endpoint(provider_key: str, timeout_s: int = 20):
     cfg = get_provider_cfg(provider_key)
     now = datetime.now(timezone.utc).isoformat()
 
@@ -60,19 +60,17 @@ async def verify_endpoint(provider_key: str, timeout_s: int = 15):
 
     try:
         from openai import AsyncOpenAI
-        client = AsyncOpenAI(base_url=base_url, api_key=api_key)
-        await asyncio.wait_for(
-            client.chat.completions.create(
-                model=test_model,
-                messages=[{"role": "user", "content": "ping"}],
-                max_tokens=5,
-            ),
-            timeout=timeout_s,
+        client = AsyncOpenAI(base_url=base_url, api_key=api_key, timeout=timeout_s)
+        await client.chat.completions.create(
+            model=test_model,
+            messages=[{"role": "user", "content": "ping"}],
+            max_tokens=5,
         )
         _endpoint_status[provider_key] = {"online": True, "last_check": now, "model": test_model}
         return True, f"✅ {provider_key} ({test_model})"
-    except Exception as e:
-        err = str(e)[:150]
+    except BaseException as e:
+        err = str(e) or f"{type(e).__name__}"
+        err = err[:150]
         _endpoint_status[provider_key] = {
             "online": False,
             "error":  err,
@@ -81,9 +79,10 @@ async def verify_endpoint(provider_key: str, timeout_s: int = 15):
         return False, f"❌ {provider_key}: {err[:80]}"
 
 
-async def verify_all_endpoints(timeout_s: int = 15) -> dict:
-    tasks   = [verify_endpoint(k, timeout_s) for k in PROVIDERS]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+async def verify_all_endpoints(timeout_s: int = 20) -> dict:
+    results = []
+    for k in PROVIDERS:
+        results.append(await verify_endpoint(k, timeout_s))
 
     online = sum(1 for s in _endpoint_status.values() if s.get("online") is True)
     tested = sum(1 for s in _endpoint_status.values() if s.get("online") is not None)

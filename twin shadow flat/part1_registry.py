@@ -64,10 +64,10 @@ PROVIDERS: dict = {
         "api_key_env":    "NVIDIA_API_KEY",
         "openai_compat":  True,
         "models": {
+            "llama_maverick":   "meta/llama-4-maverick-17b-128e-instruct",
+            "llama_70b":        "meta/llama-3.3-70b-instruct",
             "deepseek_flash":   "deepseek-ai/deepseek-v4-flash",
             "deepseek_v3":      "deepseek-ai/deepseek-v3.2",
-            "llama_70b":        "meta/llama-3.3-70b-instruct",
-            "llama_maverick":   "meta/llama-4-maverick-17b-128e-instruct",
             "nemotron_49b":     "nvidia/llama-3.3-nemotron-super-49b-v1",
             "nemotron_120b":    "nvidia/nemotron-3-super-120b-a12b",
             "qwen_coder_480":   "qwen/qwen3-coder-480b-a35b-instruct",
@@ -209,13 +209,13 @@ TASK_MODELS: dict = {
     "multimodal":       ("nvidia", "glm51"),            # was: openrouter/qwen_free
 
     # ── code ──────────────────────────────────────────────────────────────────
-    "code":             ("nvidia", "devstral"),         # was: aiml/glm — Devstral 123B code specialist
-    "code_check":       ("nvidia", "minimax_m25"),      # was: openrouter/minimax
-    "code_check_v2":    ("nvidia", "minimax_m25"),      # was: openrouter/minimax_m25
-    "code_reason":      ("nvidia", "kimi_k2"),          # was: openrouter/gpt_oss_120b — Kimi K2 = top coder
-    "builder":          ("nvidia", "devstral"),         # was: aiml/glm
-    "builder_review":   ("nvidia", "minimax_m25"),      # was: openrouter/minimax_m25
-    "builder_check":    ("nvidia", "glm51"),            # was: openrouter/qwen_free
+    "code":             ("nvidia", "kimi_k2"),           # Kimi K2 — top coder
+    "code_check":       ("nvidia", "kimi_k2"),           # Kimi K2 — review
+    "code_check_v2":    ("nvidia", "kimi_k2"),           # Kimi K2 — deep review
+    "code_reason":      ("nvidia", "kimi_k2"),           # Kimi K2 — reasoning
+    "builder":          ("nvidia", "kimi_k2"),           # Kimi K2 — builder bot
+    "builder_review":   ("nvidia", "kimi_k2"),           # Kimi K2 — builder review
+    "builder_check":    ("nvidia", "kimi_k2"),           # Kimi K2 — builder check
 
     # ── business / legal / SEO ────────────────────────────────────────────────
     "business":         ("nvidia", "mistral_large3"),   # was: openrouter/legal — Mistral 675B
