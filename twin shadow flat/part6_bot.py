@@ -52,6 +52,7 @@ from part7_commands import (
     handle_boss_voice, handle_end, handle_extend,
     handle_shadow_prefix, handle_user_turn,
     is_waiting,
+    build_system_prompt,
 )
 
 TOKEN        = os.environ.get("TOKEN", "")
@@ -182,14 +183,14 @@ def api_chat():
         return jsonify({"error": "No message"}), 400
 
     if bot == "shadow":
-        sys_prompt = sys_override or SHADOW_SYSTEM
         task_type  = "shadow_chat"
+        sys_prompt = build_system_prompt(task_type, sys_override or SHADOW_SYSTEM)
     elif bot == "capi":
-        sys_prompt = sys_override or CAPI_SYSTEM
         task_type  = "capi"
+        sys_prompt = build_system_prompt(task_type, sys_override or CAPI_SYSTEM)
     else:
-        sys_prompt = sys_override or TWIN_SYSTEM
         task_type  = "twin"
+        sys_prompt = build_system_prompt(task_type, sys_override or TWIN_SYSTEM)
 
     # Apply CAPI identity context based on who is receiving the message
     sys_prompt = inject_capi_identity(sys_prompt, bot)
@@ -291,6 +292,7 @@ def api_boardroom():
 
             # Build system prompt with CAPI identity injection for non-HERMES members
             sys_p = sys_override or board_member_system(name, role, shadow_mode)
+            sys_p = build_system_prompt(member_key, sys_p)
             sys_p = inject_capi_identity(sys_p, name)
 
             # Rolling 8-turn context window
@@ -324,7 +326,7 @@ def api_boardroom():
         if not shadow_mode and "SHADOW" not in board_names:
             final_context = "\n\n".join(context_turns[-8:])
             shadow_msgs = [
-                {"role": "system", "content": inject_capi_identity(SHADOW_SYSTEM, "shadow")},
+                {"role": "system", "content": inject_capi_identity(build_system_prompt("shadow_chat", SHADOW_SYSTEM), "shadow")},
                 {"role": "user",   "content": f"Boardroom discussed: {topic}\n\nContext:\n{final_context}\n\nYour final word:"},
             ]
             yield f"\x1eSPEAKER:SHADOW\x1f"
@@ -392,6 +394,7 @@ def api_brainstorm():
 
                 # All other members: apply inject_capi_identity on system prompt
                 sys_p = sys_override or brainstorm_system(name, podcast_mode)
+                sys_p = build_system_prompt(member_key, sys_p)
                 sys_p = inject_capi_identity(sys_p, name)
 
                 msgs = [
@@ -1726,12 +1729,12 @@ async def freetext_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     use_shadow = _shadow_mode.get(chat_id, False)
     if use_shadow:
-        sys_prompt = SHADOW_SYSTEM
         task_type  = "shadow_chat"
+        sys_prompt = build_system_prompt(task_type, SHADOW_SYSTEM)
         thinking   = "Shadow is thinking..."
     else:
-        sys_prompt = TWIN_SYSTEM
         task_type  = "twin"
+        sys_prompt = build_system_prompt(task_type, TWIN_SYSTEM)
         thinking   = "Twin is thinking..."
 
     sent = await update.message.reply_text(thinking)
