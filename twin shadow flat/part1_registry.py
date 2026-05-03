@@ -131,6 +131,8 @@ PROVIDERS: dict = {
             "granite_34b_code":     "ibm/granite-34b-code-instruct",
             "seed_oss_36b":         "bytedance-research/seed-oss-36b",
             "stepfun_flash":        "stepfun/step-3-mini-flash-turbo",
+            "qwen3_next_80b":       "qwen/qwen3-72b",
+            "qwen35_122b":          "writer/palmyra-creative-122b",
             # ── Vision ────────────────────────────────────────────────────────
             "vision_90b":           "meta/llama-3.2-90b-vision-instruct",
             "vision_11b":           "meta/llama-3.2-11b-vision-instruct",
@@ -331,10 +333,10 @@ TASK_MODELS: dict = {
     "committee_tech_3":     ("nvidia",   "gpt_oss_20b"),
     "committee_ops_1":      ("nvidia",   "seed_oss_36b"),
     "committee_ops_2":      ("nvidia",   "stepfun_flash"),
-    "committee_ops_3":      ("nvidia",   "nemotron_49b"),
+    "committee_ops_3":      ("nvidia",   "qwen3_next_80b"),
     "committee_dist_1":     ("nvidia",   "gpt_oss_120b"),
-    "committee_dist_2":     ("nvidia",   "deepseek_v3"),
-    "committee_dist_3":     ("venice",   "deepseek_flash"),
+    "committee_dist_2":     ("nvidia",   "qwen35_122b"),
+    "committee_dist_3":     ("nvidia",   "qwen3_next_80b"),
 
     # ── specialized non-chat services ─────────────────────────────────────────
     "transcription":        ("groq",     "whisper_v3"),

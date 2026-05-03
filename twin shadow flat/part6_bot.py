@@ -184,9 +184,15 @@ def api_chat():
     if bot == "shadow":
         sys_prompt = sys_override or SHADOW_SYSTEM
         task_type  = "shadow_chat"
+    elif bot == "capi":
+        sys_prompt = sys_override or CAPI_SYSTEM
+        task_type  = "capi"
     else:
         sys_prompt = sys_override or TWIN_SYSTEM
         task_type  = "twin"
+
+    # Apply CAPI identity context based on who is receiving the message
+    sys_prompt = inject_capi_identity(sys_prompt, bot)
 
     msgs = [{"role": "system", "content": sys_prompt}]
     for h in history[-20:]:
@@ -483,13 +489,19 @@ def api_lab_transcribe():
             print(f"[SMART EDIT] audio extract failed: {err}")
 
     try:
+        # Route through task registry: fast=true → whisper_turbo, else whisper_v3
+        fast_mode   = data.get("fast", False)
+        from part1_registry import get_provider_cfg
+        _groq_cfg   = get_provider_cfg("groq")
+        _model_key  = "whisper_turbo" if fast_mode else "whisper_v3"
+        whisper_model = _groq_cfg["models"].get(_model_key, "whisper-large-v3")
         ctype = mimetypes.guess_type(send_path)[0] or "audio/mpeg"
         with open(send_path, "rb") as fh:
             resp = _req.post(
                 "https://api.groq.com/openai/v1/audio/transcriptions",
                 headers={"Authorization": f"Bearer {groq_key}"},
                 files={"file": (Path(send_path).name, fh, ctype)},
-                data={"model": "whisper-large-v3",
+                data={"model": whisper_model,
                       "response_format": "verbose_json",
                       "timestamp_granularities[]": "segment"},
                 timeout=180,

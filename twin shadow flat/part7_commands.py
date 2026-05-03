@@ -16,7 +16,7 @@ from __future__ import annotations
 import time
 
 from part2_router import call_task
-from part1_registry import BRAINSTORM_MEMBERS, SHADOW_BRAINSTORM_MEMBERS
+from part1_registry import BRAINSTORM_MEMBERS, SHADOW_BRAINSTORM_MEMBERS, TOKEN_LIMITS
 
 # ══════════════════════════════════════════════════════════════════════════════
 # MODEL DISPLAY NAMES
@@ -239,8 +239,12 @@ async def run_round(
             {"role": "user",   "content": prompt},
         ]
 
+        token_cap = TOKEN_LIMITS.get(
+            "shadow_board" if session.get("shadow_mode") else "board_main",
+            200,
+        )
         try:
-            response = await call_task(task_type, messages)
+            response = await call_task(task_type, messages, max_tokens=token_cap)
         except Exception as e:
             response = f"[{model_name} failed: {e}]"
 
