@@ -218,6 +218,9 @@ def api_boardroom():
     topic          = data.get("topic", "").strip()
     shadow_mode    = data.get("shadow_mode", False)
     sys_override   = data.get("system_prompt", "").strip()
+    steer          = data.get("steer", "").strip()          # user steering injection
+    prior_context  = data.get("prior_context", "").strip()  # accumulated prior rounds
+    round_num      = int(data.get("round_num", 1))
     if not topic:
         return jsonify({"error": "No topic"}), 400
 
@@ -225,13 +228,28 @@ def api_boardroom():
     main_token_cap = TOKEN_LIMITS["shadow_board"] if shadow_mode else TOKEN_LIMITS["board_main"]
 
     async def _run():
-        # Step 1: TWIN briefs the topic
+        # Step 1: TWIN briefs the topic (only on round 1; later rounds get a pivot brief)
         twin_sys = sys_override or TWIN_SYSTEM
+        if round_num == 1:
+            brief_prompt = f"Brief this topic for the boardroom in 3 sentences max: {topic}"
+        else:
+            steer_note = f" The group has been steered: {steer}" if steer else ""
+            brief_prompt = (
+                f"This is round {round_num} of the boardroom on: {topic}.{steer_note}\n\n"
+                f"Previous discussion summary:\n{prior_context[-800:]}\n\n"
+                f"Pivot the discussion forward in 2 sentences max."
+            )
         brief_msgs = [
             {"role": "system", "content": twin_sys},
-            {"role": "user",   "content": f"Brief this topic for the boardroom in 3 sentences max: {topic}"},
+            {"role": "user",   "content": brief_prompt},
         ]
         yield f"\x1eSPEAKER:TWIN\x1f"
+        if round_num > 1:
+            yield f"[Round {round_num}]"
+            if steer:
+                yield f" — Steering: {steer}\n\n"
+            else:
+                yield "\n\n"
         brief = ""
         async for chunk in stream_task("twin", brief_msgs, max_tokens=TOKEN_LIMITS["twin"]):
             brief += chunk
@@ -242,9 +260,9 @@ def api_boardroom():
         specialist_members = [] if shadow_mode else get_specialists_for_topic(topic)
         all_members = base_members + specialist_members
 
-        # Step 3: Run pre-discussion committees for NVIDIA seats in background
+        # Step 3: Run pre-discussion committees for NVIDIA seats in background (round 1 only)
         committee_context: dict[str, str] = {}
-        if not shadow_mode:
+        if not shadow_mode and round_num == 1:
             nvidia_seats = [m for m in base_members if COMMITTEE_STRUCTURE.get(m["key"])]
             if nvidia_seats:
                 pre_results = await asyncio.gather(
@@ -255,8 +273,14 @@ def api_boardroom():
                     if isinstance(result, str) and result:
                         committee_context[m["key"]] = result
 
-        # Step 4: Each board member responds (rolling 8-turn context cap)
-        context_turns: list[str] = [f"Topic: {topic}", f"TWIN brief: {brief}"]
+        # Step 4: Build context — seed with prior rounds + steer + this round's brief
+        context_turns: list[str] = []
+        if prior_context:
+            context_turns.append(f"[Prior rounds]\n{prior_context[-800:]}")
+        if steer:
+            context_turns.append(f"[USER DIRECTIVE — Round {round_num}]: {steer}")
+        context_turns += [f"Topic: {topic}", f"TWIN brief: {brief}"]
+
         hermes_turn_count = 0
         for member in all_members:
             name = member["name"]

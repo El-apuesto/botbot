@@ -274,6 +274,14 @@
           <button class="opt" id="br-shadow" onclick="setBoardMode('shadow')">SHADOW BOARD</button>
         </div>
       </div>
+      <div class="fg">
+        <span class="fl">ROUNDS</span>
+        <div class="opt-row">
+          <button class="opt on" id="br-r1" onclick="setBoardRounds(1)">1</button>
+          <button class="opt"    id="br-r2" onclick="setBoardRounds(2)">2</button>
+          <button class="opt"    id="br-r3" onclick="setBoardRounds(3)">3</button>
+        </div>
+      </div>
       <div class="audio-row">
         <button class="btn" id="boardroom-go-btn" onclick="runBoardroom()">[ CONVENE BOARD ]</button>
         <button class="btn" id="boardroom-audio-btn" style="display:none" onclick="renderTTS('boardroom')">[ PLAY AUDIO ]</button>
@@ -281,6 +289,12 @@
         <a id="boardroom-export-btn" style="display:none;font-family:var(--font);font-size:12px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="boardroom_transcript.txt">[ EXPORT ]</a>
         <a id="boardroom-mp3-btn" style="display:none;font-family:var(--font);font-size:12px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="boardroom_audio.mp3">[ DL MP3 ]</a>
         <button class="btn" id="boardroom-lab-btn" style="display:none" onclick="sendToVideoLab('boardroom')">[ SEND TO VIDEO LAB ]</button>
+      </div>
+      <!-- Steer row — appears between rounds -->
+      <div id="boardroom-steer-row" style="display:none;flex-direction:column;gap:8px;border:1px solid var(--purple-dim);padding:10px;margin-top:6px">
+        <span class="fl" id="boardroom-steer-label">ROUND COMPLETE — STEER THE NEXT ROUND (OPTIONAL)</span>
+        <textarea class="fi" id="boardroom-steer" rows="2" placeholder="Redirect, challenge, or add context for the next round..."></textarea>
+        <button class="btn" id="boardroom-next-btn" onclick="boardroomNextRound()">[ NEXT ROUND ]</button>
       </div>
       <audio id="boardroom-audio" controls></audio>
       <div id="boardroom-out" class="session-out"></div>
@@ -477,9 +491,10 @@ let uname     = S.get('uname', 'USER');
 let defBot    = S.get('defBot', 'twin');
 let teamMode  = S.get('teamMode', 'normal');
 let history   = [];
-let boardMode = 'normal';
-let bsMode    = 'normal';
-let bsRounds  = 1;
+let boardMode   = 'normal';
+let boardRounds = 1;
+let bsMode      = 'normal';
+let bsRounds    = 1;
 let boardTurns = [];
 let bsTurns    = [];
 let pendingFile = null;
@@ -622,6 +637,15 @@ function clearFile() {
 }
 
 /* ─────────────────────────────────────────
+   BOARDROOM MODE / ROUNDS
+───────────────────────────────────────── */
+function setBoardRounds(r) {
+  boardRounds = r;
+  [1,2,3].forEach(n =>
+    document.getElementById('br-r'+n).classList.toggle('on', n === r));
+}
+
+/* ─────────────────────────────────────────
    SESSION HELPERS (boardroom / brainstorm)
 ───────────────────────────────────────── */
 /**
@@ -718,30 +742,68 @@ function setBoardMode(m) {
   document.getElementById('br-shadow').classList.toggle('on', m === 'shadow');
 }
 
+/* State for multi-round boardroom */
+let _brRoundCurrent = 0;
+let _brRoundsTotal  = 1;
+let _brTopic        = '';
+let _brPriorContext = '';
+let _brResolve      = null; // resolves the steer-wait promise
+
 async function runBoardroom() {
   const topic = document.getElementById('boardroom-topic').value.trim();
   if (!topic) return;
+  _brTopic        = topic;
+  _brRoundCurrent = 0;
+  _brRoundsTotal  = boardRounds;
+  _brPriorContext = '';
+  boardTurns      = [];
+
   const btn = document.getElementById('boardroom-go-btn');
   btn.disabled = true; btn.textContent = '[ CONVENING... ]';
-  boardTurns = [];
   document.getElementById('boardroom-audio').style.display = 'none';
   document.getElementById('boardroom-audio-btn').style.display = 'none';
   document.getElementById('boardroom-export-btn').style.display = 'none';
   document.getElementById('boardroom-mp3-btn').style.display = 'none';
+  document.getElementById('boardroom-steer-row').style.display = 'none';
   const labBtnBr = document.getElementById('boardroom-lab-btn');
   labBtnBr.style.display = 'none'; labBtnBr.disabled = false; labBtnBr.textContent = '[ SEND TO VIDEO LAB ]';
+  document.getElementById('boardroom-out').innerHTML = '';
 
-  try {
-    boardTurns = await streamSession('/api/boardroom',
-      { topic, shadow_mode: boardMode === 'shadow',
-        system_prompt: S.get('p_boardroom', '') },
-      document.getElementById('boardroom-out'),
-    );
-  } catch(e) {
-    document.getElementById('boardroom-out').innerHTML += '<p style="color:#f44">' + e + '</p>';
+  for (let rnd = 1; rnd <= _brRoundsTotal; rnd++) {
+    _brRoundCurrent = rnd;
+    btn.textContent = _brRoundsTotal > 1 ? `[ ROUND ${rnd} / ${_brRoundsTotal}... ]` : '[ CONVENING... ]';
+
+    const steer = rnd > 1 ? (document.getElementById('boardroom-steer').value.trim()) : '';
+    document.getElementById('boardroom-steer-row').style.display = 'none';
+    document.getElementById('boardroom-steer').value = '';
+
+    try {
+      const roundTurns = await streamSession('/api/boardroom',
+        { topic, shadow_mode: boardMode === 'shadow',
+          system_prompt: S.get('p_boardroom', ''),
+          round_num: rnd, steer, prior_context: _brPriorContext },
+        document.getElementById('boardroom-out'),
+      );
+      boardTurns = boardTurns.concat(roundTurns);
+      _brPriorContext += '\n\n' + roundTurns.map(t => t.speaker + ': ' + t.text).join('\n\n');
+    } catch(e) {
+      document.getElementById('boardroom-out').innerHTML += '<p style="color:#f44">' + e + '</p>';
+      break;
+    }
+
+    /* Between rounds: show steer box and wait for user to hit Next Round */
+    if (rnd < _brRoundsTotal) {
+      const steerRow = document.getElementById('boardroom-steer-row');
+      document.getElementById('boardroom-steer-label').textContent =
+        `ROUND ${rnd} COMPLETE — STEER ROUND ${rnd+1} (OPTIONAL)`;
+      steerRow.style.display = 'flex';
+      /* wait until boardroomNextRound() resolves */
+      await new Promise(resolve => { _brResolve = resolve; });
+    }
   }
 
   btn.disabled = false; btn.textContent = '[ CONVENE BOARD ]';
+  document.getElementById('boardroom-steer-row').style.display = 'none';
 
   if (boardTurns.length) {
     document.getElementById('boardroom-audio-btn').style.display = '';
@@ -753,6 +815,10 @@ async function runBoardroom() {
     _labConcepts.boardroom = { topic, transcript: txt };
     document.getElementById('boardroom-lab-btn').style.display = '';
   }
+}
+
+function boardroomNextRound() {
+  if (_brResolve) { _brResolve(); _brResolve = null; }
 }
 
 /* ─────────────────────────────────────────
