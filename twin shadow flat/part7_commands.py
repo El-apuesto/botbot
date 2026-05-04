@@ -5,7 +5,7 @@ Twin Shadow — Part 7: Command Layer
 /model_traits <key>              — view a model's current traits
 /model_end <key>                 — wipe a model's traits
 /boardroom <rounds> <topic>      — structured multi-round debate
-/brainstorm <topic>              — open-form multi-model ideation
+/brainstorm [podcast] <topic>    — open-form multi-model ideation
 /shadow <command> <args>         — same as command but uncensored models only
 /boss_voice <message>            — queue your message to lead next round
 /end                             — end active session
@@ -253,7 +253,10 @@ async def run_round(
         if s_type == "boardroom":
             base_system = board_member_system(seat_name, seat_role, shadow_mode=shadow_mode)
         else:
-            base_system = brainstorm_system(seat_name)
+            base_system = brainstorm_system(
+                seat_name,
+                podcast_mode=session.get("podcast_mode", False),
+            )
 
         system = build_system_prompt(task_type, base_system)
 
@@ -277,10 +280,12 @@ async def run_round(
             {"role": "user",   "content": prompt},
         ]
 
-        token_cap = TOKEN_LIMITS.get(
-            "shadow_board" if session.get("shadow_mode") else "board_main",
-            200,
-        )
+        if s_type == "brainstorm":
+            token_cap = TOKEN_LIMITS.get("brainstorm", 150)
+        elif session.get("shadow_mode"):
+            token_cap = TOKEN_LIMITS.get("shadow_board", 250)
+        else:
+            token_cap = TOKEN_LIMITS.get("board_main", 200)
         try:
             response = await call_task(task_type, messages, max_tokens=token_cap)
         except Exception as e:
@@ -446,14 +451,23 @@ async def handle_brainstorm(
     reply_fn, stream_fn,
     shadow_mode: bool = False,
 ) -> None:
-    """/brainstorm <topic>"""
+    """/brainstorm [podcast] <topic>"""
     if get_session(chat_id):
         await reply_fn("Session already active. Use /end first.")
         return
 
     if not args:
-        await reply_fn("Usage: /brainstorm <topic>")
+        await reply_fn("Usage: /brainstorm [podcast] <topic>")
         return
+
+    # Detect optional podcast flag as first word
+    podcast_mode = False
+    if args[0].lower() == "podcast":
+        podcast_mode = True
+        args = args[1:]
+        if not args:
+            await reply_fn("Usage: /brainstorm podcast <topic>")
+            return
 
     topic        = " ".join(args)
     roster       = SHADOW_BRAINSTORM_MEMBERS if shadow_mode else BRAINSTORM_MEMBERS
@@ -466,12 +480,15 @@ async def handle_brainstorm(
         "rounds_done":   0,
         "participants":  participants,
         "shadow_mode":   shadow_mode,
+        "podcast_mode":  podcast_mode,
         "history":       [],
         "waiting_for_user": False,
         "boss_voice":    None,
     }
 
     mode_tag = " 🌑 SHADOW" if shadow_mode else ""
+    if podcast_mode:
+        mode_tag += " 🎙 PODCAST"
     names    = ", ".join(MODEL_NAMES.get(p, p) for p in participants)
     await reply_fn(
         f"💡 BRAINSTORM{mode_tag}\n"
