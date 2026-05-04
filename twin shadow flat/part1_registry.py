@@ -370,12 +370,13 @@ BOARD_MEMBERS = [
     {"key": "capi",               "name": "CAPI",         "alias": None,        "role": "Consultant & Moderator"},
 ]
 
-# ── Shadow boardroom: all uncensored, no CAPI ─────────────────────────────────
+# ── Shadow boardroom: all uncensored + CAPI ───────────────────────────────────
 SHADOW_BOARD_MEMBERS = [
     {"key": "shadow_chat",         "name": "SHADOW",   "role": "Authoritarian Dark Authority (Venice 1.2)"},
     {"key": "board_dolphin",       "name": "GEMMA",    "role": "Uncensored Chat Persona (Gemma 4)"},
     {"key": "board_venice_llama",  "name": "VENICE70", "role": "Venice Llama 70B Uncensored"},
     {"key": "board_hermes_capped", "name": "HERMES",   "role": "Oracle / Cryptic Spark (405B, capped)"},
+    {"key": "capi",                "name": "CAPI",     "role": "External Strategic Consultant"},
 ]
 
 # ── Trigger-based specialists (only called when topic matches) ─────────────────
