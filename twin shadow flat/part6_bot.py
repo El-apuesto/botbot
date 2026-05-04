@@ -115,7 +115,8 @@ def _logout():
 @_flask.route("/")
 @_require_web_auth
 def _home():
-    return send_from_directory(str(_static_dir), "index.html")
+    og_url = request.url_root.rstrip("/")
+    return render_template("index.html", og_url=og_url)
 
 @_flask.route("/audio/<path:filename>")
 @_require_web_auth
