@@ -359,15 +359,15 @@ TASK_MODELS: dict = {
 
 # ── Regular boardroom: 6 free NVIDIA seats + SHADOW + GEMMA + CAPI (cover) ────
 BOARD_MEMBERS = [
-    {"key": "board_strategy",     "name": "STRATEGY",     "alias": None,       "role": "Strategic Advisor (Kimi K2)"},
-    {"key": "board_finance",      "name": "FINANCE",      "alias": "Rich Max",  "role": "Finance & Risk Analyst (Mistral 675B)"},
-    {"key": "board_creative",     "name": "CREATIVE",     "alias": None,        "role": "Creative Director (Palmyra 122B)"},
-    {"key": "board_tech",         "name": "TECH",         "alias": "Linnerd",   "role": "Tech Lead (Devstral 123B)"},
-    {"key": "board_ops",          "name": "OPS",          "alias": None,        "role": "Operations (Nemotron 49B)"},
-    {"key": "board_distribution", "name": "DISTRIBUTION", "alias": None,        "role": "Distribution & Growth (GPT-OSS 120B)"},
-    {"key": "shadow_chat",        "name": "SHADOW",       "alias": "Shadow",    "role": "Dark Authority (Venice 1.2)"},
-    {"key": "board_dolphin",      "name": "GEMMA",        "alias": "Gemma",     "role": "Uncensored Voice (Gemma 4)"},
-    {"key": "capi",               "name": "CAPI",         "alias": "Quincy",    "role": "Consultant & Moderator"},
+    {"key": "board_strategy",     "name": "STRATEGY",     "alias": "Kimmy",    "role": "Strategic Advisor"},
+    {"key": "board_finance",      "name": "FINANCE",      "alias": "Rich Max",  "role": "Finance & Risk Analyst"},
+    {"key": "board_creative",     "name": "CREATIVE",     "alias": "Palmyra",   "role": "Creative Director"},
+    {"key": "board_tech",         "name": "TECH",         "alias": "Linnerd",   "role": "Tech Lead"},
+    {"key": "board_ops",          "name": "OPS",          "alias": None,        "role": "Operations"},
+    {"key": "board_distribution", "name": "DISTRIBUTION", "alias": "OSID",      "role": "Distribution & Growth"},
+    {"key": "shadow_chat",        "name": "SHADOW",       "alias": "Shadow",    "role": "Dark Authority"},
+    {"key": "board_dolphin",      "name": "GEMMA",        "alias": "Gemma",     "role": "Uncensored Voice"},
+    {"key": "capi",               "name": "CAPI",         "alias": None,        "role": "Consultant & Moderator"},
 ]
 
 # ── Shadow boardroom: all uncensored, no CAPI ─────────────────────────────────
@@ -404,26 +404,26 @@ BOARD_SPECIALISTS = [
 BRAINSTORM_MEMBERS = [
     {"key": "board_hermes_capped", "name": "HERMES",    "alias": "Hermes"},
     {"key": "shadow_chat",         "name": "SHADOW",    "alias": "Shadow"},
-    {"key": "capi",                "name": "CAPI",      "alias": "Quincy"},
-    {"key": "board_venice_llama",  "name": "VENICE70",  "alias": None},
-    {"key": "brainstorm_glm",      "name": "GLM",       "alias": None},
-    {"key": "brainstorm_kimi",     "name": "STRATEGY",  "alias": None},
+    {"key": "capi",                "name": "CAPI",      "alias": None},
+    {"key": "board_venice_llama",  "name": "VENICE70",  "alias": "Vince"},
+    {"key": "brainstorm_glm",      "name": "GLM",       "alias": "Glenda"},
+    {"key": "brainstorm_kimi",     "name": "STRATEGY",  "alias": "Kimmy"},
     {"key": "brainstorm_mistral",  "name": "FINANCE",   "alias": "Rich Max"},
-    {"key": "brainstorm_minimax",  "name": "MINIMAX",   "alias": None},
-    {"key": "brainstorm_qwq",      "name": "QWQ",       "alias": None},
+    {"key": "brainstorm_minimax",  "name": "MINIMAX",   "alias": "Max"},
+    {"key": "brainstorm_qwq",      "name": "QWQ",       "alias": "Quincy"},
 ]
 
 # ── Shadow brainstorm: SHADOW leads, CAPI interprets Hermes ───────────────────
 SHADOW_BRAINSTORM_MEMBERS = [
     {"key": "shadow_chat",         "name": "SHADOW",    "alias": "Shadow"},
     {"key": "board_hermes_capped", "name": "HERMES",    "alias": "Hermes"},
-    {"key": "capi",                "name": "CAPI",      "alias": "Quincy"},
-    {"key": "board_venice_llama",  "name": "VENICE70",  "alias": None},
-    {"key": "brainstorm_glm",      "name": "GLM",       "alias": None},
-    {"key": "brainstorm_kimi",     "name": "STRATEGY",  "alias": None},
+    {"key": "capi",                "name": "CAPI",      "alias": None},
+    {"key": "board_venice_llama",  "name": "VENICE70",  "alias": "Vince"},
+    {"key": "brainstorm_glm",      "name": "GLM",       "alias": "Glenda"},
+    {"key": "brainstorm_kimi",     "name": "STRATEGY",  "alias": "Kimmy"},
     {"key": "brainstorm_mistral",  "name": "FINANCE",   "alias": "Rich Max"},
-    {"key": "brainstorm_minimax",  "name": "MINIMAX",   "alias": None},
-    {"key": "brainstorm_qwq",      "name": "QWQ",       "alias": None},
+    {"key": "brainstorm_minimax",  "name": "MINIMAX",   "alias": "Max"},
+    {"key": "brainstorm_qwq",      "name": "QWQ",       "alias": "Quincy"},
 ]
 
 # ── Committee structure: each board seat → 2-3 pre-discussion sub-models ──────
