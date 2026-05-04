@@ -240,6 +240,7 @@
       <button class="act-btn" id="btn-music"      onclick="openMusic()"       title="Manage music library">[ MUSIC ]</button>
       <button class="act-btn" id="btn-uploads"    onclick="openUploads()"     title="View uploaded files">[ FILES ]</button>
       <button class="act-btn" id="btn-smartedit"  onclick="openSmartEditor()" title="Smart Editor — auto-highlight, metadata, thumbnail">[ SMART EDIT ]</button>
+      <button class="act-btn" id="btn-pexels"     onclick="openPexels()"      title="Search free Pexels stock video">[ STOCK VIDEO ]</button>
     </div>
 
     <!-- Input row -->
@@ -269,6 +270,28 @@
         <div id="music-list" style="display:flex;flex-direction:column;gap:5px;"></div>
         <p id="music-empty" style="font-size:6px;color:var(--purple-dim);">NO TRACKS. UPLOAD ONE ABOVE.</p>
       </div>
+    </div>
+  </div>
+
+  <!-- ═══ PEXELS STOCK VIDEO PANEL ═══ -->
+  <div class="panel" id="panel-pexels">
+    <div class="ph">
+      <span class="pt">[ STOCK VIDEO ]</span>
+      <button class="pc" onclick="closePanel('pexels')">X CLOSE</button>
+    </div>
+    <div class="pb">
+      <div class="fg" style="flex-direction:row;gap:8px;align-items:flex-end">
+        <input class="fi" id="pexels-query" type="text" placeholder="Search Pexels... (e.g. night city, fire, ocean)"
+               style="flex:1" onkeydown="if(event.key==='Enter')pexelsSearch()">
+        <button class="btn" onclick="pexelsSearch()">[ SEARCH ]</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+        <button class="se-opt active" id="px-land" onclick="pexelsOrient('landscape',this)">LANDSCAPE</button>
+        <button class="se-opt"        id="px-port" onclick="pexelsOrient('portrait',this)">PORTRAIT</button>
+        <button class="se-opt"        id="px-sq"   onclick="pexelsOrient('square',this)">SQUARE</button>
+      </div>
+      <div id="pexels-status" style="font-size:6px;color:var(--purple-dim);margin-top:4px;min-height:12px;"></div>
+      <div id="pexels-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;"></div>
     </div>
   </div>
 
@@ -1028,6 +1051,97 @@ function closeAll() {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('open'));
 }
 function openMusic() { openPanel('music'); }
+
+/* ─────────────────────────────────────────
+   PEXELS STOCK VIDEO
+───────────────────────────────────────── */
+let _pexelsOrientation = 'landscape';
+
+function openPexels() {
+  openPanel('pexels');
+  const q = labState.concept || document.getElementById('lab-concept').value.trim();
+  if (q) {
+    document.getElementById('pexels-query').value = q;
+    pexelsSearch();
+  }
+}
+
+function pexelsOrient(orient, btn) {
+  _pexelsOrientation = orient;
+  document.querySelectorAll('#panel-pexels .se-opt').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+async function pexelsSearch() {
+  const q      = document.getElementById('pexels-query').value.trim();
+  const status = document.getElementById('pexels-status');
+  const grid   = document.getElementById('pexels-grid');
+  if (!q) return;
+
+  status.textContent = 'SEARCHING PEXELS...';
+  grid.innerHTML = '';
+
+  try {
+    const res  = await fetch(`/api/lab/pexels?q=${encodeURIComponent(q)}&orientation=${_pexelsOrientation}`);
+    const data = await res.json();
+
+    if (data.error) {
+      status.textContent = '✗ ' + data.error;
+      if (data.error.includes('PEXELS_API_KEY')) {
+        status.textContent = '✗ ADD PEXELS_API_KEY IN SETTINGS → FREE AT pexels.com/api';
+      }
+      return;
+    }
+
+    const results = data.results || [];
+    status.textContent = results.length ? `${results.length} RESULTS — TAP THUMBNAIL TO USE` : 'NO RESULTS';
+
+    results.forEach(v => {
+      const card = document.createElement('div');
+      card.style.cssText = 'display:flex;flex-direction:column;gap:3px;cursor:pointer;border:1px solid var(--purple-dim);padding:4px;';
+
+      const thumb = document.createElement('img');
+      thumb.src   = v.thumbnail;
+      thumb.style.cssText = 'width:100%;height:70px;object-fit:cover;';
+      thumb.loading = 'lazy';
+
+      const info = document.createElement('div');
+      info.style.cssText = 'font-size:5px;color:var(--purple-dim);line-height:1.6;';
+      info.textContent = `${v.duration}s · ${v.width}×${v.height} · ${v.photographer}`;
+
+      const useBtn = document.createElement('button');
+      useBtn.className = 'btn';
+      useBtn.style.cssText = 'font-size:5px;padding:3px 6px;align-self:flex-start;margin-top:2px;';
+      useBtn.textContent = '[ USE ]';
+      useBtn.onclick = () => pexelsUseClip(v);
+
+      card.appendChild(thumb);
+      card.appendChild(info);
+      card.appendChild(useBtn);
+      grid.appendChild(card);
+    });
+  } catch(e) {
+    status.textContent = '✗ SEARCH ERROR: ' + e;
+  }
+}
+
+async function pexelsUseClip(v) {
+  const status = document.getElementById('pexels-status');
+  status.textContent = `DOWNLOADING: ${v.url.split('/').pop().split('?')[0]}...`;
+  try {
+    const res  = await fetch('/api/lab/pexels/import', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: v.url, photographer: v.photographer, duration: v.duration }),
+    });
+    const data = await res.json();
+    if (data.error) { status.textContent = '✗ ' + data.error; return; }
+    labState.uploadedFiles.push(data);
+    status.textContent = `✓ IMPORTED: ${data.name} — AVAILABLE IN FILES`;
+    log('ok', `✓ PEXELS IMPORT: ${data.name} (${v.duration}s · ${v.photographer})`);
+  } catch(e) {
+    status.textContent = '✗ IMPORT ERROR: ' + e;
+  }
+}
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeAll();

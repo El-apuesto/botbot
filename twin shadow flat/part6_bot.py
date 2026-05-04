@@ -1448,6 +1448,55 @@ def api_lab_video_status(job_id):
     return jsonify(job)
 
 
+# ── /api/lab/pexels ───────────────────────────────────────────────────────────
+@_flask.route("/api/lab/pexels", methods=["GET"])
+def api_lab_pexels():
+    from part4_video import search_pexels_videos
+    import asyncio
+    query       = request.args.get("q", "").strip()
+    orientation = request.args.get("orientation", "landscape")
+    if not query:
+        return jsonify({"error": "query required"}), 400
+    if not os.environ.get("PEXELS_API_KEY"):
+        return jsonify({"error": "PEXELS_API_KEY not configured"}), 503
+    try:
+        loop    = asyncio.new_event_loop()
+        results = loop.run_until_complete(search_pexels_videos(query, per_page=12, orientation=orientation))
+        loop.close()
+        return jsonify({"results": results})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ── /api/lab/pexels/import ────────────────────────────────────────────────────
+@_flask.route("/api/lab/pexels/import", methods=["POST"])
+def api_lab_pexels_import():
+    from part4_video import download_file, get_video_duration
+    data         = request.json or {}
+    url          = data.get("url", "").strip()
+    photographer = data.get("photographer", "pexels")
+    duration     = data.get("duration", 0)
+    if not url:
+        return jsonify({"error": "url required"}), 400
+    safe_name = re.sub(r"[^a-zA-Z0-9._-]", "_", photographer.lower()[:20])
+    filename  = f"pexels_{safe_name}_{int(time.time())}.mp4"
+    local     = download_file(url, str(_lab_uploads_dir), filename)
+    if not local:
+        return jsonify({"error": "Download failed"}), 500
+    real_dur = get_video_duration(local) or duration
+    url_path = f"/uploads/{Path(local).name}"
+    cloud_url, _ = _sb.upload_file(local, folder="uploads")
+    return jsonify({
+        "name":      Path(local).name,
+        "path":      local,
+        "url":       cloud_url or url_path,
+        "file_type": "video",
+        "duration":  real_dur,
+        "size":      Path(local).stat().st_size,
+        "cloud":     bool(cloud_url),
+    })
+
+
 # ── /api/lab/voice ────────────────────────────────────────────────────────────
 @_flask.route("/api/lab/voice", methods=["POST"])
 def api_lab_voice():

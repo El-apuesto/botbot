@@ -10,6 +10,7 @@ import os
 import subprocess
 import tempfile
 import urllib.request
+import urllib.parse
 from pathlib import Path
 from openai import AsyncOpenAI
 
@@ -455,6 +456,51 @@ async def run_video(task: dict) -> dict:
             print(f"[VIDEO LAB] {provider} failed: {e}")
 
     return {"output": "All video providers failed.", "module": "video", "shadow": True, "errors": errors}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PEXELS STOCK VIDEO SEARCH
+# ══════════════════════════════════════════════════════════════════════════════
+
+async def search_pexels_videos(query: str, per_page: int = 12, orientation: str = "landscape") -> list[dict]:
+    """Search Pexels for free stock videos. Returns list of result dicts."""
+    import asyncio, json
+
+    api_key = os.environ.get("PEXELS_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("PEXELS_API_KEY not configured")
+
+    encoded = urllib.parse.quote(query)
+    url = (
+        f"https://api.pexels.com/videos/search"
+        f"?query={encoded}&per_page={per_page}&orientation={orientation}"
+    )
+
+    def _fetch():
+        req = urllib.request.Request(url, headers={"Authorization": api_key})
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            return json.loads(resp.read())
+
+    loop = asyncio.get_event_loop()
+    data = await loop.run_in_executor(None, _fetch)
+
+    results = []
+    for v in data.get("videos", []):
+        files = sorted(v.get("video_files", []), key=lambda f: f.get("width", 0), reverse=True)
+        hd   = next((f for f in files if f.get("quality") == "hd"), None)
+        best = hd or (files[0] if files else None)
+        if not best:
+            continue
+        results.append({
+            "id":           v["id"],
+            "url":          best["link"],
+            "thumbnail":    v.get("image", ""),
+            "duration":     v.get("duration", 0),
+            "photographer": v.get("user", {}).get("name", "Pexels"),
+            "width":        best.get("width", 0),
+            "height":       best.get("height", 0),
+        })
+    return results
 
 
 # ══════════════════════════════════════════════════════════════════════════════
