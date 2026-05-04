@@ -256,6 +256,7 @@ async def run_round(
             base_system = brainstorm_system(
                 seat_name,
                 podcast_mode=session.get("podcast_mode", False),
+                shadow_mode=shadow_mode,
             )
 
         system = build_system_prompt(task_type, base_system)
