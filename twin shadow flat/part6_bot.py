@@ -44,7 +44,8 @@ from part1_registry import (
 import part8_hardening as _hardening
 from part8_personas import (
     TWIN_SYSTEM, SHADOW_SYSTEM, CAPI_SYSTEM,
-    board_member_system, brainstorm_system, BUILDER_SYSTEM, MODERATOR_SYSTEM,
+    board_member_system, brainstorm_system, BUILDER_SYSTEM,
+    MODERATOR_SYSTEM, SHADOW_MODERATOR_SYSTEM, SHADOW_BRIEF_SYSTEM,
 )
 from part7_commands import (
     handle_model_set, handle_model_traits, handle_model_end,
@@ -234,22 +235,30 @@ def api_boardroom():
     main_token_cap = TOKEN_LIMITS["shadow_board"] if shadow_mode else TOKEN_LIMITS["board_main"]
 
     async def _run():
-        # Step 1: TWIN briefs the topic (only on round 1; later rounds get a pivot brief)
-        twin_sys = sys_override or TWIN_SYSTEM
+        # Step 1: Brief the topic — SHADOW leads in shadow mode, TWIN in normal mode
+        if shadow_mode:
+            brief_sys = sys_override or SHADOW_BRIEF_SYSTEM
+            brief_task = "shadow_chat"
+            brief_speaker = "SHADOW"
+        else:
+            brief_sys = sys_override or TWIN_SYSTEM
+            brief_task = "twin"
+            brief_speaker = "TWIN"
+
         if round_num == 1:
-            brief_prompt = f"Brief this topic for the boardroom in 3 sentences max: {topic}"
+            brief_prompt = f"Brief this topic for the boardroom in 2 sentences max: {topic}"
         else:
             steer_note = f" The group has been steered: {steer}" if steer else ""
             brief_prompt = (
-                f"This is round {round_num} of the boardroom on: {topic}.{steer_note}\n\n"
-                f"Previous discussion summary:\n{prior_context[-800:]}\n\n"
+                f"Round {round_num} on: {topic}.{steer_note}\n\n"
+                f"Previous discussion:\n{prior_context[-800:]}\n\n"
                 f"Pivot the discussion forward in 2 sentences max."
             )
         brief_msgs = [
-            {"role": "system", "content": twin_sys},
+            {"role": "system", "content": brief_sys},
             {"role": "user",   "content": brief_prompt},
         ]
-        yield f"\x1eSPEAKER:TWIN\x1f"
+        yield f"\x1eSPEAKER:{brief_speaker}\x1f"
         if round_num > 1:
             yield f"[Round {round_num}]"
             if steer:
@@ -257,7 +266,7 @@ def api_boardroom():
             else:
                 yield "\n\n"
         brief = ""
-        async for chunk in stream_task("twin", brief_msgs, max_tokens=TOKEN_LIMITS["twin"]):
+        async for chunk in stream_task(brief_task, brief_msgs, max_tokens=TOKEN_LIMITS["twin"]):
             brief += chunk
             yield chunk
         yield "\x1eEND\x1f"
@@ -450,23 +459,31 @@ def api_brainstorm():
                 yield "\x1eEND\x1f"
                 context_turns.append(f"{name} (round {rnd}): {resp[:250]}")
 
-            # TWIN moderates between rounds
+            # Moderate between rounds — SHADOW leads in shadow mode, TWIN in normal
             if rnd < rounds:
                 context = "\n\n".join(context_turns[-8:])
+                if shadow_mode:
+                    mod_sys  = SHADOW_MODERATOR_SYSTEM
+                    mod_task = "shadow_chat"
+                    mod_speaker = "SHADOW"
+                else:
+                    mod_sys  = inject_capi_identity(MODERATOR_SYSTEM, "twin")
+                    mod_task = "twin"
+                    mod_speaker = "TWIN"
                 mod_msgs = [
-                    {"role": "system", "content": inject_capi_identity(MODERATOR_SYSTEM, "twin")},
+                    {"role": "system", "content": mod_sys},
                     {"role": "user",   "content": context},
                 ]
-                yield f"\x1eSPEAKER:TWIN\x1f"
+                yield f"\x1eSPEAKER:{mod_speaker}\x1f"
                 mod = ""
                 try:
-                    async for chunk in stream_task("twin", mod_msgs, max_tokens=TOKEN_LIMITS["twin"]):
+                    async for chunk in stream_task(mod_task, mod_msgs, max_tokens=TOKEN_LIMITS["twin"]):
                         mod += chunk
                         yield chunk
                 except Exception as e:
-                    yield f"[TWIN offline: {e}]"
+                    yield f"[{mod_speaker} offline: {e}]"
                 yield "\x1eEND\x1f"
-                context_turns.append(f"TWIN (mod): {mod[:200]}")
+                context_turns.append(f"{mod_speaker} (mod): {mod[:200]}")
 
     return _sse_stream(_run)
 
