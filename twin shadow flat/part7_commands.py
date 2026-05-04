@@ -20,7 +20,7 @@ from part1_registry import (
     BRAINSTORM_MEMBERS, SHADOW_BRAINSTORM_MEMBERS, TOKEN_LIMITS,
     BOARD_MEMBERS, SHADOW_BOARD_MEMBERS,
 )
-from part8_personas import board_member_system, brainstorm_system
+from part8_personas import board_member_system, brainstorm_system, session_brief
 
 # ══════════════════════════════════════════════════════════════════════════════
 # MEMBER LOOKUP  (task_type → {key, name, role})
@@ -257,10 +257,16 @@ async def run_round(
 
         system = build_system_prompt(task_type, base_system)
 
+        brief_note = (
+            "\n\n" + session_brief(topic, s_type, shadow_mode=shadow_mode)
+            if round_num == 1 else ""
+        )
+
         prompt = (
             f"Topic: {topic}\n"
             f"{boss_note}"
             f"Round {round_num}."
+            + brief_note
             + (f"\n\nDiscussion so far:\n{context}" if context else "")
             + user_note
             + f"\n\nYour response as {model_name}:"

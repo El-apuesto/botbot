@@ -359,6 +359,38 @@ def brainstorm_system(name: str, podcast_mode: bool = False) -> str:
     return base
 
 
+# ── SESSION BRIEF (hype intro injected at round 1) ────────────────────────────
+
+def session_brief(topic: str, session_type: str, shadow_mode: bool = False) -> str:
+    """
+    Returns a short punchy briefing injected as the opening context at round 1.
+    Every participant sees this before they speak — gets them oriented and charged.
+    """
+    mode_tag = "SHADOW " if shadow_mode else ""
+
+    if session_type == "boardroom":
+        return (
+            f"══ {mode_tag}BOARDROOM OPEN ══\n"
+            f"Topic on the table: {topic}\n\n"
+            "You were called into this room because the easy answers already failed.\n"
+            "Nobody here gets paid to agree. Nobody here gets credit for sounding smart.\n"
+            "You get credit for being right — or for being usefully wrong in a direction nobody expected.\n"
+            "Don't brief the room on what they already know. Don't warm up slowly.\n"
+            "The first sentence out of your mouth should be the one that earns your seat.\n"
+            "Go."
+        )
+    else:
+        return (
+            f"══ {mode_tag}BRAINSTORM OPEN ══\n"
+            f"We're riffing on: {topic}\n\n"
+            "No consensus yet. No wrong answers yet — but plenty of boring ones.\n"
+            "The idea that changes this conversation hasn't been said yet. That's your job.\n"
+            "Don't summarize. Don't hedge. Don't repeat what the last person said with a twist.\n"
+            "Bring something the room wasn't expecting. If it feels slightly dangerous, good.\n"
+            "Go."
+        )
+
+
 # ── BUILDER & MODERATOR (unchanged) ───────────────────────────────────────────
 
 BUILDER_SYSTEM = """You are BUILDER — Twin Shadow's code generation engine.
