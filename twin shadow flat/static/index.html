@@ -63,9 +63,9 @@
       padding: 3px 8px; border-bottom: 1px solid var(--purple-dim);
       background: rgba(6,0,18,.75); flex-shrink: 0; min-height: 22px;
     }
-    #user-label { font-size: 6px; color: var(--purple); text-shadow: var(--glow); letter-spacing: 1px; }
+    #user-label { font-size: 10px; color: var(--purple); text-shadow: var(--glow); letter-spacing: 1px; }
     #bot-toggle { display: flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; }
-    #toggle-name { font-size: 6px; color: var(--purple); text-shadow: var(--glow);
+    #toggle-name { font-size: 10px; color: var(--purple); text-shadow: var(--glow);
       min-width: 48px; text-align: right; letter-spacing: 1px; }
     .sw { position: relative; width: 30px; height: 13px;
       background: #0a0018; border: 1px solid var(--purple); }
@@ -82,15 +82,15 @@
     #msgs::-webkit-scrollbar-thumb { background: var(--purple-dim); }
 
     .msg { display: flex; flex-direction: column; gap: 2px; }
-    .msg-who { font-size: 6px; color: var(--purple); text-shadow: var(--glow); letter-spacing: 1px; }
-    .msg-body { font-size: 7px; color: var(--white); line-height: 1.9; word-break: break-word; white-space: pre-wrap; }
-    @media (min-width: 700px) { .msg-who { font-size: 7px; } .msg-body { font-size: 8px; } }
+    .msg-who { font-size: 10px; color: var(--purple); text-shadow: var(--glow); letter-spacing: 1px; }
+    .msg-body { font-size: 12px; color: var(--white); line-height: 1.9; word-break: break-word; white-space: pre-wrap; }
+    @media (min-width: 700px) { .msg-who { font-size: 12px; } .msg-body { font-size: 16px; } }
 
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
     .typing::after { content: '█'; animation: blink .7s step-end infinite; }
 
     /* ── FILE HINT ── */
-    #file-hint { display: none; font-size: 5px; color: var(--purple);
+    #file-hint { display: none; font-size: 16px; color: var(--purple);
       padding: 2px 10px; background: rgba(6,0,18,.85);
       border-top: 1px solid var(--purple-dim); flex-shrink: 0; }
 
@@ -99,18 +99,18 @@
       padding: 5px 7px; border-top: 1px solid var(--purple);
       background: rgba(6,0,18,.8); flex-shrink: 0; }
     #upload-btn { flex-shrink: 0; background: transparent;
-      border: 1px solid var(--purple-dim); color: var(--purple); font-size: 13px;
+      border: 1px solid var(--purple-dim); color: var(--purple); font-size: 16px;
       width: 26px; height: 26px; cursor: pointer; display: flex;
       align-items: center; justify-content: center; transition: box-shadow .15s; }
     #upload-btn:hover { box-shadow: var(--glow); }
     #file-input { display: none; }
     #txt { flex: 1; background: transparent; border: none; outline: none;
-      color: var(--white); font-family: var(--font); font-size: 7px; line-height: 1.8;
+      color: var(--white); font-family: var(--font); font-size: 12px; line-height: 1.8;
       resize: none; min-height: 26px; max-height: 110px; overflow-y: auto;
       caret-color: var(--purple); caret-shape: block;
       padding: 2px 0; scrollbar-width: none; }
     #txt::-webkit-scrollbar { display: none; }
-    @media (min-width: 700px) { #txt { font-size: 8px; } }
+    @media (min-width: 700px) { #txt { font-size: 16px; } }
     #send-btn { flex-shrink: 0; width: 34px; height: 34px; padding: 0;
       border: 1px solid var(--purple); background: #060012;
       cursor: pointer; overflow: hidden; transition: box-shadow .15s; }
@@ -141,32 +141,32 @@
     .ph { width: 100%; max-width: 700px; display: flex;
       justify-content: space-between; align-items: center;
       border-bottom: 2px solid var(--purple); padding-bottom: 8px; margin-bottom: 14px; }
-    .pt { font-size: 9px; color: var(--purple); text-shadow: var(--glow); letter-spacing: 2px; }
+    .pt { font-size: 15px; color: var(--purple); text-shadow: var(--glow); letter-spacing: 2px; }
     .pc { background: transparent; border: 1px solid var(--purple);
-      color: var(--purple); font-family: var(--font); font-size: 7px;
+      color: var(--purple); font-family: var(--font); font-size: 12px;
       padding: 5px 9px; cursor: pointer; }
     .pc:hover { box-shadow: var(--glow); }
     .pb { width: 100%; max-width: 700px; display: flex; flex-direction: column; gap: 14px; }
 
     /* Form elements */
     .fg { display: flex; flex-direction: column; gap: 6px; }
-    .fl { font-size: 6px; color: var(--purple); letter-spacing: 1px; }
+    .fl { font-size: 10px; color: var(--purple); letter-spacing: 1px; }
     .fi { background: #060012; border: 1px solid var(--purple-dim);
-      color: var(--white); font-family: var(--font); font-size: 7px;
+      color: var(--white); font-family: var(--font); font-size: 12px;
       padding: 7px; outline: none; width: 100%; }
     .fi:focus { border-color: var(--purple); box-shadow: var(--glow); }
     textarea.fi { resize: vertical; min-height: 56px; line-height: 1.8; }
     .opt-row { display: flex; gap: 8px; flex-wrap: wrap; }
-    .opt { font-size: 7px; padding: 5px 9px; background: transparent;
+    .opt { font-size: 12px; padding: 5px 9px; background: transparent;
       border: 1px solid var(--purple-dim); color: #555;
       font-family: var(--font); cursor: pointer; transition: all .12s; }
     .opt.on { border-color: var(--purple); color: var(--purple); box-shadow: var(--glow); }
     .btn { align-self: flex-start; background: var(--purple-dark); border: 2px solid var(--purple);
-      color: var(--purple); font-family: var(--font); font-size: 7px;
+      color: var(--purple); font-family: var(--font); font-size: 12px;
       padding: 8px 14px; cursor: pointer; letter-spacing: 1px; text-shadow: var(--glow); }
     .btn:hover { box-shadow: var(--glow); }
     .btn:disabled { opacity: .4; cursor: not-allowed; }
-    .save { font-size: 8px; padding: 10px 18px; letter-spacing: 2px; }
+    .save { font-size: 16px; padding: 10px 18px; letter-spacing: 2px; }
 
     /* Session output */
     .session-out { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
@@ -174,27 +174,27 @@
     .session-out::-webkit-scrollbar { width: 3px; }
     .session-out::-webkit-scrollbar-thumb { background: var(--purple-dim); }
     .turn { display: flex; flex-direction: column; gap: 3px; }
-    .turn-who { font-size: 6px; color: var(--purple); text-shadow: var(--glow);
+    .turn-who { font-size: 10px; color: var(--purple); text-shadow: var(--glow);
       letter-spacing: 1px; border-bottom: 1px solid var(--purple-dark); padding-bottom: 2px; }
-    .turn-body { font-size: 7px; color: var(--white); line-height: 2; white-space: pre-wrap;
+    .turn-body { font-size: 12px; color: var(--white); line-height: 2; white-space: pre-wrap;
       word-break: break-word; }
-    @media (min-width: 700px) { .turn-who { font-size: 7px; } .turn-body { font-size: 8px; } }
+    @media (min-width: 700px) { .turn-who { font-size: 12px; } .turn-body { font-size: 16px; } }
 
     /* Audio row */
     .audio-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     #boardroom-audio, #brainstorm-audio { display: none; }
     audio { width: 100%; margin-top: 4px; }
 
-    .ph-text { font-size: 7px; color: var(--purple-dim); line-height: 2.8;
+    .ph-text { font-size: 12px; color: var(--purple-dim); line-height: 2.8;
       text-align: center; margin-top: 20px; }
 
     /* Pipeline jobs */
     .job-row { display: flex; justify-content: space-between; align-items: center;
       border: 1px solid var(--purple-dim); padding: 6px 10px; }
-    .job-name { font-size: 7px; color: var(--white); }
-    .job-status { font-size: 5px; color: var(--purple); }
+    .job-name { font-size: 12px; color: var(--white); }
+    .job-status { font-size: 16px; color: var(--purple); }
     .job-del { background: transparent; border: 1px solid #440033; color: #880055;
-      font-family: var(--font); font-size: 5px; padding: 3px 6px; cursor: pointer; }
+      font-family: var(--font); font-size: 16px; padding: 3px 6px; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -278,8 +278,8 @@
         <button class="btn" id="boardroom-go-btn" onclick="runBoardroom()">[ CONVENE BOARD ]</button>
         <button class="btn" id="boardroom-audio-btn" style="display:none" onclick="renderTTS('boardroom')">[ PLAY AUDIO ]</button>
         <button class="btn" id="boardroom-save-btn" style="display:none" onclick="saveTranscript('boardroom')">[ SAVE ]</button>
-        <a id="boardroom-export-btn" style="display:none;font-family:var(--font);font-size:7px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="boardroom_transcript.txt">[ EXPORT ]</a>
-        <a id="boardroom-mp3-btn" style="display:none;font-family:var(--font);font-size:7px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="boardroom_audio.mp3">[ DL MP3 ]</a>
+        <a id="boardroom-export-btn" style="display:none;font-family:var(--font);font-size:12px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="boardroom_transcript.txt">[ EXPORT ]</a>
+        <a id="boardroom-mp3-btn" style="display:none;font-family:var(--font);font-size:12px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="boardroom_audio.mp3">[ DL MP3 ]</a>
         <button class="btn" id="boardroom-lab-btn" style="display:none" onclick="sendToVideoLab('boardroom')">[ SEND TO VIDEO LAB ]</button>
       </div>
       <audio id="boardroom-audio" controls></audio>
@@ -315,8 +315,8 @@
         <button class="btn" id="brainstorm-go-btn" onclick="runBrainstorm()">[ START SESSION ]</button>
         <button class="btn" id="brainstorm-audio-btn" style="display:none" onclick="renderTTS('brainstorm')">[ PLAY AUDIO ]</button>
         <button class="btn" id="brainstorm-save-btn" style="display:none" onclick="saveTranscript('brainstorm')">[ SAVE ]</button>
-        <a id="brainstorm-export-btn" style="display:none;font-family:var(--font);font-size:7px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="brainstorm_transcript.txt">[ EXPORT ]</a>
-        <a id="brainstorm-mp3-btn" style="display:none;font-family:var(--font);font-size:7px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="brainstorm_audio.mp3">[ DL MP3 ]</a>
+        <a id="brainstorm-export-btn" style="display:none;font-family:var(--font);font-size:12px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="brainstorm_transcript.txt">[ EXPORT ]</a>
+        <a id="brainstorm-mp3-btn" style="display:none;font-family:var(--font);font-size:12px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="brainstorm_audio.mp3">[ DL MP3 ]</a>
       </div>
       <audio id="brainstorm-audio" controls></audio>
       <div id="brainstorm-out" class="session-out"></div>
@@ -439,8 +439,8 @@
 
       <div style="border-top:1px solid var(--purple-dim);margin-top:18px;padding-top:14px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <span class="fl" style="font-size:7px">AUDIO GALLERY</span>
-          <button class="btn" style="font-size:6px;padding:5px 10px" onclick="loadAudioGallery()">[ LOAD ]</button>
+          <span class="fl" style="font-size:12px">AUDIO GALLERY</span>
+          <button class="btn" style="font-size:10px;padding:5px 10px" onclick="loadAudioGallery()">[ LOAD ]</button>
         </div>
         <div id="audio-gallery-list" style="display:flex;flex-direction:column;gap:6px"></div>
         <p id="audio-gallery-empty" class="ph-text" style="margin-top:8px;display:none">NO AUDIO FILES FOUND.</p>
@@ -448,8 +448,8 @@
 
       <div style="border-top:1px solid var(--purple-dim);margin-top:18px;padding-top:14px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <span class="fl" style="font-size:7px">SAVED TRANSCRIPTS</span>
-          <button class="btn" style="font-size:6px;padding:5px 10px" onclick="loadTranscripts()">[ LOAD ]</button>
+          <span class="fl" style="font-size:12px">SAVED TRANSCRIPTS</span>
+          <button class="btn" style="font-size:10px;padding:5px 10px" onclick="loadTranscripts()">[ LOAD ]</button>
         </div>
         <div id="transcripts-list" style="display:flex;flex-direction:column;gap:6px"></div>
         <p id="transcripts-empty" class="ph-text" style="margin-top:8px;display:none">NO TRANSCRIPTS SAVED.</p>
@@ -1049,7 +1049,7 @@ async function saveTranscript(mode) {
 async function loadAudioGallery() {
   const list  = document.getElementById('audio-gallery-list');
   const empty = document.getElementById('audio-gallery-empty');
-  list.innerHTML = '<p style="font-size:6px;color:var(--purple-dim)">LOADING...</p>';
+  list.innerHTML = '<p style="font-size:10px;color:var(--purple-dim)">LOADING...</p>';
   empty.style.display = 'none';
   try {
     const files = await fetch('/api/audio/list').then(r => r.json());
@@ -1061,14 +1061,14 @@ async function loadAudioGallery() {
       const row = document.createElement('div');
       row.style.cssText = 'border:1px solid var(--purple-dim);padding:6px 8px;display:flex;flex-direction:column;gap:4px';
       row.innerHTML =
-        `<span style="font-size:6px;color:var(--purple)">${f.name}</span>` +
-        `<span style="font-size:5px;color:#555">${dt} &nbsp; ${kb} KB</span>` +
+        `<span style="font-size:10px;color:var(--purple)">${f.name}</span>` +
+        `<span style="font-size:13px;color:#555">${dt} &nbsp; ${kb} KB</span>` +
         `<audio controls src="${f.url}" style="width:100%;margin-top:2px"></audio>` +
-        `<a href="${f.url}" download="${f.name}" style="font-family:var(--font);font-size:5px;color:var(--purple);text-decoration:none;align-self:flex-start;border:1px solid var(--purple-dim);padding:3px 6px">[ DL ]</a>`;
+        `<a href="${f.url}" download="${f.name}" style="font-family:var(--font);font-size:13px;color:var(--purple);text-decoration:none;align-self:flex-start;border:1px solid var(--purple-dim);padding:3px 6px">[ DL ]</a>`;
       list.appendChild(row);
     });
   } catch(e) {
-    list.innerHTML = '<p style="font-size:6px;color:#f44">ERROR: ' + e + '</p>';
+    list.innerHTML = '<p style="font-size:10px;color:#f44">ERROR: ' + e + '</p>';
   }
 }
 
@@ -1078,7 +1078,7 @@ async function loadAudioGallery() {
 async function loadTranscripts() {
   const list  = document.getElementById('transcripts-list');
   const empty = document.getElementById('transcripts-empty');
-  list.innerHTML = '<p style="font-size:6px;color:var(--purple-dim)">LOADING...</p>';
+  list.innerHTML = '<p style="font-size:10px;color:var(--purple-dim)">LOADING...</p>';
   empty.style.display = 'none';
   try {
     const items = await fetch('/api/transcripts/list').then(r => r.json());
@@ -1090,15 +1090,15 @@ async function loadTranscripts() {
       const row  = document.createElement('div');
       row.style.cssText = 'border:1px solid var(--purple-dim);padding:6px 8px;display:flex;flex-direction:column;gap:3px';
       row.innerHTML =
-        `<span style="font-size:6px;color:var(--purple)">${t.title}</span>` +
-        `<span style="font-size:5px;color:#555">${type} &nbsp;|&nbsp; ${dt}</span>` +
+        `<span style="font-size:10px;color:var(--purple)">${t.title}</span>` +
+        `<span style="font-size:13px;color:#555">${type} &nbsp;|&nbsp; ${dt}</span>` +
         (t.public_url
-          ? `<a href="${t.public_url}" target="_blank" style="font-family:var(--font);font-size:5px;color:var(--purple);text-decoration:none;align-self:flex-start;border:1px solid var(--purple-dim);padding:3px 6px">[ VIEW ]</a>`
+          ? `<a href="${t.public_url}" target="_blank" style="font-family:var(--font);font-size:13px;color:var(--purple);text-decoration:none;align-self:flex-start;border:1px solid var(--purple-dim);padding:3px 6px">[ VIEW ]</a>`
           : '');
       list.appendChild(row);
     });
   } catch(e) {
-    list.innerHTML = '<p style="font-size:6px;color:#f44">ERROR: ' + e + '</p>';
+    list.innerHTML = '<p style="font-size:10px;color:#f44">ERROR: ' + e + '</p>';
   }
 }
 
