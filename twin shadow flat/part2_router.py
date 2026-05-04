@@ -104,6 +104,8 @@ async def _rotate_stream(
                 stream=True,
             )
             async for chunk in stream:
+                if not chunk.choices:
+                    continue
                 delta = chunk.choices[0].delta.content or ""
                 if delta:
                     yield delta
@@ -155,6 +157,8 @@ async def stream_task(
             stream=True,
         )
         async for chunk in stream:
+            if not chunk.choices:
+                continue
             delta = chunk.choices[0].delta.content or ""
             if delta:
                 yield delta
@@ -182,6 +186,8 @@ async def direct_stream(
             stream=True,
         )
         async for chunk in stream:
+            if not chunk.choices:
+                continue
             delta = chunk.choices[0].delta.content or ""
             if delta:
                 yield delta
