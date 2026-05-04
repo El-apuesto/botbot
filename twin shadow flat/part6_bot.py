@@ -156,7 +156,12 @@ def _sse_stream(async_gen_fn, *args, **kwargs):
     t.start()
     def _gen():
         while True:
-            kind, val = q.get()
+            try:
+                kind, val = q.get(timeout=12)
+            except queue.Empty:
+                # Keepalive comment — prevents mobile Safari / proxy timeouts
+                yield ": keepalive\n\n"
+                continue
             if kind == "data":
                 yield f"data: {json.dumps({'text': val})}\n\n"
             elif kind == "error":
@@ -166,7 +171,8 @@ def _sse_stream(async_gen_fn, *args, **kwargs):
                 yield "data: {\"done\": true}\n\n"
                 break
     return Response(_gen(), content_type="text/event-stream",
-                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no",
+                             "Connection": "keep-alive"})
 
 def _run_async(coro):
     return asyncio.run(coro)
@@ -371,8 +377,11 @@ def api_brainstorm():
     topic        = data.get("topic", "").strip()
     shadow_mode  = data.get("shadow_mode", False)
     podcast_mode = data.get("podcast_mode", False)
-    rounds       = min(int(data.get("rounds", 2)), 3)
+    rounds       = min(int(data.get("rounds", 1)), 3)
     sys_override = data.get("system_prompt", "").strip()
+    prior_context = data.get("prior_context", "").strip()  # accumulated from prior sessions
+    steer         = data.get("steer", "").strip()          # user extension directive
+    extend_round  = int(data.get("extend_round", 0))       # which round we're extending from
     if not topic:
         return jsonify({"error": "No topic"}), 400
 
@@ -380,8 +389,12 @@ def api_brainstorm():
     brainstorm_cap = TOKEN_LIMITS.get("brainstorm", TOKEN_LIMITS["board_main"])
 
     async def _run():
-        # Rolling context — keep last 8 turns worth of text
+        # Seed context with prior session content + user steering directive
         context_turns: list[str] = [f"Topic: {topic}"]
+        if prior_context:
+            context_turns.append(f"[Prior session]\n{prior_context[-800:]}")
+        if steer:
+            context_turns.append(f"[USER EXTENSION DIRECTIVE]: {steer}")
         hermes_turn_count = 0
 
         for rnd in range(1, rounds + 1):

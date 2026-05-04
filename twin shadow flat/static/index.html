@@ -296,6 +296,12 @@
         <textarea class="fi" id="boardroom-steer" rows="2" placeholder="Redirect, challenge, or add context for the next round..."></textarea>
         <button class="btn" id="boardroom-next-btn" onclick="boardroomNextRound()">[ NEXT ROUND ]</button>
       </div>
+      <!-- Extend row — appears after session fully complete -->
+      <div id="boardroom-extend-row" style="display:none;flex-direction:column;gap:8px;border:1px solid var(--purple-dim);padding:10px;margin-top:6px">
+        <span class="fl">EXTEND SESSION — NEW DIRECTION (OPTIONAL)</span>
+        <textarea class="fi" id="boardroom-extend-steer" rows="2" placeholder="Push further, challenge a position, add a new angle..."></textarea>
+        <button class="btn" onclick="extendBoardroom()">[ + EXTEND ]</button>
+      </div>
       <audio id="boardroom-audio" controls></audio>
       <div id="boardroom-out" class="session-out"></div>
     </div>
@@ -331,6 +337,12 @@
         <button class="btn" id="brainstorm-save-btn" style="display:none" onclick="saveTranscript('brainstorm')">[ SAVE ]</button>
         <a id="brainstorm-export-btn" style="display:none;font-family:var(--font);font-size:12px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="brainstorm_transcript.txt">[ EXPORT ]</a>
         <a id="brainstorm-mp3-btn" style="display:none;font-family:var(--font);font-size:12px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:8px 14px;" download="brainstorm_audio.mp3">[ DL MP3 ]</a>
+      </div>
+      <!-- Extend row — appears after session fully complete -->
+      <div id="brainstorm-extend-row" style="display:none;flex-direction:column;gap:8px;border:1px solid var(--purple-dim);padding:10px;margin-top:6px">
+        <span class="fl">EXTEND SESSION — NEW DIRECTION (OPTIONAL)</span>
+        <textarea class="fi" id="brainstorm-extend-steer" rows="2" placeholder="New angle, push further, add a twist..."></textarea>
+        <button class="btn" onclick="extendBrainstorm()">[ + EXTEND ]</button>
       </div>
       <audio id="brainstorm-audio" controls></audio>
       <div id="brainstorm-out" class="session-out"></div>
@@ -814,11 +826,59 @@ async function runBoardroom() {
     document.getElementById('boardroom-export-btn').style.display = '';
     _labConcepts.boardroom = { topic, transcript: txt };
     document.getElementById('boardroom-lab-btn').style.display = '';
+    document.getElementById('boardroom-extend-row').style.display = 'flex';
   }
 }
 
 function boardroomNextRound() {
   if (_brResolve) { _brResolve(); _brResolve = null; }
+}
+
+async function extendBoardroom() {
+  const topic = document.getElementById('boardroom-topic').value.trim();
+  if (!topic || !boardTurns.length) return;
+  const steer = document.getElementById('boardroom-extend-steer').value.trim();
+  document.getElementById('boardroom-extend-steer').value = '';
+  document.getElementById('boardroom-extend-row').style.display = 'none';
+
+  const priorTxt = boardTurns.map(t => t.speaker + ': ' + t.text).join('\n\n');
+  const nextRound = _brRoundCurrent + 1;
+  _brRoundCurrent = nextRound;
+  _brRoundsTotal  = nextRound;
+
+  const btn = document.getElementById('boardroom-go-btn');
+  btn.disabled = true; btn.textContent = `[ EXTENDING... ]`;
+  document.getElementById('boardroom-audio-btn').style.display = 'none';
+  document.getElementById('boardroom-save-btn').style.display = 'none';
+  document.getElementById('boardroom-export-btn').style.display = 'none';
+  document.getElementById('boardroom-mp3-btn').style.display = 'none';
+  document.getElementById('boardroom-lab-btn').style.display = 'none';
+
+  try {
+    const extTurns = await streamSession('/api/boardroom',
+      { topic, shadow_mode: boardMode === 'shadow',
+        system_prompt: S.get('p_boardroom', ''),
+        round_num: nextRound, steer, prior_context: priorTxt },
+      document.getElementById('boardroom-out'),
+    );
+    boardTurns = boardTurns.concat(extTurns);
+    _brPriorContext = boardTurns.map(t => t.speaker + ': ' + t.text).join('\n\n');
+  } catch(e) {
+    document.getElementById('boardroom-out').innerHTML += '<p style="color:#f44">' + e + '</p>';
+  }
+
+  btn.disabled = false; btn.textContent = '[ CONVENE BOARD ]';
+  if (boardTurns.length) {
+    document.getElementById('boardroom-audio-btn').style.display = '';
+    document.getElementById('boardroom-save-btn').style.display = '';
+    const txt = boardTurns.map(t => t.speaker + ': ' + t.text).join('\n\n');
+    const blob = new Blob([txt], { type: 'text/plain' });
+    document.getElementById('boardroom-export-btn').href = URL.createObjectURL(blob);
+    document.getElementById('boardroom-export-btn').style.display = '';
+    _labConcepts.boardroom = { topic, transcript: txt };
+    document.getElementById('boardroom-lab-btn').style.display = '';
+    document.getElementById('boardroom-extend-row').style.display = 'flex';
+  }
 }
 
 /* ─────────────────────────────────────────
@@ -867,6 +927,49 @@ async function runBrainstorm() {
     const blob = new Blob([txt], { type: 'text/plain' });
     document.getElementById('brainstorm-export-btn').href = URL.createObjectURL(blob);
     document.getElementById('brainstorm-export-btn').style.display = '';
+    document.getElementById('brainstorm-extend-row').style.display = 'flex';
+  }
+}
+
+async function extendBrainstorm() {
+  const topic = document.getElementById('brainstorm-topic').value.trim();
+  if (!topic || !bsTurns.length) return;
+  const steer = document.getElementById('brainstorm-extend-steer').value.trim();
+  document.getElementById('brainstorm-extend-steer').value = '';
+  document.getElementById('brainstorm-extend-row').style.display = 'none';
+
+  const priorTxt = bsTurns.map(t => t.speaker + ': ' + t.text).join('\n\n');
+
+  const btn = document.getElementById('brainstorm-go-btn');
+  btn.disabled = true; btn.textContent = '[ EXTENDING... ]';
+  document.getElementById('brainstorm-audio-btn').style.display = 'none';
+  document.getElementById('brainstorm-save-btn').style.display = 'none';
+  document.getElementById('brainstorm-export-btn').style.display = 'none';
+  document.getElementById('brainstorm-mp3-btn').style.display = 'none';
+
+  try {
+    const extTurns = await streamSession('/api/brainstorm',
+      { topic, shadow_mode: bsMode === 'shadow',
+        podcast_mode: bsMode === 'podcast', rounds: 1,
+        system_prompt: S.get('p_brainstorm', ''),
+        prior_context: priorTxt, steer,
+        extend_round: bsTurns.length },
+      document.getElementById('brainstorm-out'),
+    );
+    bsTurns = bsTurns.concat(extTurns);
+  } catch(e) {
+    document.getElementById('brainstorm-out').innerHTML += '<p style="color:#f44">' + e + '</p>';
+  }
+
+  btn.disabled = false; btn.textContent = '[ START SESSION ]';
+  if (bsTurns.length) {
+    document.getElementById('brainstorm-audio-btn').style.display = '';
+    document.getElementById('brainstorm-save-btn').style.display = '';
+    const txt = bsTurns.map(t => t.speaker + ': ' + t.text).join('\n\n');
+    const blob = new Blob([txt], { type: 'text/plain' });
+    document.getElementById('brainstorm-export-btn').href = URL.createObjectURL(blob);
+    document.getElementById('brainstorm-export-btn').style.display = '';
+    document.getElementById('brainstorm-extend-row').style.display = 'flex';
   }
 }
 
