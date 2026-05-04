@@ -30,14 +30,14 @@ TTS_VOICES: dict[str, str] = {
 # ── Hard token limits per role category ────────────────────────────────────────
 TOKEN_LIMITS: dict[str, int] = {
     # Board roles
-    "board_main":           200,
-    "board_committee":      50,
-    "board_summary":        100,
+    "board_main":           400,
+    "board_committee":      80,
+    "board_summary":        150,
     # Shadow board (slightly longer turns)
-    "shadow_board":         250,
+    "shadow_board":         450,
     # Brainstorm
-    "brainstorm":           150,
-    "brainstorm_moderator": 100,
+    "brainstorm":           350,
+    "brainstorm_moderator": 150,
     # Hermes capped dialogue protocol
     "hermes_boardroom":     30,
     "hermes_brainstorm":    60,

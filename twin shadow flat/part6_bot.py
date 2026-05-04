@@ -1040,10 +1040,11 @@ def api_pipeline_add():
         return jsonify({"error": "name required"}), 400
     jobs = _pipeline_load()
     job  = {
-        "id":         int(time.time() * 1000),
-        "name":       data["name"],
-        "status":     "queued",
-        "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "id":          int(time.time() * 1000),
+        "name":        data["name"],
+        "description": data.get("description", ""),
+        "status":      "queued",
+        "created_at":  time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
     jobs.append(job)
     _pipeline_save(jobs)

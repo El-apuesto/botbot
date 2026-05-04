@@ -119,9 +119,9 @@
     #send-btn img { width: 100%; height: 100%; object-fit: cover; }
 
     /* ── MENU BAR ── */
-    #menu-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 20%; height: 20dvh;
+    #menu-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 20svh;
       display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 1fr);
-      padding: 2px 6% 4px; gap: 1px 0; pointer-events: none; }
+      padding: 10px 6% 4px; gap: 1px 0; pointer-events: none; }
     @media (orientation: landscape) and (min-width: 700px) {
       #menu-bar { right: auto; width: 36%; height: 14%; padding: 2px 2% 4px; }
     }
@@ -355,10 +355,15 @@
   <div class="panel" id="panel-pipeline">
     <div class="ph"><span class="pt">[5] PIPELINE</span><button class="pc" onclick="closePanel('pipeline')">X CLOSE</button></div>
     <div class="pb">
-      <div class="fg" style="flex-direction:row;gap:8px;align-items:flex-end">
-        <input class="fi" id="pipeline-name" type="text" placeholder="Job name..." style="flex:1">
-        <button class="btn" onclick="addPipelineJob()">[ ADD JOB ]</button>
+      <div class="fg">
+        <label class="fl">JOB NAME</label>
+        <input class="fi" id="pipeline-name" type="text" placeholder="Short label for this job..." autocomplete="off">
       </div>
+      <div class="fg">
+        <label class="fl">WHAT TO BUILD</label>
+        <textarea class="fi" id="pipeline-desc" rows="4" placeholder="Describe exactly what you want built — the more detail the better..."></textarea>
+      </div>
+      <button class="btn" onclick="addPipelineJob()">[ ADD JOB ]</button>
       <div id="pipeline-list" style="display:flex;flex-direction:column;gap:6px;"></div>
       <p class="ph-text" id="pipeline-empty">NO JOBS IN QUEUE.</p>
     </div>
@@ -1092,14 +1097,16 @@ async function loadPipeline() {
 }
 
 async function addPipelineJob() {
-  const inp = document.getElementById('pipeline-name');
+  const inp  = document.getElementById('pipeline-name');
+  const desc = document.getElementById('pipeline-desc');
   const name = inp.value.trim();
   if (!name) return;
   try {
     await fetch('/api/pipeline', { method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }) });
+      body: JSON.stringify({ name, description: desc.value.trim() }) });
     inp.value = '';
+    desc.value = '';
     loadPipeline();
   } catch {}
 }
