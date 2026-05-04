@@ -16,7 +16,27 @@ from __future__ import annotations
 import time
 
 from part2_router import call_task
-from part1_registry import BRAINSTORM_MEMBERS, SHADOW_BRAINSTORM_MEMBERS, TOKEN_LIMITS
+from part1_registry import (
+    BRAINSTORM_MEMBERS, SHADOW_BRAINSTORM_MEMBERS, TOKEN_LIMITS,
+    BOARD_MEMBERS, SHADOW_BOARD_MEMBERS,
+)
+from part8_personas import board_member_system, brainstorm_system
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MEMBER LOOKUP  (task_type → {key, name, role})
+# Built from all registries so run_round can resolve seat name + role for
+# the per-seat persona prompt without needing the session to carry that info.
+# ══════════════════════════════════════════════════════════════════════════════
+
+_MEMBER_LOOKUP: dict[str, dict] = {}
+for _m in (
+    BOARD_MEMBERS
+    + SHADOW_BOARD_MEMBERS
+    + BRAINSTORM_MEMBERS
+    + SHADOW_BRAINSTORM_MEMBERS
+):
+    if _m["key"] not in _MEMBER_LOOKUP:
+        _MEMBER_LOOKUP[_m["key"]] = _m
 
 # ══════════════════════════════════════════════════════════════════════════════
 # MODEL DISPLAY NAMES
@@ -202,7 +222,7 @@ async def run_round(
     round_num    = session["rounds_done"] + 1
     s_type       = session["type"]
 
-    base_system = BOARDROOM_SYSTEM if s_type == "boardroom" else BRAINSTORM_SYSTEM
+    shadow_mode = session.get("shadow_mode", False)
 
     # Build context from history (last 8 exchanges — rolling context window)
     context_lines = []
@@ -223,7 +243,19 @@ async def run_round(
 
     for task_type in participants:
         model_name = MODEL_NAMES.get(task_type, task_type)
-        system     = build_system_prompt(task_type, base_system)
+
+        # Resolve the seat's registered name and role so we can pull the
+        # tuned per-seat persona prompt from part8_personas.
+        member    = _MEMBER_LOOKUP.get(task_type, {})
+        seat_name = member.get("name", model_name)
+        seat_role = member.get("role", "")
+
+        if s_type == "boardroom":
+            base_system = board_member_system(seat_name, seat_role, shadow_mode=shadow_mode)
+        else:
+            base_system = brainstorm_system(seat_name)
+
+        system = build_system_prompt(task_type, base_system)
 
         prompt = (
             f"Topic: {topic}\n"
