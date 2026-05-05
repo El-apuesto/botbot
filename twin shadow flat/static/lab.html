@@ -789,10 +789,18 @@ async function pollVideoJob(jobId) {
       if (data.local_path) labState.clips.push({ path: data.local_path, name: 'ai_video.mp4' });
     } else if (data.status === 'error') {
       clearInterval(_pollTimer);
-      logStep('video-job', '✗', 'VIDEO JOB FAILED: ' + (data.error || ''), 'error');
-      setStatus('VIDEO FAILED');
+      const msg = data.error || 'Unknown error';
+      logStep('video-job', '✗', 'VIDEO JOB FAILED', 'error');
+      if (data.errors) {
+        Object.entries(data.errors).forEach(([provider, err]) => {
+          log('err', `  ✗ ${provider.toUpperCase()}: ${String(err).slice(0, 160)}`);
+        });
+      } else {
+        log('err', '  ' + msg.slice(0, 200));
+      }
+      setStatus('VIDEO FAILED — SEE LOG');
     } else {
-      logStep('video-job', '⟳', `JOB RUNNING (${data.status})...`, 'active');
+      logStep('video-job', '⟳', `TRYING ${(data.provider||'provider').toUpperCase()}...`, 'active');
     }
   } catch {}
 }

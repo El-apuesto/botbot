@@ -1355,75 +1355,93 @@ def api_lab_image():
 
 
 # ── /api/lab/video/generate ───────────────────────────────────────────────────
-async def _run_video_job(job_id: str, prompt: str, image_url: str | None):
+def _run_video_job_sync(job_id: str, prompt: str, image_url: str | None):
     """
-    Provider chain: FAL WAN-2.1 → Replicate MiniMax → HuggingFace Wan2.1.
-    _lab_jobs[job_id] is updated to {"status":"processing","provider":...} while
-    each provider is running; only set to "error" after ALL three fail.
-    Frontend polling must not stop on "processing".
+    Synchronous provider chain (runs in a daemon thread — no asyncio needed).
+    FAL WAN-2.1 T2V → FAL MiniMax → Replicate MiniMax → HuggingFace Wan2.1.
     """
     errors: dict = {}
 
-    # ── Provider 1: FAL WAN-2.1 ───────────────────────────────────────────────
-    _lab_jobs[job_id] = {"status": "processing", "provider": "fal"}
+    # ── Provider 1: FAL WAN-2.1 text-to-video ────────────────────────────────
+    _lab_jobs[job_id] = {"status": "processing", "provider": "fal / wan-2.1"}
     try:
         import fal_client
         args: dict = {"prompt": prompt}
         if image_url:
             args["image_url"] = image_url
-        handler = await fal_client.submit_async("fal-ai/wan-2.1", arguments=args)
-        result  = await handler.get()
-        vid     = result.get("video", {})
-        url     = (vid.get("url") if isinstance(vid, dict) else str(vid)) or ""
+        result = fal_client.run("fal-ai/wan/v2.1/text-to-video", arguments=args)
+        vid    = result.get("video", {})
+        url    = (vid.get("url") if isinstance(vid, dict) else str(vid)) or ""
         if not url:
             raise RuntimeError("FAL returned no video URL")
         lpath = download_file(url, str(_lab_renders_dir), f"aivideo_{job_id[:8]}.mp4")
-        _lab_jobs[job_id] = {"status": "done", "url": url, "local_path": lpath, "provider": "fal"}
+        _lab_jobs[job_id] = {"status": "done", "url": url, "local_path": lpath, "provider": "fal/wan-2.1"}
         return
     except Exception as e:
-        errors["fal"] = str(e)
-        print(f"[VIDEO LAB] FAL failed: {e}")
+        errors["fal_wan"] = str(e)
+        print(f"[VIDEO LAB] FAL WAN failed: {e}")
 
-    # ── Provider 2: Replicate MiniMax ─────────────────────────────────────────
+    # ── Provider 2: FAL MiniMax Video-01 ─────────────────────────────────────
+    _lab_jobs[job_id] = {"status": "processing", "provider": "fal / minimax"}
+    try:
+        import fal_client
+        args2: dict = {"prompt": prompt}
+        if image_url:
+            args2["first_frame_image"] = image_url
+        result2 = fal_client.run("fal-ai/minimax/video-01-live", arguments=args2)
+        vid2    = result2.get("video", {})
+        url2    = (vid2.get("url") if isinstance(vid2, dict) else str(vid2)) or ""
+        if not url2:
+            raise RuntimeError("FAL MiniMax returned no video URL")
+        lpath2 = download_file(url2, str(_lab_renders_dir), f"aivideo_{job_id[:8]}.mp4")
+        _lab_jobs[job_id] = {"status": "done", "url": url2, "local_path": lpath2, "provider": "fal/minimax"}
+        return
+    except Exception as e:
+        errors["fal_minimax"] = str(e)
+        print(f"[VIDEO LAB] FAL MiniMax failed: {e}")
+
+    # ── Provider 3: Replicate MiniMax ─────────────────────────────────────────
     _lab_jobs[job_id] = {"status": "processing", "provider": "replicate"}
     try:
         import replicate
         inp: dict = {"prompt": prompt}
         if image_url:
             inp["first_frame_image"] = image_url
-        loop   = asyncio.get_event_loop()
-        output = await loop.run_in_executor(None, lambda: replicate.run("minimax/video-01", input=inp))
-        url    = output[0] if isinstance(output, list) else str(output)
-        lpath  = download_file(url, str(_lab_renders_dir), f"aivideo_{job_id[:8]}.mp4")
-        _lab_jobs[job_id] = {"status": "done", "url": url, "local_path": lpath, "provider": "replicate"}
+        output = replicate.run("minimax/video-01", input=inp)
+        url3   = output[0] if isinstance(output, list) else str(output)
+        lpath3 = download_file(url3, str(_lab_renders_dir), f"aivideo_{job_id[:8]}.mp4")
+        _lab_jobs[job_id] = {"status": "done", "url": url3, "local_path": lpath3, "provider": "replicate"}
         return
     except Exception as e:
         errors["replicate"] = str(e)
         print(f"[VIDEO LAB] Replicate failed: {e}")
 
-    # ── Provider 3: HuggingFace Wan2.1-T2V ───────────────────────────────────
+    # ── Provider 4: HuggingFace Wan2.1-T2V ───────────────────────────────────
     _lab_jobs[job_id] = {"status": "processing", "provider": "huggingface"}
     try:
         from huggingface_hub import InferenceClient
-        client = InferenceClient(token=os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_API_KEY", ""))
-        loop   = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None, lambda: client.text_to_video(prompt, model="Wan-AI/Wan2.1-T2V-14B")
-        )
-        url    = result.url if hasattr(result, "url") else str(result)
-        lpath  = download_file(url, str(_lab_renders_dir), f"aivideo_{job_id[:8]}.mp4")
-        _lab_jobs[job_id] = {"status": "done", "url": url, "local_path": lpath, "provider": "huggingface"}
+        client  = InferenceClient(token=os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_API_KEY", ""))
+        result4 = client.text_to_video(prompt, model="Wan-AI/Wan2.1-T2V-14B")
+        url4    = result4.url if hasattr(result4, "url") else str(result4)
+        lpath4  = download_file(url4, str(_lab_renders_dir), f"aivideo_{job_id[:8]}.mp4")
+        _lab_jobs[job_id] = {"status": "done", "url": url4, "local_path": lpath4, "provider": "huggingface"}
         return
     except Exception as e:
         errors["huggingface"] = str(e)
         print(f"[VIDEO LAB] HuggingFace failed: {e}")
 
     # ── All providers exhausted ───────────────────────────────────────────────
-    _lab_jobs[job_id] = {"status": "error", "error": "All video providers failed", "errors": errors}
+    err_detail = " | ".join(f"{k}: {str(v)[:120]}" for k, v in errors.items())
+    _lab_jobs[job_id] = {
+        "status": "error",
+        "error": f"All providers failed — {err_detail}",
+        "errors": errors,
+    }
+    print(f"[VIDEO LAB] All providers failed for job {job_id}: {errors}")
 
 
 def _video_job_thread(job_id: str, prompt: str, image_url: str | None):
-    asyncio.run(_run_video_job(job_id, prompt, image_url))
+    _run_video_job_sync(job_id, prompt, image_url)
 
 
 @_flask.route("/api/lab/video/generate", methods=["POST"])
@@ -1435,9 +1453,9 @@ def api_lab_video_generate():
         return jsonify({"error": "No prompt"}), 400
 
     job_id = str(uuid.uuid4())
-    _lab_jobs[job_id] = {"status": "processing", "provider": "fal"}
+    _lab_jobs[job_id] = {"status": "processing", "provider": "fal / wan-2.1"}
     Thread(target=_video_job_thread, args=(job_id, prompt, image_url), daemon=True).start()
-    return jsonify({"job_id": job_id, "status": "processing", "provider": "fal"})
+    return jsonify({"job_id": job_id, "status": "processing", "provider": "fal / wan-2.1"})
 
 
 @_flask.route("/api/lab/video/status/<job_id>", methods=["GET"])
