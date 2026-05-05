@@ -50,7 +50,7 @@
     #chat-panel {
       position: absolute; display: flex; flex-direction: column;
       top: 44svh; left: 3%; right: 3%;
-      bottom: calc(20svh - 44px);
+      bottom: calc(22svh - 44px);
       background: rgba(6, 0, 18, 0.5); overflow: hidden;
     }
     @media (orientation: landscape) and (min-width: 700px) {
@@ -119,17 +119,19 @@
     #send-btn img { width: 100%; height: 100%; object-fit: cover; }
 
     /* ── MENU BAR ── */
-    #menu-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 20svh;
+    #menu-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 22svh;
       display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 1fr);
-      padding: 10px 6% 4px; gap: 1px 0; pointer-events: none; }
+      padding: 18px 6% 6px; gap: 4px 0; pointer-events: none; }
     @media (orientation: landscape) and (min-width: 700px) {
       #menu-bar { right: auto; width: 36%; height: 14%; padding: 2px 2% 4px; }
     }
     .mi { background: transparent; border: none; font-family: var(--font);
-      font-size: 0; cursor: pointer; pointer-events: all;
-      -webkit-tap-highlight-color: rgba(204,0,255,.15); transition: background .1s; }
-    .mi:hover, .mi:focus { background: rgba(204,0,255,.08); outline: none; }
-    .mi.active { background: rgba(204,0,255,.18); }
+      font-size: 5px; color: rgba(204,0,255,0.45); letter-spacing: 0.5px;
+      cursor: pointer; pointer-events: all; display: flex;
+      align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: rgba(204,0,255,.2); transition: background .1s, color .1s; }
+    .mi:hover, .mi:focus { background: rgba(204,0,255,.1); color: var(--purple); outline: none; }
+    .mi.active { background: rgba(204,0,255,.2); color: var(--purple); text-shadow: var(--glow); }
 
     /* ── OVERLAY PANELS ── */
     .panel { display: none; position: fixed; inset: 0;
@@ -226,12 +228,12 @@
 
   <!-- ═══ MENU BAR ═══ -->
   <div id="menu-bar">
-    <button class="mi" data-p="home"          onclick="openPanel('home')"          title="[1] HOME"></button>
-    <button class="mi" data-p="brainstorming" onclick="openPanel('brainstorming')" title="[4] BRAINSTORMING"></button>
-    <button class="mi" data-p="projects"      onclick="openPanel('projects')"      title="[2] PROJECTS"></button>
-    <button class="mi" data-p="pipeline"      onclick="openPanel('pipeline')"      title="[5] PIPELINE"></button>
-    <button class="mi" data-p="boardroom"     onclick="openPanel('boardroom')"     title="[3] BOARDROOM"></button>
-    <button class="mi" data-p="settings"      onclick="openPanel('settings')"      title="[6] SETTINGS"></button>
+    <button class="mi" data-p="home"          onclick="openPanel('home')"          title="[1] HOME">HOME</button>
+    <button class="mi" data-p="brainstorming" onclick="openPanel('brainstorming')" title="[4] BRAINSTORMING">BRSTM</button>
+    <button class="mi" data-p="projects"      onclick="openPanel('projects')"      title="[2] PROJECTS">PROJ</button>
+    <button class="mi" data-p="pipeline"      onclick="openPanel('pipeline')"      title="[5] PIPELINE">PIPE</button>
+    <button class="mi" data-p="boardroom"     onclick="openPanel('boardroom')"     title="[3] BOARDROOM">BRDM</button>
+    <button class="mi" data-p="settings"      onclick="openPanel('settings')"      title="[6] SETTINGS">SET</button>
   </div>
 
   <!-- ═══ PANELS ═══ -->
