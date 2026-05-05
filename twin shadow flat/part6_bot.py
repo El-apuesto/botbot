@@ -72,7 +72,7 @@ _audio_dir  = Path(__file__).parent / "audio"
 
 _flask = Flask("TwinShadow", static_folder=str(_static_dir), static_url_path="/static",
                template_folder=str(Path(__file__).parent / "static"))
-_flask.secret_key = os.environ.get("SB_SECRET", os.urandom(24).hex())
+_flask.secret_key = os.environ.get("SB_SECRET") or os.environ.get("WEB_PASSWORD", "") or os.urandom(24).hex()
 
 # ── Web authentication ────────────────────────────────────────────────────────
 _WEB_PASS = os.environ.get("WEB_PASSWORD") or os.environ.get("SB_SECRET", "")
