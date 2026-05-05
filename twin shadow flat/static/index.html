@@ -82,9 +82,9 @@
     #msgs::-webkit-scrollbar-thumb { background: var(--purple-dim); }
 
     .msg { display: flex; flex-direction: column; gap: 2px; }
-    .msg-who { font-size: 10px; color: var(--purple); text-shadow: var(--glow); letter-spacing: 1px; }
-    .msg-body { font-size: 12px; color: var(--white); line-height: 1.9; word-break: break-word; white-space: pre-wrap; }
-    @media (min-width: 700px) { .msg-who { font-size: 12px; } .msg-body { font-size: 16px; } }
+    .msg-who { font-size: 8px; color: var(--purple); text-shadow: var(--glow); letter-spacing: 1px; }
+    .msg-body { font-size: 9px; color: var(--white); line-height: 1.9; word-break: break-word; white-space: pre-wrap; }
+    @media (min-width: 700px) { .msg-who { font-size: 10px; } .msg-body { font-size: 13px; } }
 
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
     .typing::after { content: '█'; animation: blink .7s step-end infinite; }
@@ -177,11 +177,11 @@
     .session-out::-webkit-scrollbar { width: 3px; }
     .session-out::-webkit-scrollbar-thumb { background: var(--purple-dim); }
     .turn { display: flex; flex-direction: column; gap: 3px; }
-    .turn-who { font-size: 10px; color: var(--purple); text-shadow: var(--glow);
+    .turn-who { font-size: 8px; color: var(--purple); text-shadow: var(--glow);
       letter-spacing: 1px; border-bottom: 1px solid var(--purple-dark); padding-bottom: 2px; }
-    .turn-body { font-size: 12px; color: var(--white); line-height: 2; white-space: pre-wrap;
+    .turn-body { font-size: 9px; color: var(--white); line-height: 2; white-space: pre-wrap;
       word-break: break-word; }
-    @media (min-width: 700px) { .turn-who { font-size: 12px; } .turn-body { font-size: 16px; } }
+    @media (min-width: 700px) { .turn-who { font-size: 10px; } .turn-body { font-size: 13px; } }
 
     /* Audio row */
     .audio-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -567,7 +567,7 @@ function addMsg(who, text, typing) {
   body.className = 'msg-body' + (typing ? ' typing' : '');
   body.textContent = text || '';
   d.appendChild(name); d.appendChild(body); box.appendChild(d);
-  box.scrollTop = box.scrollHeight;
+  d.scrollIntoView({ block: 'start', behavior: 'smooth' });
   return body;
 }
 
@@ -708,7 +708,7 @@ async function streamSession(url, body, outEl) {
     curBody    = document.createElement('div'); curBody.className = 'turn-body typing';
     turn.appendChild(who); turn.appendChild(curBody);
     outEl.appendChild(turn);
-    outEl.scrollTop = outEl.scrollHeight;
+    turn.scrollIntoView({ block: 'start', behavior: 'smooth' });
   };
 
   outer: while (true) {
@@ -745,7 +745,6 @@ async function streamSession(url, body, outEl) {
           curBody.textContent += chunk;
           curBody.classList.remove('typing');
         }
-        outEl.scrollTop = outEl.scrollHeight;
       }
     }
   }
