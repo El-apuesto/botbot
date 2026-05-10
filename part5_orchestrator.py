@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 # Import existing parts (assumed in same directory)
-from part1_registry import get_task_routing, get_provider_cfg, TOKEN_LIMITS, COMMITTEE_STRUCTURE
+from part1_registry import get_task_routing, get_provider_cfg, TOKEN_LIMITS, COMMITTEE_STRUCTURE, resolve_execution_target
 from part2_router import call_task, call_task_with_fallback, stream_task, direct_call, rolling_context
 from part3_modules import (
     generate_brief, evaluate, code_review, format_review,
@@ -82,6 +82,26 @@ class Project:
     boardroom_log: list[dict] = field(default_factory=list)
     vault_id: str | None = None
 
+
+
+
+@dataclass
+class TaskEnvelope:
+    task_id: str
+    project_id: str
+    module: str
+    provider: str
+    model: str
+    request: dict
+    response: dict | None = None
+    status: str = "queued"
+    error: str | None = None
+    started_at: str = ""
+    completed_at: str = ""
+    duration_ms: float = 0.0
+
+
+_execution_bus: dict[str, TaskEnvelope] = {}
 
 # ═════════════════════════════════════════════════════════════════════════════
 # VAULT — Supabase + in-memory fallback + RAG retrieval

@@ -8,6 +8,7 @@ Task #13: ASCII-safe key filtering (GROQ_API_KEY_2 unicode bug fixed);
 from __future__ import annotations
 import os
 from typing import AsyncGenerator
+from datetime import datetime, timezone
 from openai import AsyncOpenAI
 
 from part1_registry import get_task_routing, get_provider_cfg
@@ -244,3 +245,41 @@ def rolling_context(history: list[dict], max_turns: int = 8) -> list[dict]:
     Enforces the rolling context window cap to control token usage.
     """
     return history[-max_turns:] if len(history) > max_turns else history
+
+
+async def traced_call_task(
+    envelope,
+    task_type: str,
+    messages: list[dict],
+    max_tokens: int = 1200,
+):
+    start = datetime.now(timezone.utc)
+
+    try:
+        envelope.status = "running"
+        envelope.started_at = start.isoformat()
+
+        result = await call_task(
+            task_type,
+            messages,
+            max_tokens=max_tokens,
+        )
+
+        end = datetime.now(timezone.utc)
+
+        envelope.response = {
+            "content": result,
+        }
+
+        envelope.status = "completed"
+        envelope.completed_at = end.isoformat()
+        envelope.duration_ms = (
+            end - start
+        ).total_seconds() * 1000
+
+        return result
+
+    except Exception as e:
+        envelope.status = "failed"
+        envelope.error = str(e)
+        raise

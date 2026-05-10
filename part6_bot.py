@@ -80,7 +80,15 @@ _WEB_PASS = os.environ.get("WEB_PASSWORD") or os.environ.get("SB_SECRET", "")
 def _is_web_authed() -> bool:
     return not _WEB_PASS or session.get("web_authed") is True
 
-_AUTH_EXEMPT = {"/login", "/logout"}
+_AUTH_EXEMPT = {
+    "/login",
+    "/logout",
+    "/health",
+    "/api/video/status",
+    "/api/video/upload",
+    "/api/video/render",
+    "/api/video/progress",
+}
 
 @_flask.before_request
 def _check_web_auth():
@@ -90,7 +98,14 @@ def _check_web_auth():
         return None
     if not _is_web_authed():
         if request.path.startswith("/api/"):
-            return jsonify({"error": "Not authenticated"}), 401
+            token = request.headers.get("Authorization", "")
+
+            if token == f"Bearer {_WEB_PASS}":
+                return None
+
+            return jsonify({
+                "error": "Not authenticated"
+            }), 401
         return redirect("/login")
 
 def _require_web_auth(fn):

@@ -470,3 +470,15 @@ def get_specialists_for_topic(topic: str) -> list[dict]:
         s for s in BOARD_SPECIALISTS
         if any(t in topic_lower for t in s["trigger_topics"])
     ]
+
+
+def resolve_execution_target(task_type: str) -> dict:
+    route = get_task_routing(task_type)
+    provider = get_provider_cfg(route["provider"])
+
+    return {
+        "task": task_type,
+        "provider": route["provider"],
+        "model": route["model"],
+        "base_url": provider.get("base_url") or provider.get("base_url_env"),
+    }

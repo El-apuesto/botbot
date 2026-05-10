@@ -1,3 +1,13 @@
+
+def standardize_module_output(raw_output: str) -> dict:
+    return {
+        "summary": raw_output[:300],
+        "artifacts": [],
+        "warnings": [],
+        "next_actions": [],
+        "raw_output": raw_output,
+    }
+
 """
 Twin Shadow — Part 3: All Text Modules
 Includes: exploration, evaluator, creative, code, business, shadow
@@ -55,7 +65,7 @@ async def generate_brief(idea: str) -> dict:
 def evaluate(responses: list[str]) -> str:
     """Pick best response — longest non-empty wins."""
     valid = [r for r in responses if r and r.strip()]
-    return max(valid, key=len) if valid else ""
+    return standardize_module_output(max(valid, key=len) if valid else "")
 
 
 REVIEW_SYSTEM = """You are a senior code reviewer for Twin Shadow.
