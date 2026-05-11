@@ -6,3 +6,9 @@ __pycache__/
 .local
 .agents
 .cache
+# Uploads / outputs (mount as volumes in prod)
+uploads/
+outputs/
+
+# Docs
+*.md

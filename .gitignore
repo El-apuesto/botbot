@@ -8,3 +8,18 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Arq / Redis
+arq_*.json
+
+# Arq worker
+arq_worker.log
+
+# Uploads / outputs
+uploads/*
+!uploads/.gitkeep
+outputs/*
+!outputs/.gitkeep
+
+# Supabase local
+.supabase/

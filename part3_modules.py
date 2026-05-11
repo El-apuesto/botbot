@@ -1,3 +1,7 @@
+from runtime.models import ReviewResult, BriefSchema
+from runtime.validation import validate_brief_with_retry, validate_review_result
+from pydantic import ValidationError
+
 
 def standardize_module_output(raw_output: str) -> dict:
     return {
@@ -43,19 +47,15 @@ async def generate_brief(idea: str) -> dict:
         {"role": "user",   "content": f"Idea: {idea}"},
     ]
     raw = await call_task("brief", messages)
-    clean = raw.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
-    try:
-        return json.loads(clean)
-    except json.JSONDecodeError:
-        return {
-            "summary": idea,
-            "goals": ["Build it", "Ship it", "Sell it"],
-            "project_type": "hybrid",
-            "estimated_effort": "medium",
-            "modules_needed": ["creative", "code", "business"],
-            "tone": "raw",
-            "parse_error": raw[:300],
-        }
+
+    # validate_brief_with_retry handles fence-stripping, schema validation,
+    # and up to 2 re-prompts on malformed output — no bare json.loads() here.
+    return await validate_brief_with_retry(
+        idea,
+        raw,
+        call_fn=lambda msgs: call_task("brief", msgs),
+        max_retries=2,
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -111,15 +111,7 @@ async def code_review(code: str, context: str = "") -> dict:
                 "summary": "Review could not complete.",
             }
 
-    try:
-        clean  = raw.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
-        review = json.loads(clean)
-    except Exception:
-        return {
-            "approved": False,
-            "issues": [{"line": "unknown", "problem": "Unparseable output.", "fix": raw[:300]}],
-            "summary": "Parse error.",
-        }
+    review = validate_review_result(raw)
 
     # Pass 2 — nemotron reasoning (bonus)
     if not review.get("approved") and review.get("issues"):

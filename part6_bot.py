@@ -1,5 +1,5 @@
 """
-Twin Shadow — Part 6: Telegram Bot (updated)
+Twin Shadow - Part 6: Telegram Bot (updated)
 All handlers including part7 command layer.
 """
 
@@ -28,6 +28,7 @@ from part5_orchestrator import (
     vault_clear, vault_last, vault_undo,
     inject_capi_identity, hermes_exchange, committee_discuss,
 )
+from runtime.events import subscribe, unsubscribe, iter_events
 from part2_router import stream_task, call_task, direct_call
 import part9_supabase as _sb
 from part4_video import (
@@ -74,7 +75,7 @@ _flask = Flask("TwinShadow", static_folder=str(_static_dir), static_url_path="/s
                template_folder=str(Path(__file__).parent / "static"))
 _flask.secret_key = os.environ.get("SB_SECRET") or os.environ.get("WEB_PASSWORD", "") or os.urandom(24).hex()
 
-# ── Web authentication ────────────────────────────────────────────────────────
+# -- Web authentication --------------------------------------------------------
 _WEB_PASS = os.environ.get("WEB_PASSWORD") or os.environ.get("SB_SECRET", "")
 
 def _is_web_authed() -> bool:
@@ -109,7 +110,7 @@ def _check_web_auth():
         return redirect("/login")
 
 def _require_web_auth(fn):
-    return fn  # kept for decorator syntax on / and /audio — before_request covers all
+    return fn  # kept for decorator syntax on / and /audio - before_request covers all
 
 @_flask.route("/login", methods=["GET", "POST"])
 def _login():
@@ -142,7 +143,7 @@ def _audio(filename):
 
 _port = _find_port(int(os.environ.get("PORT", 5000)))
 
-# ── Pipeline store (in-memory, JSON-persisted) ────────────────────────────────
+# -- Pipeline store (in-memory, JSON-persisted) --------------------------------
 _pipeline_file = Path(__file__).parent / "pipeline.json"
 def _pipeline_load() -> list:
     try:
@@ -153,7 +154,7 @@ def _pipeline_save(jobs: list):
     try: _pipeline_file.write_text(json.dumps(jobs, indent=2))
     except Exception: pass
 
-# ── Async→Flask bridge (real streaming via queue) ─────────────────────────────
+# -- Async-Flask bridge (real streaming via queue) -----------------------------
 def _async_gen_to_queue(async_gen_fn, q: queue.Queue, *args, **kwargs):
     async def _run():
         try:
@@ -175,7 +176,7 @@ def _sse_stream(async_gen_fn, *args, **kwargs):
             try:
                 kind, val = q.get(timeout=12)
             except queue.Empty:
-                # Keepalive comment — prevents mobile Safari / proxy timeouts
+                # Keepalive comment - prevents mobile Safari / proxy timeouts
                 yield ": keepalive\n\n"
                 continue
             if kind == "data":
@@ -193,7 +194,7 @@ def _sse_stream(async_gen_fn, *args, **kwargs):
 def _run_async(coro):
     return asyncio.run(coro)
 
-# ── /api/chat ─────────────────────────────────────────────────────────────────
+# -- /api/chat -----------------------------------------------------------------
 @_flask.route("/api/chat", methods=["POST"])
 def api_chat():
     data     = request.json or {}
@@ -233,7 +234,7 @@ def api_chat():
 
     return _sse_stream(_gen)
 
-# ── /api/boardroom ────────────────────────────────────────────────────────────
+# -- /api/boardroom ------------------------------------------------------------
 @_flask.route("/api/boardroom", methods=["POST"])
 def api_boardroom():
     data           = request.json or {}
@@ -250,7 +251,7 @@ def api_boardroom():
     main_token_cap = TOKEN_LIMITS["shadow_board"] if shadow_mode else TOKEN_LIMITS["board_main"]
 
     async def _run():
-        # Step 1: Brief the topic — SHADOW leads in shadow mode, TWIN in normal mode
+        # Step 1: Brief the topic - SHADOW leads in shadow mode, TWIN in normal mode
         if shadow_mode:
             brief_sys = sys_override or SHADOW_BRIEF_SYSTEM
             brief_task = "shadow_chat"
@@ -277,7 +278,7 @@ def api_boardroom():
         if round_num > 1:
             yield f"[Round {round_num}]"
             if steer:
-                yield f" — Steering: {steer}\n\n"
+                yield f" - Steering: {steer}\n\n"
             else:
                 yield "\n\n"
         brief = ""
@@ -303,12 +304,12 @@ def api_boardroom():
                     if isinstance(result, str) and result:
                         committee_context[m["key"]] = result
 
-        # Step 4: Build context — seed with prior rounds + steer + this round's brief
+        # Step 4: Build context - seed with prior rounds + steer + this round's brief
         context_turns: list[str] = []
         if prior_context:
             context_turns.append(f"[Prior rounds]\n{prior_context[-800:]}")
         if steer:
-            context_turns.append(f"[USER DIRECTIVE — Round {round_num}]: {steer}")
+            context_turns.append(f"[USER DIRECTIVE - Round {round_num}]: {steer}")
         context_turns += [f"Topic: {topic}", f"TWIN brief: {brief}"]
 
         hermes_turn_count = 0
@@ -338,7 +339,7 @@ def api_boardroom():
                     if retry_interp:
                         yield f"\n\n[Revised] {retry_interp}"
                     if silenced:
-                        yield "\n\n[HERMES silenced — intent unresolved]"
+                        yield "\n\n[HERMES silenced - intent unresolved]"
                     context_turns.append(f"HERMES: {spark[:200]}")
                 except Exception as e:
                     yield f"[HERMES offline: {e}]"
@@ -376,7 +377,7 @@ def api_boardroom():
             yield "\x1eEND\x1f"
             context_turns.append(f"{name}: {member_resp[:300]}")
 
-        # Step 5: SHADOW final word — only if SHADOW is not already a regular board member
+        # Step 5: SHADOW final word - only if SHADOW is not already a regular board member
         board_names = {m["name"] for m in base_members}
         if not shadow_mode and "SHADOW" not in board_names:
             final_context = "\n\n".join(context_turns[-8:])
@@ -394,7 +395,7 @@ def api_boardroom():
 
     return _sse_stream(_run)
 
-# ── /api/brainstorm ───────────────────────────────────────────────────────────
+# -- /api/brainstorm -----------------------------------------------------------
 @_flask.route("/api/brainstorm", methods=["POST"])
 def api_brainstorm():
     data         = request.json or {}
@@ -447,7 +448,7 @@ def api_brainstorm():
                         if retry_interp:
                             yield f"\n\n[Revised] {retry_interp}"
                         if silenced:
-                            yield "\n\n[HERMES silenced — intent unresolved]"
+                            yield "\n\n[HERMES silenced - intent unresolved]"
                         context_turns.append(f"HERMES (round {rnd}): {spark[:200]}")
                     except Exception as e:
                         yield f"[HERMES offline: {e}]"
@@ -461,7 +462,7 @@ def api_brainstorm():
 
                 msgs = [
                     {"role": "system", "content": sys_p},
-                    {"role": "user",   "content": context + f"\n\nRound {rnd} — {name}:"},
+                    {"role": "user",   "content": context + f"\n\nRound {rnd} - {name}:"},
                 ]
                 yield f"\x1eSPEAKER:{name}\x1f"
                 resp = ""
@@ -474,7 +475,7 @@ def api_brainstorm():
                 yield "\x1eEND\x1f"
                 context_turns.append(f"{name} (round {rnd}): {resp[:250]}")
 
-            # Moderate between rounds — SHADOW leads in shadow mode, TWIN in normal
+            # Moderate between rounds - SHADOW leads in shadow mode, TWIN in normal
             if rnd < rounds:
                 context = "\n\n".join(context_turns[-8:])
                 if shadow_mode:
@@ -502,7 +503,7 @@ def api_brainstorm():
 
     return _sse_stream(_run)
 
-# ── /api/transcript/save ──────────────────────────────────────────────────────
+# -- /api/transcript/save ------------------------------------------------------
 @_flask.route("/api/transcript/save", methods=["POST"])
 def api_transcript_save():
     data         = request.json or {}
@@ -514,7 +515,7 @@ def api_transcript_save():
     result = _sb.save_transcript(title, content, session_type)
     return jsonify(result)
 
-# ── /api/audio/list ───────────────────────────────────────────────────────────
+# -- /api/audio/list -----------------------------------------------------------
 @_flask.route("/api/audio/list", methods=["GET"])
 def api_audio_list():
     _audio_dir.mkdir(exist_ok=True)
@@ -529,14 +530,14 @@ def api_audio_list():
         })
     return jsonify(files)
 
-# ── /api/transcripts/list ─────────────────────────────────────────────────────
+# -- /api/transcripts/list -----------------------------------------------------
 @_flask.route("/api/transcripts/list", methods=["GET"])
 def api_transcripts_list():
     return jsonify(_sb.list_transcripts(50))
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# SMART EDITOR — /api/lab/transcribe|highlights|cut|metadata|reformat|thumbnail
-# ═══════════════════════════════════════════════════════════════════════════════
+# -------------------------------------------------------------------------------
+# SMART EDITOR - /api/lab/transcribe|highlights|cut|metadata|reformat|thumbnail
+# -------------------------------------------------------------------------------
 
 @_flask.route("/api/lab/transcribe", methods=["POST"])
 def api_lab_transcribe():
@@ -565,7 +566,7 @@ def api_lab_transcribe():
             print(f"[SMART EDIT] audio extract failed: {err}")
 
     try:
-        # Route through task registry: fast=true → whisper_turbo, else whisper_v3
+        # Route through task registry: fast=true - whisper_turbo, else whisper_v3
         fast_mode   = data.get("fast", False)
         from part1_registry import get_provider_cfg
         _groq_cfg   = get_provider_cfg("groq")
@@ -613,14 +614,14 @@ def api_lab_highlights():
         s, e, txt = seg.get("start", 0), seg.get("end", 0), seg.get("text", "").strip()
         ms, ss = int(s // 60), int(s % 60)
         me, se_ = int(e // 60), int(e % 60)
-        lines.append(f"[{ms:02d}:{ss:02d}→{me:02d}:{se_:02d}] {txt}")
+        lines.append(f"[{ms:02d}:{ss:02d}-{me:02d}:{se_:02d}] {txt}")
     transcript = "\n".join(lines)
 
     prompt = (
         f"Transcription with timestamps:\n\n{transcript}\n\n"
         f"Find the {focus}. Return ONLY a JSON array, no other text:\n"
         '[{"start":12.5,"end":45.0,"title":"Short title","reason":"Why compelling"}]\n'
-        "Rules: 3–8 highlights, each 10–90 seconds. start/end are floats (seconds)."
+        "Rules: 3-8 highlights, each 10-90 seconds. start/end are floats (seconds)."
     )
     try:
         result = _run_async(call_task("twin", [
@@ -697,10 +698,10 @@ def api_lab_metadata():
         return jsonify({"error": "No transcript"}), 400
 
     specs = {
-        "youtube":   "YouTube (title ≤100 chars, description ≤5000 chars, 10–15 SEO hashtags, engaging hook in first line)",
-        "tiktok":    "TikTok (title ≤150 chars, caption ≤2200 chars, 5–8 trending viral hashtags, casual punchy tone)",
-        "instagram": "Instagram (caption ≤2200 chars, 20–30 hashtags, aesthetic engaging tone)",
-        "facebook":  "Facebook (title ≤80 chars, description ≤500 chars, 5–10 hashtags, conversational friendly tone)",
+        "youtube":   "YouTube (title -100 chars, description -5000 chars, 10-15 SEO hashtags, engaging hook in first line)",
+        "tiktok":    "TikTok (title -150 chars, caption -2200 chars, 5-8 trending viral hashtags, casual punchy tone)",
+        "instagram": "Instagram (caption -2200 chars, 20-30 hashtags, aesthetic engaging tone)",
+        "facebook":  "Facebook (title -80 chars, description -500 chars, 5-10 hashtags, conversational friendly tone)",
     }
     spec   = specs.get(platform, specs["youtube"])
     hint_l = f"\nVideo hint: {hint}" if hint else ""
@@ -800,7 +801,7 @@ def api_lab_thumbnail():
     return jsonify({"ok": True, "url": f"/renders/{Path(out).name}", "path": out})
 
 
-# ── /api/tts ──────────────────────────────────────────────────────────────────
+# -- /api/tts ------------------------------------------------------------------
 @_flask.route("/api/tts", methods=["POST"])
 def api_tts():
     """
@@ -855,9 +856,9 @@ def api_tts():
             return jsonify({"error": "No audio generated"}), 500
 
         except Exception as e:
-            print(f"[TTS] Google Cloud TTS failed: {e} — falling back to gTTS")
+            print(f"[TTS] Google Cloud TTS failed: {e} - falling back to gTTS")
 
-    # Groq PlayAI TTS — multi-voice via Groq audio endpoint
+    # Groq PlayAI TTS - multi-voice via Groq audio endpoint
     groq_key = os.environ.get("GROQ_API_KEY_1", "") or os.environ.get("GROQ_API_KEY_3", "")
     if groq_key:
         try:
@@ -900,9 +901,9 @@ def api_tts():
                 combined.export(str(out_path), format="mp3")
                 return jsonify({"url": f"/audio/{fname}", "provider": "groq_playai"})
         except Exception as e:
-            print(f"[TTS] Groq PlayAI failed: {e} — falling back to gTTS")
+            print(f"[TTS] Groq PlayAI failed: {e} - falling back to gTTS")
 
-    # gTTS fallback — single narrator voice, concatenate all text
+    # gTTS fallback - single narrator voice, concatenate all text
     try:
         from gtts import gTTS
         full_text = " ".join(
@@ -914,7 +915,7 @@ def api_tts():
     except Exception as e:
         return jsonify({"error": f"TTS failed: {e}"}), 500
 
-# ── /api/builder ──────────────────────────────────────────────────────────────
+# -- /api/builder --------------------------------------------------------------
 @_flask.route("/api/builder", methods=["POST"])
 def api_builder():
     data         = request.json or {}
@@ -973,7 +974,7 @@ def api_builder():
     return _sse_stream(_run)
 
 
-# ── Builder deploy — shared logic (called from Flask route AND Telegram command) ─
+# -- Builder deploy - shared logic (called from Flask route AND Telegram command) -
 _SAFE_SCRIPT_NAME = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')
 _MAX_DEPLOY_BYTES = 65_536   # 64 KB
 _last_builder_code: dict = {}   # keyed by chat_id (int) or 'web' (str)
@@ -1011,7 +1012,7 @@ def _do_deploy_script(name: str, code: str) -> dict:
 @_flask.route("/api/deploy/web", methods=["POST"])
 def api_deploy_web():
     """
-    Web-accessible deploy — reads the last builder output stored server-side.
+    Web-accessible deploy - reads the last builder output stored server-side.
     Body: { "name": "my_script" }
     Returns: { "ok": True, "path": "scripts/my_script.py", "job": {...} }
     """
@@ -1021,7 +1022,7 @@ def api_deploy_web():
         return jsonify({"error": "name required"}), 400
     code = _last_builder_code.get("web", "")
     if not code:
-        return jsonify({"error": "No builder output — run the Builder first"}), 400
+        return jsonify({"error": "No builder output - run the Builder first"}), 400
     result = _do_deploy_script(name, code)
     return jsonify(result), (200 if result.get("ok") else 400)
 
@@ -1029,7 +1030,7 @@ def api_deploy_web():
 @_flask.route("/api/builder/deploy", methods=["POST"])
 def api_builder_deploy():
     """
-    Loopback-only endpoint — callable from server-side code only.
+    Loopback-only endpoint - callable from server-side code only.
     Browser requests via the Replit proxy arrive with a non-loopback remote_addr and are rejected.
     Body: { "name": "my_script", "code": "..." }
     """
@@ -1043,7 +1044,7 @@ def api_builder_deploy():
     result = _do_deploy_script(name, code)
     return jsonify(result), (200 if result.get("ok") else 400)
 
-# ── /api/pipeline ─────────────────────────────────────────────────────────────
+# -- /api/pipeline -------------------------------------------------------------
 @_flask.route("/api/pipeline", methods=["GET"])
 def api_pipeline_get():
     return jsonify(_pipeline_load())
@@ -1072,16 +1073,16 @@ def api_pipeline_delete(job_id):
     return jsonify({"ok": True})
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# VIDEO LAB — /lab + /api/lab/*
-# ═══════════════════════════════════════════════════════════════════════════════
+# -------------------------------------------------------------------------------
+# VIDEO LAB - /lab + /api/lab/*
+# -------------------------------------------------------------------------------
 
 _lab_uploads_dir = Path(__file__).parent / "uploads"
 _lab_renders_dir = Path(__file__).parent / "renders"
 _lab_music_dir   = Path(__file__).parent / "static" / "music"
 _lab_music_meta  = Path(__file__).parent / "static" / "music" / "_meta.json"
 _lab_concept_store: dict = {}   # latest concept pushed from bots; cleared on GET
-_lab_jobs: dict = {}            # job_id → {status, url, error, provider, local_path}
+_lab_jobs: dict = {}            # job_id - {status, url, error, provider, local_path}
 
 for _d in (_lab_uploads_dir, _lab_renders_dir, _lab_music_dir):
     _d.mkdir(exist_ok=True)
@@ -1100,7 +1101,7 @@ def _music_meta_save(tracks: list):
         pass
 
 
-# ── /lab ──────────────────────────────────────────────────────────────────────
+# -- /lab ----------------------------------------------------------------------
 @_flask.route("/lab")
 def lab_page():
     return send_from_directory(str(_static_dir), "lab.html")
@@ -1110,7 +1111,7 @@ def _renders(filename):
     return send_from_directory(str(_lab_renders_dir), filename, mimetype="video/mp4")
 
 
-# ── /api/lab/upload ───────────────────────────────────────────────────────────
+# -- /api/lab/upload -----------------------------------------------------------
 _ALLOWED_LAB_EXT = {".mp4", ".mov", ".webm", ".mkv",
                     ".mp3", ".wav", ".ogg", ".m4a",
                     ".jpg", ".jpeg", ".png", ".gif", ".webp"}
@@ -1165,20 +1166,20 @@ def api_lab_upload():
     })
 
 
-# ── /api/lab/files — disk + Supabase cloud, merged ────────────────────────────
+# -- /api/lab/files - disk + Supabase cloud, merged ----------------------------
 @_flask.route("/api/lab/files", methods=["GET"])
 def api_lab_files():
     """
     Return all known upload files:
-    1. Files on local disk (newest first) — immediately usable.
-    2. Supabase cloud records whose file has been pruned from disk —
+    1. Files on local disk (newest first) - immediately usable.
+    2. Supabase cloud records whose file has been pruned from disk -
        shown as cloud=True; downloaded lazily on first use via /api/lab/ensure_local.
     """
     video_exts = {".mp4", ".mov", ".webm", ".mkv"}
     audio_exts = {".mp3", ".wav", ".ogg", ".m4a"}
     image_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
-    # ── 1. Disk files ──────────────────────────────────────────────────────────
+    # -- 1. Disk files ----------------------------------------------------------
     disk_files   = []
     disk_names   = set()
     try:
@@ -1208,7 +1209,7 @@ def api_lab_files():
     except Exception as e:
         print(f"[LAB FILES] disk scan error: {e}")
 
-    # ── 2. Supabase cloud-only records ─────────────────────────────────────────
+    # -- 2. Supabase cloud-only records -----------------------------------------
     cloud_files = []
     try:
         records = _sb.list_uploads(limit=200)
@@ -1224,7 +1225,7 @@ def api_lab_files():
                 continue
             cloud_files.append({
                 "name":      name,
-                "path":      None,    # not on disk — needs ensure_local first
+                "path":      None,    # not on disk - needs ensure_local first
                 "url":       url,
                 "file_type": ftype,
                 "duration":  float(rec.get("duration") or 0),
@@ -1238,7 +1239,7 @@ def api_lab_files():
     return jsonify({"files": files, "count": len(files)})
 
 
-# ── /api/lab/ensure_local — lazy download from Supabase when user picks file ──
+# -- /api/lab/ensure_local - lazy download from Supabase when user picks file --
 @_flask.route("/api/lab/ensure_local", methods=["POST"])
 def api_lab_ensure_local():
     """
@@ -1268,7 +1269,7 @@ def api_lab_ensure_local():
         return jsonify({"error": str(e)}), 500
 
 
-# ── /api/lab/music ────────────────────────────────────────────────────────────
+# -- /api/lab/music ------------------------------------------------------------
 @_flask.route("/api/lab/music", methods=["GET"])
 def api_lab_music_list():
     tracks = _music_meta_load()
@@ -1298,7 +1299,7 @@ def api_lab_music_add():
     return jsonify({"ok": True, "name": safe_name, "path": f"/static/music/{safe_name}"})
 
 
-# ── /api/lab/storyboard ───────────────────────────────────────────────────────
+# -- /api/lab/storyboard -------------------------------------------------------
 _STORYBOARD_SYSTEM = (
     "You are a short-form video director specializing in esoteric, occult, and dark comedy content. "
     "Given a video concept, output ONLY a JSON object (no markdown, no commentary) in this exact format:\n"
@@ -1337,7 +1338,7 @@ def api_lab_storyboard():
         return jsonify({"error": str(e)}), 500
 
 
-# ── /api/lab/image ────────────────────────────────────────────────────────────
+# -- /api/lab/image ------------------------------------------------------------
 @_flask.route("/api/lab/image", methods=["POST"])
 def api_lab_image():
     data            = request.json or {}
@@ -1369,15 +1370,15 @@ def api_lab_image():
         return jsonify({"error": str(e)}), 500
 
 
-# ── /api/lab/video/generate ───────────────────────────────────────────────────
+# -- /api/lab/video/generate ---------------------------------------------------
 def _run_video_job_sync(job_id: str, prompt: str, image_url: str | None):
     """
-    Synchronous provider chain (runs in a daemon thread — no asyncio needed).
-    FAL WAN-2.1 T2V → FAL MiniMax → Replicate MiniMax → HuggingFace Wan2.1.
+    Synchronous provider chain (runs in a daemon thread - no asyncio needed).
+    FAL WAN-2.1 T2V - FAL MiniMax - Replicate MiniMax - HuggingFace Wan2.1.
     """
     errors: dict = {}
 
-    # ── Provider 1: FAL WAN-2.1 text-to-video ────────────────────────────────
+    # -- Provider 1: FAL WAN-2.1 text-to-video --------------------------------
     _lab_jobs[job_id] = {"status": "processing", "provider": "fal / wan-2.1"}
     try:
         import fal_client
@@ -1396,7 +1397,7 @@ def _run_video_job_sync(job_id: str, prompt: str, image_url: str | None):
         errors["fal_wan"] = str(e)
         print(f"[VIDEO LAB] FAL WAN failed: {e}")
 
-    # ── Provider 2: FAL MiniMax Video-01 ─────────────────────────────────────
+    # -- Provider 2: FAL MiniMax Video-01 -------------------------------------
     _lab_jobs[job_id] = {"status": "processing", "provider": "fal / minimax"}
     try:
         import fal_client
@@ -1415,7 +1416,7 @@ def _run_video_job_sync(job_id: str, prompt: str, image_url: str | None):
         errors["fal_minimax"] = str(e)
         print(f"[VIDEO LAB] FAL MiniMax failed: {e}")
 
-    # ── Provider 3: Replicate MiniMax ─────────────────────────────────────────
+    # -- Provider 3: Replicate MiniMax -----------------------------------------
     _lab_jobs[job_id] = {"status": "processing", "provider": "replicate"}
     try:
         import replicate
@@ -1431,7 +1432,7 @@ def _run_video_job_sync(job_id: str, prompt: str, image_url: str | None):
         errors["replicate"] = str(e)
         print(f"[VIDEO LAB] Replicate failed: {e}")
 
-    # ── Provider 4: HuggingFace Wan2.1-T2V ───────────────────────────────────
+    # -- Provider 4: HuggingFace Wan2.1-T2V -----------------------------------
     _lab_jobs[job_id] = {"status": "processing", "provider": "huggingface"}
     try:
         from huggingface_hub import InferenceClient
@@ -1445,11 +1446,11 @@ def _run_video_job_sync(job_id: str, prompt: str, image_url: str | None):
         errors["huggingface"] = str(e)
         print(f"[VIDEO LAB] HuggingFace failed: {e}")
 
-    # ── All providers exhausted ───────────────────────────────────────────────
+    # -- All providers exhausted -----------------------------------------------
     err_detail = " | ".join(f"{k}: {str(v)[:120]}" for k, v in errors.items())
     _lab_jobs[job_id] = {
         "status": "error",
-        "error": f"All providers failed — {err_detail}",
+        "error": f"All providers failed - {err_detail}",
         "errors": errors,
     }
     print(f"[VIDEO LAB] All providers failed for job {job_id}: {errors}")
@@ -1481,7 +1482,7 @@ def api_lab_video_status(job_id):
     return jsonify(job)
 
 
-# ── /api/lab/pexels ───────────────────────────────────────────────────────────
+# -- /api/lab/pexels -----------------------------------------------------------
 @_flask.route("/api/lab/pexels", methods=["GET"])
 def api_lab_pexels():
     from part4_video import search_pexels_videos
@@ -1501,7 +1502,7 @@ def api_lab_pexels():
         return jsonify({"error": str(e)}), 500
 
 
-# ── /api/lab/pexels/import ────────────────────────────────────────────────────
+# -- /api/lab/pexels/import ----------------------------------------------------
 @_flask.route("/api/lab/pexels/import", methods=["POST"])
 def api_lab_pexels_import():
     from part4_video import download_file, get_video_duration
@@ -1530,7 +1531,7 @@ def api_lab_pexels_import():
     })
 
 
-# ── /api/lab/voice ────────────────────────────────────────────────────────────
+# -- /api/lab/voice ------------------------------------------------------------
 @_flask.route("/api/lab/voice", methods=["POST"])
 def api_lab_voice():
     data    = request.json or {}
@@ -1562,9 +1563,9 @@ def api_lab_voice():
             if resp.status_code == 200:
                 out_path.write_bytes(resp.content)
                 return jsonify({"url": f"/audio/{fname}", "path": str(out_path), "provider": "groq_playai"})
-            print(f"[LAB VOICE] PlayAI {resp.status_code} — falling back to gTTS")
+            print(f"[LAB VOICE] PlayAI {resp.status_code} - falling back to gTTS")
         except Exception as e:
-            print(f"[LAB VOICE] PlayAI failed: {e} — falling back to gTTS")
+            print(f"[LAB VOICE] PlayAI failed: {e} - falling back to gTTS")
 
     try:
         from gtts import gTTS
@@ -1575,7 +1576,7 @@ def api_lab_voice():
         return jsonify({"error": f"TTS failed: {e}"}), 500
 
 
-# ── /api/lab/render (SSE) ─────────────────────────────────────────────────────
+# -- /api/lab/render (SSE) -----------------------------------------------------
 @_flask.route("/api/lab/render", methods=["POST"])
 def api_lab_render():
     """
@@ -1615,9 +1616,9 @@ def api_lab_render():
                 tmp1 = str(_lab_renders_dir / f"_slide_{output_name}.mp4")
                 ok, err = images_to_slideshow(image_paths, tmp1, duration=3.0)
                 if not ok:
-                    yield f"✗ SLIDESHOW FAILED: {err[:120]}"
+                    yield f"- SLIDESHOW FAILED: {err[:120]}"
                     return
-                yield "✓ SLIDESHOW BUILT"
+                yield "- SLIDESHOW BUILT"
                 # Prepend to clips
                 clip_paths.insert(0, tmp1)
 
@@ -1626,8 +1627,8 @@ def api_lab_render():
                 _SUPPORTED_TRANSITIONS = {"fade", "cut"}
                 if transition not in _SUPPORTED_TRANSITIONS:
                     yield (
-                        f"⚠ TRANSITION '{transition.upper()}' NOT SUPPORTED "
-                        f"(supported: FADE, CUT) — USING HARD CUT"
+                        f"- TRANSITION '{transition.upper()}' NOT SUPPORTED "
+                        f"(supported: FADE, CUT) - USING HARD CUT"
                     )
                     effective_transition = "cut"
                 else:
@@ -1639,14 +1640,14 @@ def api_lab_render():
                     yield step("CONCATENATING CLIPS (HARD CUT)...")
                     ok, err = concatenate_clips(clip_paths, concat_out)
                 if not ok:
-                    yield f"✗ CONCAT FAILED: {err[:120]}"
+                    yield f"- CONCAT FAILED: {err[:120]}"
                     return
-                yield f"✓ CLIPS CONCATENATED ({effective_transition.upper()})"
+                yield f"- CLIPS CONCATENATED ({effective_transition.upper()})"
                 tmp_video = concat_out
             elif clip_paths:
                 tmp_video = clip_paths[0]
             else:
-                yield "✗ NO VIDEO SOURCE"
+                yield "- NO VIDEO SOURCE"
                 return
 
             # Step 2: Mix audio
@@ -1655,9 +1656,9 @@ def api_lab_render():
                 yield step("MIXING AUDIO (VOICEOVER + MUSIC)...")
                 ok, err = mix_audio_onto_video(tmp_video, voiceover, music, final_out)
                 if ok:
-                    yield "✓ AUDIO MIXED"
+                    yield "- AUDIO MIXED"
                 else:
-                    yield f"✗ AUDIO MIX FAILED: {err[:120]} — SAVING WITHOUT AUDIO"
+                    yield f"- AUDIO MIX FAILED: {err[:120]} - SAVING WITHOUT AUDIO"
                     shutil.copy2(tmp_video, final_out)
             else:
                 shutil.copy2(tmp_video, final_out)
@@ -1669,19 +1670,19 @@ def api_lab_render():
                 try:
                     sb_url, sb_path = _sb.upload_file(str(final_path), folder="renders")
                     _sb.log_render(output_name + ".mp4", final_path.stat().st_size, sb_url, sb_path)
-                    yield f"✓ SAVED TO SUPABASE"
+                    yield f"- SAVED TO SUPABASE"
                 except Exception as sb_err:
-                    yield f"⚠ SUPABASE UPLOAD FAILED: {str(sb_err)[:80]} — FILE STILL IN LOCAL RENDERS"
+                    yield f"- SUPABASE UPLOAD FAILED: {str(sb_err)[:80]} - FILE STILL IN LOCAL RENDERS"
 
             yield f"DONE:/renders/{output_name}.mp4"
 
         except Exception as e:
-            yield f"✗ RENDER ERROR: {str(e)[:200]}"
+            yield f"- RENDER ERROR: {str(e)[:200]}"
 
     return _sse_stream(_run)
 
 
-# ── /api/lab/concept ─────────────────────────────────────────────────────────
+# -- /api/lab/concept ---------------------------------------------------------
 @_flask.route("/api/lab/concept", methods=["GET"])
 def api_lab_concept_get():
     """Return and clear the queued concept (set by boardroom/builder bots)."""
@@ -1703,7 +1704,7 @@ def api_lab_concept_set():
     return jsonify({"ok": True})
 
 
-# ── /api/lab/storage — Supabase-backed file library ──────────────────────────
+# -- /api/lab/storage - Supabase-backed file library --------------------------
 
 @_flask.route("/api/lab/storage/uploads", methods=["GET"])
 def api_lab_storage_uploads():
@@ -1725,8 +1726,84 @@ def api_lab_storage_renders():
 
 @_flask.route("/api/status", methods=["GET"])
 def api_status():
-    """Provider health status — updated every 6h by part8_hardening monitor."""
+    """Provider health status - updated every 6h by part8_hardening monitor."""
     return jsonify(_hardening.get_status())
+
+
+@_flask.route("/api/events")
+def api_events():
+    """
+    SSE stream of all execution events from the event bus.
+
+    Frontend usage:
+        const es = new EventSource('/api/events');
+        es.onmessage = (e) => {
+            const event = JSON.parse(e.data);
+            console.log(event.event_type, event.task_id, event.payload);
+        };
+
+    Events fired during build/approve:
+        BUILD_STARTED, BUILD_COMPLETED, BUILD_FAILED
+        APPROVE_STARTED, APPROVE_COMPLETED, APPROVE_FAILED
+        MODULE_STARTED, MODULE_COMPLETED, MODULE_FAILED
+        AUDIT_STARTED, AUDIT_PASSED, AUDIT_FLAGGED
+        BOARDROOM_STARTED, BOARDROOM_ROUND_DONE, BOARDROOM_COMPLETED
+        CROSS_VAL_STARTED, CROSS_VAL_COMPLETED
+        HEARTBEAT (every 30s - keepalive)
+    """
+    q = subscribe()
+
+    async def _gen():
+        try:
+            async for event in iter_events(q, timeout=30.0):
+                yield json.dumps(event)
+        finally:
+            unsubscribe(q)
+
+    return _sse_stream(_gen)
+
+
+@_flask.route("/api/job/<job_id>/status", methods=["GET"])
+def api_job_status(job_id: str):
+    """
+    Poll Arq background job status.
+    Returns: { "status": "queued|processing|done|failed", "result": ..., "error": ... }
+
+    Used by the frontend to track /approve jobs queued via Arq.
+    Falls back gracefully if Redis is not available.
+    """
+    try:
+        from arq import create_pool
+        from runtime.workers import _redis_settings
+
+        async def _check():
+            try:
+                redis = await create_pool(_redis_settings())
+                job = await redis.job(job_id)
+                if not job:
+                    return {"status": "unknown", "error": "Job not found"}
+                info = await job.info()
+                if info is None:
+                    return {"status": "unknown", "error": "No job info"}
+                score = getattr(info, "score", None)
+                result_str = None
+                try:
+                    result = await job.result(timeout=0)
+                    result_str = str(result)[:500] if result else None
+                    return {"status": "done", "result": result_str}
+                except Exception:
+                    # Job still running or queued
+                    return {"status": "processing", "job_id": job_id}
+            except Exception as e:
+                return {"status": "unknown", "error": str(e)}
+
+        result = _run_async(_check())
+        return jsonify(result)
+
+    except ImportError:
+        return jsonify({"status": "unavailable", "error": "Arq/Redis not installed"})
+    except Exception as e:
+        return jsonify({"status": "unknown", "error": str(e)})
 
 
 @_flask.route("/api/lab/storage/delete", methods=["POST"])
@@ -1776,7 +1853,7 @@ def _is_rate_limited(chat_id: int) -> bool:
 async def _check_auth(update: Update) -> bool:
     if not ALLOWED_IDS: return True
     if update.message.chat_id not in ALLOWED_IDS:
-        await update.message.reply_text("⛔ Not authorized.")
+        await update.message.reply_text("- Not authorized.")
         return False
     return True
 
@@ -1794,11 +1871,11 @@ async def _stream_and_edit(sent, task_type, messages):
             full += chunk
             if time.time() - last_edit > 1.5 and full:
                 try:
-                    await sent.edit_text(full[:4000] + " ▌"); last_edit = time.time()
+                    await sent.edit_text(full[:4000] + " -"); last_edit = time.time()
                 except Exception: pass
         if full: await sent.edit_text(full[:4000])
     except Exception as e:
-        await sent.edit_text(f"⚠️ {task_type} failed: {e}"); return ""
+        await sent.edit_text(f"-- {task_type} failed: {e}"); return ""
     return full
 
 def _make_reply_fn(update):
@@ -1813,41 +1890,41 @@ def _make_stream_fn(update):
         return await _stream_and_edit(sent, task_type, messages)
     return stream_fn
 
-# ── Handlers ──────────────────────────────────────────────────────────────────
+# -- Handlers ------------------------------------------------------------------
 
 async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Twin Shadow 🌑\n\n"
-        "── Quick Build ──\n"
-        "Freetext                    → quick build\n"
-        "/build <idea>               → structured pipeline\n"
-        "/approve <id>               → execute brief\n"
+        "Twin Shadow -\n\n"
+        "-- Quick Build --\n"
+        "Freetext                    - quick build\n"
+        "/build <idea>               - structured pipeline\n"
+        "/approve <id>               - execute brief\n"
         "/status <id>  /projects\n\n"
-        "── Vault ──\n"
+        "-- Vault --\n"
         "/last   /vault   /undo\n\n"
-        "── Sessions ──\n"
-        "/boardroom <rounds> <topic> → debate\n"
-        "/brainstorm <topic>         → ideation\n"
-        "/shadow <cmd> <args>        → uncensored only\n"
-        "/boss_voice <msg>           → lead next round\n"
+        "-- Sessions --\n"
+        "/boardroom <rounds> <topic> - debate\n"
+        "/brainstorm <topic>         - ideation\n"
+        "/shadow <cmd> <args>        - uncensored only\n"
+        "/boss_voice <msg>           - lead next round\n"
         "/end   /extend <n>\n\n"
-        "── Models ──\n"
-        "/model_set <key> <persona>  → set traits\n"
-        "/model_traits [key]         → view traits\n"
-        "/model_end <key>            → wipe traits\n\n"
-        "── Video Lab ──\n"
-        "/vlab <concept>             → storyboard + queue for /lab\n\n"
-        "── Voice ──\n"
-        "/mode              → show active voice\n"
-        "/mode twin         → freetext → TWIN (default)\n"
-        "/mode shadow       → freetext → SHADOW\n\n"
-        "── Misc ──\n"
+        "-- Models --\n"
+        "/model_set <key> <persona>  - set traits\n"
+        "/model_traits [key]         - view traits\n"
+        "/model_end <key>            - wipe traits\n\n"
+        "-- Video Lab --\n"
+        "/vlab <concept>             - storyboard + queue for /lab\n\n"
+        "-- Voice --\n"
+        "/mode              - show active voice\n"
+        "/mode twin         - freetext - TWIN (default)\n"
+        "/mode shadow       - freetext - SHADOW\n\n"
+        "-- Misc --\n"
         "/forget   /modify <inst>   /wake"
     )
 
 async def wake_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await _check_auth(update): return
-    await update.message.reply_text("✅ TWIN SHADOW AWAKE.")
+    await update.message.reply_text("- TWIN SHADOW AWAKE.")
 
 async def freetext_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await _check_auth(update): return
@@ -1863,7 +1940,7 @@ async def freetext_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if _is_rate_limited(chat_id):
-        await update.message.reply_text(f"⏱ Wait {RATE_LIMIT_S}s."); return
+        await update.message.reply_text(f"- Wait {RATE_LIMIT_S}s."); return
 
     use_shadow = _shadow_mode.get(chat_id, False)
     if use_shadow:
@@ -1887,32 +1964,32 @@ async def freetext_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             result = await orch.quick_build(text, chat_id)
             full = result["output"]; await sent.edit_text(full[:4000])
         except Exception as e:
-            await sent.edit_text(f"⚠️ Failed: {e}"); return
+            await sent.edit_text(f"-- Failed: {e}"); return
     _add_memory(chat_id, "user", text)
     _add_memory(chat_id, "assistant", full)
 
 
 async def mode_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    /mode          — show current freetext voice
-    /mode twin     — route freetext through TWIN (default)
-    /mode shadow   — route freetext through SHADOW
+    /mode          - show current freetext voice
+    /mode twin     - route freetext through TWIN (default)
+    /mode shadow   - route freetext through SHADOW
     """
     if not await _check_auth(update): return
     chat_id = update.message.chat_id
     arg = (context.args[0].lower() if context.args else "").strip()
     if arg == "shadow":
         _shadow_mode[chat_id] = True
-        await update.message.reply_text("🌑 SHADOW mode active — freetext now routes through SHADOW.")
+        await update.message.reply_text("- SHADOW mode active - freetext now routes through SHADOW.")
     elif arg == "twin":
         _shadow_mode[chat_id] = False
-        await update.message.reply_text("🌗 TWIN mode active — freetext now routes through TWIN.")
+        await update.message.reply_text("- TWIN mode active - freetext now routes through TWIN.")
     else:
-        current = "🌑 SHADOW" if _shadow_mode.get(chat_id) else "🌗 TWIN"
+        current = "- SHADOW" if _shadow_mode.get(chat_id) else "- TWIN"
         await update.message.reply_text(
             f"Current freetext voice: {current}\n"
-            "/mode twin   → switch to TWIN\n"
-            "/mode shadow → switch to SHADOW"
+            "/mode twin   - switch to TWIN\n"
+            "/mode shadow - switch to SHADOW"
         )
 
 async def build_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1920,50 +1997,60 @@ async def build_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args: await update.message.reply_text("Usage: /build <idea>"); return
     chat_id = update.message.chat_id
     idea    = " ".join(context.args)
-    if _is_rate_limited(chat_id): await update.message.reply_text(f"⏱ Wait {RATE_LIMIT_S}s."); return
+    if _is_rate_limited(chat_id): await update.message.reply_text(f"- Wait {RATE_LIMIT_S}s."); return
     await update.message.reply_text("CEO drafting brief...")
     try:
         pid, brief = await orch.build(idea, chat_id)
     except Exception as e:
-        await update.message.reply_text(f"❌ Brief failed: {e}"); return
-    lines = [f"📋 Project {pid}", f"Summary: {brief.get('summary','')}", f"Type: {brief.get('project_type','?')} | Effort: {brief.get('estimated_effort','?')}", f"Modules: {', '.join(brief.get('modules_needed',[]))}", "\nGoals:"]
-    for g in brief.get("goals", []): lines.append(f"  • {g}")
-    lines.append(f"\n→ /approve {pid}")
+        await update.message.reply_text(f"- Brief failed: {e}"); return
+    lines = [f"- Project {pid}", f"Summary: {brief.get('summary','')}", f"Type: {brief.get('project_type','?')} | Effort: {brief.get('estimated_effort','?')}", f"Modules: {', '.join(brief.get('modules_needed',[]))}", "\nGoals:"]
+    for g in brief.get("goals", []): lines.append(f"  - {g}")
+    lines.append(f"\n- /approve {pid}")
     await update.message.reply_text("\n".join(lines))
 
 async def approve_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await _check_auth(update): return
     if not context.args: await update.message.reply_text("Usage: /approve <id>"); return
     pid = context.args[0]
-    await update.message.reply_text(f"⏳ Executing {pid}...")
+    await update.message.reply_text(f"- Queuing {pid}...")
     try:
-        results = await orch.approve(pid)
+        job_id = await orch.enqueue_approve(pid)
+        if job_id.startswith("direct:"):
+            # Redis not available - ran synchronously
+            project = orch.get_project(pid)
+            results = project.results if project else []
+            response = f"- Project {pid} complete\n"
+            for r in results:
+                response += f"\n-- {r.module}{'-' if r.shadow else ''}{'-' if r.approved else ('-' if r.approved is not None else '')} --\n{r.output[:300]}\n"
+            for chunk in [response[i:i+4000] for i in range(0, len(response), 4000)]:
+                await update.message.reply_text(chunk)
+        else:
+            await update.message.reply_text(
+                f"- {pid} queued - job `{job_id}`\n"
+                f"Results will appear in vault when complete.\n"
+                f"Poll status: /api/job/{job_id}/status"
+            )
     except Exception as e:
-        await update.message.reply_text(f"❌ Failed: {e}"); return
-    response = f"✅ Project {pid} complete\n"
-    for r in results:
-        response += f"\n── {r.get('module','?')}{'🌑' if r.get('shadow') else ''}{'✅' if r.get('approved') else ('❌' if 'approved' in r else '')} ──\n{str(r.get('output',''))[:300]}\n"
-    for chunk in [response[i:i+4000] for i in range(0, len(response), 4000)]:
-        await update.message.reply_text(chunk)
+        await update.message.reply_text(f"- Failed: {e}")
 
 async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await _check_auth(update): return
     if not context.args: await update.message.reply_text("Usage: /status <id>"); return
     proj = orch.get_project(context.args[0])
     if not proj: await update.message.reply_text("Not found."); return
-    await update.message.reply_text(f"📊 {proj['id']} — {proj.get('idea','?')[:80]}\nStatus: {proj.get('status','?')}")
+    await update.message.reply_text(f"- {proj['id']} - {proj.get('idea','?')[:80]}\nStatus: {proj.get('status','?')}")
 
 async def projects_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await _check_auth(update): return
     projects = orch.list_projects(update.message.chat_id)
     if not projects: await update.message.reply_text("No projects yet."); return
-    await update.message.reply_text("📚 Projects:\n" + "\n".join(f"{p['id']}. {p.get('idea','?')[:50]} — {p.get('status','?')}" for p in projects))
+    await update.message.reply_text("- Projects:\n" + "\n".join(f"{p['id']}. {p.get('idea','?')[:50]} - {p.get('status','?')}" for p in projects))
 
 async def last_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await _check_auth(update): return
     entry = vault_last(update.message.chat_id)
     if not entry: await update.message.reply_text("Nothing built yet."); return
-    await update.message.reply_text(f"📦 [{entry.get('topic','')}]\n\n{str(entry.get('content',''))[:4000]}")
+    await update.message.reply_text(f"- [{entry.get('topic','')}]\n\n{str(entry.get('content',''))[:4000]}")
 
 async def vault_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await _check_auth(update): return
@@ -1971,29 +2058,29 @@ async def vault_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not args or args[0] == "list":
         entries = vault_list(chat_id)
         if not entries: await update.message.reply_text("Vault empty."); return
-        await update.message.reply_text("📦 VAULT:\n" + "\n".join(f"{e.get('id','?')}. {e.get('topic','?')}" for e in entries) + "\n\n/vault <id>  |  /vault delete <id>  |  /vault clear")
+        await update.message.reply_text("- VAULT:\n" + "\n".join(f"{e.get('id','?')}. {e.get('topic','?')}" for e in entries) + "\n\n/vault <id>  |  /vault delete <id>  |  /vault clear")
         return
-    if args[0] == "clear": vault_clear(chat_id); await update.message.reply_text("🗑 Cleared."); return
+    if args[0] == "clear": vault_clear(chat_id); await update.message.reply_text("- Cleared."); return
     if args[0] == "delete":
         if len(args) < 2: await update.message.reply_text("Usage: /vault delete <id>"); return
-        try: vault_delete(int(args[1]), chat_id); await update.message.reply_text(f"🗑 {args[1]} deleted.")
+        try: vault_delete(int(args[1]), chat_id); await update.message.reply_text(f"- {args[1]} deleted.")
         except ValueError: await update.message.reply_text("Invalid ID.")
         return
     try:
         entry = vault_get(int(args[0]), chat_id)
         if not entry: await update.message.reply_text("Not found.")
-        else: await update.message.reply_text(f"📦 [{entry.get('topic','')}]\n\n{str(entry.get('content',''))[:4000]}")
+        else: await update.message.reply_text(f"- [{entry.get('topic','')}]\n\n{str(entry.get('content',''))[:4000]}")
     except ValueError:
         await update.message.reply_text("Usage: /vault list | /vault <id> | /vault delete <id> | /vault clear")
 
 async def undo_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await _check_auth(update): return
     entry = vault_undo(update.message.chat_id)
-    await update.message.reply_text(f"↩️ Removed: [{entry.get('topic','')}]" if entry else "Nothing to undo.")
+    await update.message.reply_text(f"-- Removed: [{entry.get('topic','')}]" if entry else "Nothing to undo.")
 
 async def forget_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await _check_auth(update): return
-    _clear_memory(update.message.chat_id); await update.message.reply_text("🧹 Memory cleared.")
+    _clear_memory(update.message.chat_id); await update.message.reply_text("- Memory cleared.")
 
 async def modify_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await _check_auth(update): return
@@ -2010,13 +2097,13 @@ async def modify_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         async for chunk in stream_task("shadow", messages):
             full += chunk
             if time.time() - last_edit > 1.5:
-                try: await sent.edit_text(f"```python\n{full[:2500]}▌\n```", parse_mode="Markdown"); last_edit = time.time()
+                try: await sent.edit_text(f"```python\n{full[:2500]}-\n```", parse_mode="Markdown"); last_edit = time.time()
                 except Exception: pass
         Path("twin_rewrite_proposal.py").write_text(full)
-        await sent.edit_text(f"✅ twin_rewrite_proposal.py\n\n```python\n{full[:3000]}\n```", parse_mode="Markdown")
-    except Exception as e: await sent.edit_text(f"⚠️ Failed: {e}")
+        await sent.edit_text(f"- twin_rewrite_proposal.py\n\n```python\n{full[:3000]}\n```", parse_mode="Markdown")
+    except Exception as e: await sent.edit_text(f"-- Failed: {e}")
 
-# ── Part 7 wrappers ───────────────────────────────────────────────────────────
+# -- Part 7 wrappers -----------------------------------------------------------
 
 async def model_set_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await _check_auth(update): return
@@ -2056,7 +2143,7 @@ async def extend_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def deploy_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    /deploy <name>  — deploy the last /build output as scripts/<name>.py.
+    /deploy <name>  - deploy the last /build output as scripts/<name>.py.
     Called from Telegram; invokes _do_deploy_script() directly (no HTTP hop).
     """
     if not await _check_auth(update): return
@@ -2070,11 +2157,11 @@ async def deploy_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("No builder output found. Run /build <idea> first."); return
     result = _do_deploy_script(name, code)
     if result.get("ok"):
-        await update.message.reply_text(f"✅ Deployed → {result['path']}\nJob ID: {result['job']['id']}")
+        await update.message.reply_text(f"- Deployed - {result['path']}\nJob ID: {result['job']['id']}")
     else:
-        await update.message.reply_text(f"❌ Deploy failed: {result.get('error','unknown error')}")
+        await update.message.reply_text(f"- Deploy failed: {result.get('error','unknown error')}")
 
-# ── /vlab command ─────────────────────────────────────────────────────────────
+# -- /vlab command -------------------------------------------------------------
 
 async def vlab_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await _check_auth(update): return
@@ -2083,12 +2170,12 @@ async def vlab_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     concept = " ".join(context.args).strip()
     if _is_rate_limited(chat_id):
-        await update.message.reply_text(f"⏱ Wait {RATE_LIMIT_S}s."); return
+        await update.message.reply_text(f"- Wait {RATE_LIMIT_S}s."); return
 
     _lab_concept_store.clear()
     _lab_concept_store.update({"concept": concept})
 
-    sent = await update.message.reply_text("🎬 Generating storyboard...")
+    sent = await update.message.reply_text("- Generating storyboard...")
 
     msgs = [
         {"role": "system", "content": _STORYBOARD_SYSTEM},
@@ -2100,28 +2187,28 @@ async def vlab_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         start  = text.find("{")
         end    = text.rfind("}") + 1
         if start == -1 or end == 0:
-            await sent.edit_text("⚠️ Model did not return a valid storyboard.\nYour concept was queued — open /lab to continue."); return
+            await sent.edit_text("-- Model did not return a valid storyboard.\nYour concept was queued - open /lab to continue."); return
         board = json.loads(text[start:end])
         if "scenes" not in board:
-            await sent.edit_text("⚠️ Storyboard missing 'scenes' key.\nYour concept was queued — open /lab to continue."); return
+            await sent.edit_text("-- Storyboard missing 'scenes' key.\nYour concept was queued - open /lab to continue."); return
     except json.JSONDecodeError as e:
-        await sent.edit_text(f"⚠️ JSON parse error: {e}\nYour concept was queued — open /lab to continue."); return
+        await sent.edit_text(f"-- JSON parse error: {e}\nYour concept was queued - open /lab to continue."); return
     except Exception as e:
-        await sent.edit_text(f"⚠️ Storyboard failed: {e}\nYour concept was queued — open /lab to continue."); return
+        await sent.edit_text(f"-- Storyboard failed: {e}\nYour concept was queued - open /lab to continue."); return
 
-    lines = [f"🎬 Storyboard — {concept}\n"]
+    lines = [f"- Storyboard - {concept}\n"]
     for s in board["scenes"]:
         lines.append(
             f"Scene {s.get('id','?')} [{s.get('duration','?')}s | {s.get('style','?')}]\n"
-            f"📽 {s.get('description','')}\n"
-            f"🎙 {s.get('voiceover','')}\n"
+            f"- {s.get('description','')}\n"
+            f"- {s.get('voiceover','')}\n"
         )
-    lines.append("→ Open /lab to continue the pipeline.")
+    lines.append("- Open /lab to continue the pipeline.")
     reply = "\n".join(lines)
     await sent.edit_text(reply[:4000])
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# -- Main ----------------------------------------------------------------------
 
 def main():
     if not TOKEN: raise ValueError("TOKEN not set.")
@@ -2144,7 +2231,7 @@ def main():
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, freetext_handler))
     _hardening.start_monitor(interval_hours=6)
-    print("🌑 Twin Shadow online.")
+    print("- Twin Shadow online.")
     import asyncio as _asyncio
     from telegram.error import Conflict as _TGConflict
     async def _run():
@@ -2165,5 +2252,15 @@ def main():
             break
         except _TGConflict:
             import time as _t
-            print("⚠️ Telegram 409 conflict — retrying in 15s...")
+            print("-- Telegram 409 conflict - retrying in 15s...")
             _t.sleep(15)
+
+
+
+async def queue_background_task(project_id: str) -> str:
+    """
+    Enqueue an approve job via Arq. Returns the job ID.
+    Falls back to direct execution if Redis is not available.
+    Wraps orch.enqueue_approve() for external callers.
+    """
+    return await orch.enqueue_approve(project_id)

@@ -329,3 +329,19 @@ def delete_file(storage_path: str) -> bool:
     except Exception as e:
         print(f"[SUPABASE] delete_file error: {e}")
         return False
+
+
+
+from runtime.models import TaskRecord
+
+
+async def persist_task_record(supabase, task: TaskRecord):
+    return await supabase.table("tasks").upsert(
+        task.model_dump(mode="json")
+    ).execute()
+
+
+async def persist_task_event(supabase, event: dict):
+    return await supabase.table("task_events").insert(
+        event
+    ).execute()

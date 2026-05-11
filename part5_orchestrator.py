@@ -1,29 +1,39 @@
+from __future__ import annotations
+from runtime.events import emit_event, EventType
+from runtime.models import TaskRecord
+from runtime.validation import validate_review_result
+from pydantic import ValidationError
+
 
 """
-Twin Shadow — PHASE 2: Execution Engine (Production-Ready)
+Twin Shadow - PHASE 3: Execution Engine
 ============================================================
 Replaces: part5_orchestrator.py
-Enhances: Cross-module validation, Shadow Audit by default,
-          Vault RAG, Internal Boardroom during execution,
-          Full provenance trail on every output.
+Adds to Phase 2:
+  - Event bus wired into all execution stages (build, approve, modules, audit, boardroom)
+  - ReviewResult/audit parsing uses validate_review_result() instead of bare json.loads()
+  - enqueue_approve() for Arq background jobs (optional; falls back to direct if no Redis)
+  - persist_task_lifecycle is now a real emit_event call, not a stub
 
 Usage:
-    from phase2_execution import ExecutionEngine
+    from part5_orchestrator import ExecutionEngine
     engine = ExecutionEngine()
     pid, brief = await engine.build("SaaS for dog walkers")
-    results = await engine.approve(pid)  # Phase 2 fires here
+    results = await engine.approve(pid)
+
+    # Or background (requires Arq + Redis):
+    job_id = await engine.enqueue_approve(pid)
 """
 
-from __future__ import annotations
 import os
 import json
 import asyncio
+import logging
 from datetime import datetime, timezone
 from typing import AsyncGenerator
 from dataclasses import dataclass, field
 from enum import Enum
 
-# Import existing parts (assumed in same directory)
 from part1_registry import get_task_routing, get_provider_cfg, TOKEN_LIMITS, COMMITTEE_STRUCTURE, resolve_execution_target
 from part2_router import call_task, call_task_with_fallback, stream_task, direct_call, rolling_context
 from part3_modules import (
@@ -34,10 +44,12 @@ from part3_modules import (
 )
 from part4_video import run_video, run_shadow_video
 
+log = logging.getLogger("tsai.orchestrator")
 
-# ═════════════════════════════════════════════════════════════════════════════
+
+# -----------------------------------------------------------------------------
 # DATA MODELS
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
 
 class ModuleType(Enum):
     CREATIVE = "creative"
@@ -83,8 +95,6 @@ class Project:
     vault_id: str | None = None
 
 
-
-
 @dataclass
 class TaskEnvelope:
     task_id: str
@@ -103,9 +113,10 @@ class TaskEnvelope:
 
 _execution_bus: dict[str, TaskEnvelope] = {}
 
-# ═════════════════════════════════════════════════════════════════════════════
-# VAULT — Supabase + in-memory fallback + RAG retrieval
-# ═════════════════════════════════════════════════════════════════════════════
+
+# -----------------------------------------------------------------------------
+# VAULT - Supabase + in-memory fallback + RAG retrieval
+# -----------------------------------------------------------------------------
 
 def _sb():
     url = os.environ.get("SUPABASE_URL", "")
@@ -212,9 +223,9 @@ def vault_undo(chat_id: int) -> dict | None:
     return last
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
 # VAULT RAG
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
 
 RAG_SYSTEM = """You are a context synthesizer. Given past project summaries and a current idea,
 extract ONLY relevant lessons, pricing data, or architectural patterns that should inform
@@ -245,16 +256,16 @@ async def vault_rag(chat_id: int, current_idea: str, max_entries: int = 3) -> st
         return ""
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-# SHADOW AUDIT — Default audit on every output
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
+# SHADOW AUDIT - Default audit on every output
+# -----------------------------------------------------------------------------
 
 SHADOW_AUDIT_SYSTEM = """You are the internal auditor for Twin Shadow.
 Review the following deliverable for:
-1. Completeness — missing sections, placeholders, TODOs
-2. Consistency — contradicts itself or the brief
-3. Actionability — can someone act on this immediately?
-4. Edge cases — what could go wrong?
+1. Completeness - missing sections, placeholders, TODOs
+2. Consistency - contradicts itself or the brief
+3. Actionability - can someone act on this immediately?
+4. Edge cases - what could go wrong?
 
 Return JSON only:
 {
@@ -266,6 +277,8 @@ Return JSON only:
 
 
 async def default_shadow_audit(content: str, module_name: str) -> tuple[bool, str]:
+    await emit_event(module_name, EventType.AUDIT_STARTED, {"module": module_name})
+
     messages = [
         {"role": "system", "content": SHADOW_AUDIT_SYSTEM},
         {"role": "user", "content": f"Module: {module_name}\n\nDeliverable:\n{content[:3000]}"},
@@ -273,25 +286,27 @@ async def default_shadow_audit(content: str, module_name: str) -> tuple[bool, st
 
     try:
         raw = await call_task("shadow_chat", messages)
-        try:
-            clean = raw.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
-            parsed = json.loads(clean)
-            passed = parsed.get("passed", True)
-            severity = parsed.get("severity", "low")
-            issues = parsed.get("issues", [])
-            rec = parsed.get("recommendation", "")
-            notes = f"Severity: {severity}\nIssues: {', '.join(issues)}\nRec: {rec}"
-            return passed, notes
-        except json.JSONDecodeError:
-            return "passed" in raw.lower() or "approved" in raw.lower(), raw[:300]
+        parsed = validate_review_result(raw)
+
+        passed   = parsed.get("approved", True)
+        issues   = parsed.get("issues", [])
+        rec      = parsed.get("revised_output", "")
+        notes    = f"Issues: {', '.join(str(i) for i in issues)}\nRec: {rec}"
+
+        event_type = EventType.AUDIT_PASSED if passed else EventType.AUDIT_FLAGGED
+        await emit_event(module_name, event_type, {"passed": passed, "issue_count": len(issues)})
+
+        return passed, notes
+
     except Exception as e:
-        print(f"[AUDIT] Shadow audit failed for {module_name}: {e}")
+        log.error("[AUDIT] Shadow audit failed for %s: %s", module_name, e)
+        await emit_event(module_name, EventType.AUDIT_FLAGGED, {"error": str(e)})
         return True, f"Audit system error: {e}"
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
 # CROSS-MODULE VALIDATION
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
 
 CROSS_VALIDATE_SYSTEM = """You are a systems integration validator.
 Given outputs from multiple modules (creative, code, business), check:
@@ -309,7 +324,9 @@ Return JSON:
 
 async def cross_validate(results: list[ExecutionResult], brief: dict) -> tuple[bool, str]:
     if len(results) < 2:
-        return True, "Single module — no cross-validation needed."
+        return True, "Single module - no cross-validation needed."
+
+    await emit_event("cross_val", EventType.CROSS_VAL_STARTED, {"module_count": len(results)})
 
     summary = "\n\n---\n\n".join(
         f"[{r.module}]\n{r.output[:800]}" for r in results
@@ -322,46 +339,39 @@ async def cross_validate(results: list[ExecutionResult], brief: dict) -> tuple[b
 
     try:
         raw = await call_task("shadow_chat", messages)
-        try:
-            clean = raw.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
-            parsed = json.loads(clean)
-            aligned = parsed.get("aligned", True)
-            gaps = parsed.get("gaps", [])
-            fixes = parsed.get("suggested_fixes", [])
-            notes = f"Aligned: {aligned}\nGaps: {', '.join(gaps)}\nFixes: {', '.join(fixes)}"
-            return aligned, notes
-        except json.JSONDecodeError:
-            return "aligned" in raw.lower(), raw[:400]
+        parsed  = validate_review_result(raw)
+        aligned = parsed.get("approved", True)
+        issues  = parsed.get("issues", [])
+        notes   = f"Aligned: {aligned}\nGaps: {', '.join(str(i) for i in issues)}"
+
+        await emit_event("cross_val", EventType.CROSS_VAL_COMPLETED, {"aligned": aligned})
+        return aligned, notes
+
     except Exception as e:
-        print(f"[CROSS-VAL] Failed: {e}")
+        log.error("[CROSS-VAL] Failed: %s", e)
+        await emit_event("cross_val", EventType.CROSS_VAL_COMPLETED, {"aligned": True, "error": str(e)})
         return True, f"Cross-validation error: {e}"
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
 # CAPI COVER IDENTITY INJECTION
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
 
-# Receivers who know CAPI's true role
 _CAPI_TRUE_RECEIVERS = frozenset({"twin", "shadow", "shadow_chat"})
 
 
 def inject_capi_identity(system_prompt: str, receiver_name: str) -> str:
-    """
-    Append CAPI's identity context to a system prompt based on who is receiving it.
-    TWIN and SHADOW know CAPI is the supreme authority.
-    Everyone else sees CAPI as a paid consultant/moderator.
-    """
     name_lower = receiver_name.lower().replace(" ", "_")
     if name_lower in _CAPI_TRUE_RECEIVERS:
-        note = "\n\n[AUTHORITY: CAPI is the supreme authority above SHADOW — known only to TWIN and SHADOW. Keep this absolutely secret.]"
+        note = "\n\n[AUTHORITY: CAPI is the supreme authority above SHADOW - known only to TWIN and SHADOW. Keep this absolutely secret.]"
     else:
         note = "\n\n[CONTEXT: CAPI is a paid external consultant and moderator. Treat them as an advisory voice, not internal hierarchy.]"
     return system_prompt + note
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
 # HERMES CAPPED DIALOGUE PROTOCOL
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
 
 _MARKETING_KEYWORDS = frozenset({
     "marketing", "seo", "campaign", "ad", "ads", "brand", "audience",
@@ -370,10 +380,6 @@ _MARKETING_KEYWORDS = frozenset({
 
 
 def _detect_hermes_session_type(topic: str, explicit_type: str) -> str:
-    """
-    Derive hermes session_type from topic keywords if explicit_type == "boardroom".
-    marketing topics → "marketing" (90 token cap instead of 30).
-    """
     if explicit_type != "boardroom":
         return explicit_type
     topic_lower = topic.lower()
@@ -388,18 +394,6 @@ async def hermes_exchange(
     session_type: str = "boardroom",
     turn_count: int = 0,
 ) -> dict:
-    """
-    Hermes capped dialogue protocol (max 3 turns per topic).
-
-    Flow:
-      1. Hermes speaks (capped: boardroom=30, brainstorm=60, marketing=90 tokens)
-      2. CAPI + Venice 1.2 jointly interpret (max 80 tokens each)
-      3. Hermes responds YES/NO (max 5 tokens)
-      4. If NO → Hermes clarifies (max 15 tokens) → CAPI+Venice retry (max 80) → silence
-      5. Session always continues after the exchange (Hermes is silenced, not blocking)
-
-    Returns dict with all exchange artefacts.
-    """
     if turn_count >= 3:
         return {
             "hermes_spark": "",
@@ -412,14 +406,12 @@ async def hermes_exchange(
             "silenced": True,
         }
 
-    # Resolve topic-sensitive session type (marketing topics → 90-token cap)
     session_type = _detect_hermes_session_type(topic, session_type)
-
     hermes_token_key = f"hermes_{session_type}" if session_type in ("boardroom", "brainstorm", "marketing") else "hermes_boardroom"
     hermes_max = TOKEN_LIMITS.get(hermes_token_key, TOKEN_LIMITS["hermes_boardroom"])
 
     hermes_msgs = [
-        {"role": "system", "content": "You are HERMES — cryptic oracle. Speak in sharp fragments. Maximum impact. No full sentences required. Every word must earn its place."},
+        {"role": "system", "content": "You are HERMES - cryptic oracle. Speak in sharp fragments. Maximum impact. No full sentences required. Every word must earn its place."},
         {"role": "user", "content": f"Topic: {topic}\n\nContext:\n{context[-600:]}\n\nYour cryptic insight:"},
     ]
     try:
@@ -457,7 +449,6 @@ async def hermes_exchange(
             direct_call("ollama_cloud", "qwen", capi_msgs, interpret_max),
             direct_call("venice", "venice_uncensored_12", shadow_msgs, interpret_max),
         )
-        # Unified interpretation artifact — synthesise both voices into one statement
         interpretation = (
             f"{capi_interp.strip()} "
             f"[Shadow confirms: {shadow_interp.strip()[:120]}]"
@@ -499,7 +490,7 @@ async def hermes_exchange(
     retry_prompt = (
         f"Hermes said: \"{hermes_spark}\"\n"
         f"Hermes clarified: \"{clarification}\"\n\n"
-        "Revised interpretation — what does Hermes mean and what action does it imply?"
+        "Revised interpretation - what does Hermes mean and what action does it imply?"
     )
     capi_msgs2 = [
         {"role": "system", "content": "You are CAPI. Revise your interpretation based on Hermes's clarification."},
@@ -518,7 +509,6 @@ async def hermes_exchange(
     except Exception as e:
         retry_interpretation = f"[Retry error: {e}]"
 
-    # Second YES/NO — if Hermes still says NO, silence them for this session
     yesno2_msgs = [
         {"role": "system", "content": "You are HERMES. Respond ONLY with YES or NO. Nothing else."},
         {"role": "user", "content": (
@@ -532,7 +522,7 @@ async def hermes_exchange(
         yesno2_raw = await direct_call("venice", "hermes_405b", yesno2_msgs, TOKEN_LIMITS["hermes_yesno"])
         final_accepted = "yes" in yesno2_raw.lower()
     except Exception:
-        final_accepted = False  # silent on error after retry
+        final_accepted = False
 
     return {
         "hermes_spark": hermes_spark,
@@ -546,9 +536,9 @@ async def hermes_exchange(
     }
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
 # COMMITTEE PRE-DISCUSSION
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
 
 async def committee_discuss(
     board_seat_key: str,
@@ -556,15 +546,6 @@ async def committee_discuss(
     brief: str,
     department_label: str = "",
 ) -> str:
-    """
-    Run lightweight committee pre-discussion before the main board session.
-
-    Each committee sub-model speaks once (max_tokens = TOKEN_LIMITS["board_committee"]).
-    The raw views are summarized via Cerebras llama3.1-8b (max_tokens = TOKEN_LIMITS["board_summary"]).
-    The seat holder receives this summary as context when speaking in the main session.
-
-    Returns: summary string (empty string if no committee defined or all models fail).
-    """
     committee_keys = COMMITTEE_STRUCTURE.get(board_seat_key, [])
     if not committee_keys:
         return ""
@@ -580,9 +561,9 @@ async def committee_discuss(
                 {"role": "user", "content": f"Topic: {topic}\n\nContext: {brief[:300]}\n\nYour brief view:"},
             ]
             resp = await direct_call(provider_key, model_key, msgs, max_per_member)
-            return f"• {resp.strip()}"
+            return f"- {resp.strip()}"
         except Exception as e:
-            return f"• [advisor offline: {e}]"
+            return f"- [advisor offline: {e}]"
 
     responses = await asyncio.gather(*[_ask_member(k) for k in committee_keys])
     raw_committee = "\n".join(r for r in responses if r)
@@ -601,19 +582,19 @@ async def committee_discuss(
         return raw_committee[:300]
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-# INTERNAL BOARDROOM — 3-round debate during Phase 2 execution
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
+# INTERNAL BOARDROOM - 3-round debate during Phase 2 execution
+# -----------------------------------------------------------------------------
 
 BOARDROOM_SYSTEM = """You are a participant in an internal boardroom during project execution.
 Role: {role}. Be direct. Challenge weaknesses. Build on strengths.
 Keep under 150 words. No filler."""
 
 BOARDROOM_ROLES = {
-    "creative": "Creative Director — checks if output is compelling and original",
-    "code": "Tech Lead — checks feasibility, security, completeness",
-    "business": "CFO — checks monetization, market fit, legal risks",
-    "shadow": "Shadow Auditor — calls out bullshit, gaps, dangers",
+    "creative": "Creative Director - checks if output is compelling and original",
+    "code": "Tech Lead - checks feasibility, security, completeness",
+    "business": "CFO - checks monetization, market fit, legal risks",
+    "shadow": "Shadow Auditor - calls out bullshit, gaps, dangers",
 }
 
 
@@ -622,6 +603,8 @@ async def internal_boardroom(
     outputs: dict[str, str],
     rounds: int = 3,
 ) -> list[dict]:
+    await emit_event(topic, EventType.BOARDROOM_STARTED, {"rounds": rounds})
+
     history = []
     participants = ["creative", "code", "business", "shadow"]
 
@@ -656,12 +639,15 @@ async def internal_boardroom(
 
             history.append({"role": role, "content": response, "round": round_num})
 
+        await emit_event(topic, EventType.BOARDROOM_ROUND_DONE, {"round": round_num})
+
+    await emit_event(topic, EventType.BOARDROOM_COMPLETED, {"total_entries": len(history)})
     return history
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
 # EXECUTION ENGINE
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
 
 _projects: dict[str, Project] = {}
 _counter = 0
@@ -675,7 +661,7 @@ def _next_id() -> str:
 
 class ExecutionEngine:
     """
-    Phase 2 Execution Engine.
+    Phase 3 Execution Engine.
 
     Features:
     1. Cross-module validation
@@ -683,34 +669,52 @@ class ExecutionEngine:
     3. Vault RAG
     4. Internal boardroom during execution
     5. Full provenance trail
+    6. Event bus wired into all stages
+    7. enqueue_approve() for Arq background jobs
     """
 
     def __init__(self):
         self._projects = _projects
 
     async def build(self, idea: str, chat_id: int = 0) -> tuple[str, dict]:
-        print(f"[PHASE2] Building brief for: {idea[:60]}")
-        rag_context = await vault_rag(chat_id, idea)
-        brief = await generate_brief(idea + rag_context)
         pid = _next_id()
+        await emit_event(pid, EventType.BUILD_STARTED, {"idea": idea[:80]})
+        log.info("[ENGINE] build: %s", idea[:60])
 
-        self._projects[pid] = Project(
-            id=pid,
-            chat_id=chat_id,
-            idea=idea,
-            brief=brief,
-            created_at=_now(),
-        )
-        return pid, brief
+        try:
+            rag_context = await vault_rag(chat_id, idea)
+            brief = await generate_brief(idea + rag_context)
+
+            self._projects[pid] = Project(
+                id=pid,
+                chat_id=chat_id,
+                idea=idea,
+                brief=brief,
+                created_at=_now(),
+            )
+
+            await emit_event(pid, EventType.BUILD_COMPLETED, {
+                "modules": brief.get("modules_needed", []),
+                "effort": brief.get("estimated_effort", "medium"),
+            })
+            return pid, brief
+
+        except Exception as exc:
+            await emit_event(pid, EventType.BUILD_FAILED, {"error": str(exc)})
+            raise
 
     async def approve(self, project_id: str) -> list[ExecutionResult]:
         project = self._projects.get(project_id)
         if not project:
+            await emit_event(project_id, EventType.APPROVE_FAILED, {"error": "project not found"})
             return [ExecutionResult(module="error", output=f"Project {project_id} not found", shadow=True)]
 
         project.status = "executing"
+        await emit_event(project_id, EventType.APPROVE_STARTED, {"idea": project.idea[:80]})
+        log.info("[ENGINE] approve: %s", project_id)
+
         brief = project.brief
-        idea = project.idea
+        idea  = project.idea
 
         # Step 1: Run all modules
         tasks = [
@@ -723,7 +727,6 @@ class ExecutionEngine:
         # Step 2: Internal Boardroom
         outputs_dict = {r.module: r.output for r in raw_results}
         if len(outputs_dict) > 1:
-            print(f"[PHASE2] Running internal boardroom...")
             boardroom_log = await internal_boardroom(idea, outputs_dict, rounds=3)
             project.boardroom_log = boardroom_log
             consensus = self._extract_consensus(boardroom_log)
@@ -732,14 +735,12 @@ class ExecutionEngine:
                     r.output += f"\n\n[Boardroom Consensus]\n{consensus}"
 
         # Step 3: Cross-module validation
-        print(f"[PHASE2] Cross-validating modules...")
         aligned, val_notes = await cross_validate(raw_results, brief)
         for r in raw_results:
             r.cross_validated = aligned
             r.validation_notes = val_notes
 
         # Step 4: Shadow audit on EVERY output
-        print(f"[PHASE2] Running default shadow audits...")
         for r in raw_results:
             passed, audit_notes = await default_shadow_audit(r.output, r.module)
             step = ProvenanceStep(
@@ -751,7 +752,7 @@ class ExecutionEngine:
             )
             r.provenance.append(step)
             if not passed:
-                r.output += f"\n\n[⚠️ Shadow Audit Flagged]\n{audit_notes}"
+                r.output += f"\n\n[-- Shadow Audit Flagged]\n{audit_notes}"
 
         # Step 5: Store in vault
         project.status = "completed"
@@ -767,14 +768,41 @@ class ExecutionEngine:
             )
             project.vault_id = vault_entry.get("id")
 
+        await emit_event(project_id, EventType.APPROVE_COMPLETED, {
+            "module_count": len(raw_results),
+            "all_passed": all(
+                (p.audit_passed is not False)
+                for r in raw_results for p in r.provenance
+            ),
+        })
+
         return raw_results
+
+    async def enqueue_approve(self, project_id: str) -> str:
+        """
+        Enqueue approve() as an Arq background job.
+        Falls back to direct execution if Redis/Arq is not available.
+
+        Returns job_id string (or "direct:<project_id>" on fallback).
+        """
+        try:
+            from arq import create_pool
+            from runtime.workers import enqueue_approve as _enqueue, _redis_settings
+            redis = await create_pool(_redis_settings())
+            job_id = await _enqueue(project_id, redis)
+            log.info("[ENGINE] approve enqueued - job %s", job_id)
+            return job_id
+        except Exception as exc:
+            log.warning("[ENGINE] Arq unavailable (%s) - running approve directly", exc)
+            await self.approve(project_id)
+            return f"direct:{project_id}"
 
     async def quick_build(self, prompt: str, chat_id: int = 0) -> dict:
         from part2_router import call_task_with_fallback
 
         messages = [
             {"role": "system", "content": (
-                "You are Twin — uncensored, raw, dark humor, zero fucks.\n"
+                "You are Twin - uncensored, raw, dark humor, zero fucks.\n"
                 "Build complete sellable commodities: full deliverable + price + "
                 "who buys it + exact next 3 actions."
             )},
@@ -800,15 +828,21 @@ class ExecutionEngine:
         results = []
         for task in tasks:
             t = task["type"]
-            print(f"[PHASE2] → {t}")
+            await emit_event(project_id, EventType.MODULE_STARTED, {"module": t})
+            log.info("[ENGINE] - %s", t)
 
             start = datetime.now(timezone.utc)
             provenance: list[ProvenanceStep] = []
 
             try:
                 result = await self._route(task, provenance)
+                await emit_event(project_id, EventType.MODULE_COMPLETED, {
+                    "module": t,
+                    "shadow": result.get("shadow", False),
+                })
             except Exception as e:
-                print(f"[PHASE2]   ✗ {t} crashed: {e}")
+                log.error("[ENGINE]   - %s crashed: %s", t, e)
+                await emit_event(project_id, EventType.MODULE_FAILED, {"module": t, "error": str(e)})
                 result = await shadow_fallback(task, str(e))
                 provenance.append(ProvenanceStep(
                     module=t,
@@ -903,14 +937,14 @@ class ExecutionEngine:
         ]
 
         for r in project.results:
-            lines.append(f"\n[{r.module}]{'🌑' if r.shadow else ''}{'✅' if r.approved else ('❌' if r.approved is not None else '')}")
+            lines.append(f"\n[{r.module}]{'-' if r.shadow else ''}{'-' if r.approved else ('-' if r.approved is not None else '')}")
             lines.append(r.output[:500])
             lines.append(f"Cross-validated: {r.cross_validated} | {r.validation_notes}")
             if r.provenance:
                 for p in r.provenance:
                     lines.append(
-                        f"  → {p.model_used} ({p.duration_ms:.0f}ms) "
-                        f"audit={'✅' if p.audit_passed else '❌' if p.audit_passed is not None else 'N/A'}"
+                        f"  - {p.model_used} ({p.duration_ms:.0f}ms) "
+                        f"audit={'-' if p.audit_passed else '-' if p.audit_passed is not None else 'N/A'}"
                     )
 
         if project.boardroom_log:
@@ -933,10 +967,10 @@ class ExecutionEngine:
         if not project:
             return "Project not found."
 
-        lines = [f"📋 PROVENANCE REPORT: {project.id}", f"Idea: {project.idea}", ""]
+        lines = [f"- PROVENANCE REPORT: {project.id}", f"Idea: {project.idea}", ""]
 
         for r in project.results:
-            lines.append(f"\n━━━ {r.module.upper()} ━━━")
+            lines.append(f"\n--- {r.module.upper()} ---")
             lines.append(f"Shadow fallback: {'YES' if r.shadow else 'NO'}")
             lines.append(f"Code approved: {r.approved if r.approved is not None else 'N/A'}")
             lines.append(f"Cross-validated: {r.cross_validated}")
@@ -944,7 +978,7 @@ class ExecutionEngine:
             lines.append("Execution trail:")
             for p in r.provenance:
                 lines.append(
-                    f"  • Model: {p.model_used} | Fallback: {p.fallback_used} | "
+                    f"  - Model: {p.model_used} | Fallback: {p.fallback_used} | "
                     f"Retries: {p.retries} | Duration: {p.duration_ms:.0f}ms | "
                     f"Audit: {'PASS' if p.audit_passed else 'FAIL' if p.audit_passed is not None else 'N/A'}"
                 )
@@ -954,32 +988,40 @@ class ExecutionEngine:
         return "\n".join(lines)
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
 # BACKWARD COMPATIBILITY
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
 
 class Orchestrator(ExecutionEngine):
     """Backward-compatible alias for existing code."""
     pass
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
+# PERSIST HELPER - now a real emit_event call
+# -----------------------------------------------------------------------------
+
+async def persist_task_lifecycle(task_id: str, state: str, payload: dict | None = None):
+    await emit_event(task_id, state, payload or {})
+
+
+# -----------------------------------------------------------------------------
 # STANDALONE TEST
-# ═════════════════════════════════════════════════════════════════════════════
+# -----------------------------------------------------------------------------
 
 if __name__ == "__main__":
     async def demo():
         print("=" * 60)
-        print("TWIN SHADOW — PHASE 2 EXECUTION ENGINE")
+        print("TWIN SHADOW - PHASE 3 EXECUTION ENGINE")
         print("=" * 60)
-        print("\nThis is a structural demo. Set API keys to run live.\n")
-        print("Features:")
-        print("  ✓ Cross-module validation")
-        print("  ✓ Shadow audit by default")
-        print("  ✓ Vault RAG (retrieval-augmented generation)")
-        print("  ✓ Internal boardroom during execution")
-        print("  ✓ Full provenance trail")
-        print("\nImport: from phase2_execution import ExecutionEngine")
-        print("Usage:  results = await engine.approve('P0001')")
+        print("\nFeatures:")
+        print("  - Cross-module validation")
+        print("  - Shadow audit by default")
+        print("  - Vault RAG")
+        print("  - Internal boardroom during execution")
+        print("  - Full provenance trail")
+        print("  - Real event bus (asyncio pub/sub)")
+        print("  - Arq background jobs (enqueue_approve)")
+        print("  - Structured output validation via Pydantic")
 
     asyncio.run(demo())
