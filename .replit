@@ -43,4 +43,4 @@ timeoutMs = 60000
 
 [deployment]
 deploymentTarget = "vm"
-run = ["bash", "-c", "cd 'twin shadow flat' && python3 main.py"]
+run = ["python3", "main.py"]
