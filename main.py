@@ -4,10 +4,16 @@ Twin Shadow — Final Working Version
 """
 
 import os
+import sys
 import time
 import logging
 from pathlib import Path
 from threading import Event
+
+# Add tsai/ to path so 'runtime' package is importable
+_tsai = Path(__file__).parent / "tsai"
+if str(_tsai) not in sys.path:
+    sys.path.insert(0, str(_tsai))
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)

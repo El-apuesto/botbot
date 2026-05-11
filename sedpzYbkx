@@ -21,17 +21,21 @@ args = "Start application"
 name = "Start application"
 author = "agent"
 
-[workflows.workflow.metadata]
-outputType = "webview"
-
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python3 main.py"
 waitForPort = 5000
 
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 5001
+externalPort = 3000
 
 [postMerge]
 path = "scripts/post-merge.sh"
@@ -43,4 +47,4 @@ timeoutMs = 60000
 
 [deployment]
 deploymentTarget = "vm"
-run = ["bash", "-c", "cd 'twin shadow flat' && python3 main.py"]
+run = ["bash", "-c", "python3 main.py"]

@@ -1,6 +1,15 @@
+"""
+Twin Shadow — Part 3: All Text Modules
+Includes: exploration, evaluator, creative, code, business, shadow
+"""
+
+from __future__ import annotations
+import json
 from runtime.models import ReviewResult, BriefSchema
 from runtime.validation import validate_brief_with_retry, validate_review_result
 from pydantic import ValidationError
+from part2_router import call_task, call_task_with_fallback
+from part8_personas import SHADOW_SYSTEM as _SHADOW_SYSTEM_P8
 
 
 def standardize_module_output(raw_output: str) -> dict:
@@ -11,16 +20,6 @@ def standardize_module_output(raw_output: str) -> dict:
         "next_actions": [],
         "raw_output": raw_output,
     }
-
-"""
-Twin Shadow — Part 3: All Text Modules
-Includes: exploration, evaluator, creative, code, business, shadow
-"""
-
-from __future__ import annotations
-import json
-from part2_router import call_task, call_task_with_fallback
-from part8_personas import SHADOW_SYSTEM as _SHADOW_SYSTEM_P8
 
 
 # ══════════════════════════════════════════════════════════════════════════════

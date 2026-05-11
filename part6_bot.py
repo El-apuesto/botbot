@@ -68,11 +68,11 @@ orch = Orchestrator()
 def _find_port(start: int = 5000) -> int:
     return start
 
-_static_dir = Path(__file__).parent / "static"
-_audio_dir  = Path(__file__).parent / "audio"
+_static_dir = Path(__file__).parent / "tsai" / "static"
+_audio_dir  = Path(__file__).parent / "tsai" / "audio"
 
 _flask = Flask("TwinShadow", static_folder=str(_static_dir), static_url_path="/static",
-               template_folder=str(Path(__file__).parent / "static"))
+               template_folder=str(Path(__file__).parent / "tsai" / "static"))
 _flask.secret_key = os.environ.get("SB_SECRET") or os.environ.get("WEB_PASSWORD", "") or os.urandom(24).hex()
 
 # -- Web authentication --------------------------------------------------------
@@ -748,7 +748,7 @@ def api_lab_reformat():
     return jsonify({"ok": True, "url": f"/renders/{fname}", "path": out})
 
 
-_fonts_dir = Path(__file__).parent / "static" / "fonts"
+_fonts_dir = Path(__file__).parent / "tsai" / "static" / "fonts"
 
 _FONT_LABELS = {
     "BebasNeue":       "BEBAS NEUE",
@@ -1077,10 +1077,10 @@ def api_pipeline_delete(job_id):
 # VIDEO LAB - /lab + /api/lab/*
 # -------------------------------------------------------------------------------
 
-_lab_uploads_dir = Path(__file__).parent / "uploads"
-_lab_renders_dir = Path(__file__).parent / "renders"
-_lab_music_dir   = Path(__file__).parent / "static" / "music"
-_lab_music_meta  = Path(__file__).parent / "static" / "music" / "_meta.json"
+_lab_uploads_dir = Path(__file__).parent / "tsai" / "uploads"
+_lab_renders_dir = Path(__file__).parent / "tsai" / "renders"
+_lab_music_dir   = Path(__file__).parent / "tsai" / "static" / "music"
+_lab_music_meta  = Path(__file__).parent / "tsai" / "static" / "music" / "_meta.json"
 _lab_concept_store: dict = {}   # latest concept pushed from bots; cleared on GET
 _lab_jobs: dict = {}            # job_id - {status, url, error, provider, local_path}
 

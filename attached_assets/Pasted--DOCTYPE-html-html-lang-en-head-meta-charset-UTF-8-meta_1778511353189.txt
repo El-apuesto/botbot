@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TWIN SHADOW</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0a0010;
+  --purple: #7b2fff;
+  --purple-dim: #3d1a7a;
+  --purple-glow: rgba(123,47,255,0.4);
+  --neon: #bf7fff;
+  --neon-bright: #e0b0ff;
+  --terminal-bg: rgba(20,0,40,0.85);
+  --border: rgba(123,47,255,0.6);
+  --text: #d4aaff;
+  --muted: #6a3d9a;
+  --green: #00ff9f;
+  --cyan: #00e5ff;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+  cursor: crosshair;
+}
+
+/* Scanline overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.15) 2px,
+    rgba(0,0,0,0.15) 4px
+  );
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* ── LAYOUT ── */
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* ── HEADER ── */
+.header {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+  align-items: end;
+  padding: 16px 0 0;
+}
+
+.wizard-wrap {
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.wizard-wrap img {
+  width: 100%;
+  display: block;
+  filter: drop-shadow(0 0 20px var(--purple));
+}
+
+.header-right {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.logo img {
+  max-width: 480px;
+  width: 100%;
+  filter: drop-shadow(0 0 16px var(--neon)) drop-shadow(0 0 40px var(--purple));
+}
+
+.titlebar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--purple-dim);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+}
+
+.titlebar-left { color: var(--neon-bright); }
+.titlebar-right { color: var(--muted); font-size: 11px; }
+
+/* ── TERMINAL WINDOW ── */
+.terminal {
+  border: 1px solid var(--border);
+  background: var(--terminal-bg);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  margin: 0;
+  min-height: 0;
+}
+
+.terminal::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(123,47,255,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Tab content panels */
+.panel {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  padding: 20px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.panel.active { display: flex; }
+
+/* ── HOME PANEL ── */
+.chat-output {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 16px;
+  min-height: 200px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text);
+}
+
+.chat-output::-webkit-scrollbar { width: 4px; }
+.chat-output::-webkit-scrollbar-track { background: transparent; }
+.chat-output::-webkit-scrollbar-thumb { background: var(--purple-dim); }
+
+.msg { margin-bottom: 12px; }
+.msg.system { color: var(--muted); font-size: 11px; }
+.msg.user { color: var(--neon-bright); }
+.msg.user::before { content: '> '; color: var(--purple); }
+.msg.assistant { color: var(--text); }
+.msg.assistant::before { content: 'TWIN: '; color: var(--green); }
+.msg.event { color: var(--cyan); font-size: 11px; }
+.msg.event::before { content: '[EVT] '; }
+.msg.error { color: #ff4d6d; }
+
+.project-id {
+  display: inline-block;
+  background: var(--purple-dim);
+  border: 1px solid var(--border);
+  padding: 2px 10px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  margin: 4px 0;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.project-id:hover { background: var(--purple); }
+
+.input-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.cmd-input {
+  flex: 1;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid var(--border);
+  color: var(--neon-bright);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px;
+  padding: 12px 16px;
+  outline: none;
+  caret-color: var(--purple);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.cmd-input:focus {
+  border-color: var(--neon);
+  box-shadow: 0 0 12px var(--purple-glow);
+}
+
+.cmd-input::placeholder { color: var(--muted); }
+
+.send-btn {
+  background: var(--purple-dim);
+  border: 1px solid var(--border);
+  color: var(--neon-bright);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  padding: 0 20px;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+}
+
+.send-btn:hover {
+  background: var(--purple);
+  box-shadow: 0 0 16px var(--purple-glow);
+}
+
+.send-btn:active { transform: scale(0.97); }
+
+/* ── PROJECTS PANEL ── */
+.projects-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.project-card {
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,0.3);
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.project-card:hover {
+  border-color: var(--neon);
+  background: rgba(123,47,255,0.1);
+}
+
+.project-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.project-card-id { color: var(--purple); font-size: 11px; }
+.project-card-status { font-size: 10px; letter-spacing: 0.1em; }
+.status-pending { color: var(--muted); }
+.status-executing { color: var(--cyan); }
+.status-completed { color: var(--green); }
+
+.project-card-idea { font-size: 13px; color: var(--neon-bright); margin-bottom: 8px; }
+.project-card-brief { font-size: 11px; color: var(--muted); }
+
+.approve-btn {
+  margin-top: 10px;
+  background: none;
+  border: 1px solid var(--purple);
+  color: var(--neon);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.approve-btn:hover {
+  background: var(--purple);
+  box-shadow: 0 0 12px var(--purple-glow);
+}
+
+.project-output {
+  display: none;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.project-output.open { display: block; }
+
+.no-projects {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 40px 0;
+  text-align: center;
+}
+
+/* ── LAB PANEL ── */
+.lab-sections {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.lab-tab {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.lab-tab.active, .lab-tab:hover {
+  border-color: var(--neon);
+  color: var(--neon-bright);
+  background: rgba(123,47,255,0.15);
+}
+
+.lab-section { display: none; flex: 1; flex-direction: column; gap: 12px; }
+.lab-section.active { display: flex; }
+
+.lab-label {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+
+.lab-textarea {
+  background: rgba(0,0,0,0.5);
+  border: 1px solid var(--border);
+  color: var(--neon-bright);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  padding: 12px;
+  resize: vertical;
+  min-height: 80px;
+  outline: none;
+}
+
+.lab-textarea:focus { border-color: var(--neon); }
+
+.lab-btn {
+  align-self: flex-start;
+  background: var(--purple-dim);
+  border: 1px solid var(--border);
+  color: var(--neon-bright);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.lab-btn:hover { background: var(--purple); }
+
+.event-feed {
+  flex: 1;
+  min-height: 200px;
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,0.4);
+  padding: 12px;
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.event-feed::-webkit-scrollbar { width: 3px; }
+.event-feed::-webkit-scrollbar-thumb { background: var(--purple-dim); }
+
+.evt-line { color: var(--cyan); margin-bottom: 2px; }
+.evt-line .evt-time { color: var(--muted); margin-right: 8px; }
+.evt-line .evt-type { color: var(--green); margin-right: 8px; }
+.evt-line .evt-payload { color: var(--text); }
+
+/* ── STATUS PANEL ── */
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.status-card {
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,0.3);
+  padding: 12px 14px;
+}
+
+.status-card-name { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 6px; }
+.status-card-val { font-size: 13px; }
+.status-ok { color: var(--green); }
+.status-err { color: #ff4d6d; }
+.status-unk { color: var(--muted); }
+
+.refresh-btn {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  padding: 6px 14px;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+}
+
+.refresh-btn:hover { border-color: var(--neon); color: var(--neon-bright); }
+
+/* ── NAV ── */
+.nav {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0 16px;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.nav-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  padding: 6px 4px;
+  transition: color 0.15s, text-shadow 0.15s;
+  white-space: nowrap;
+}
+
+.nav-btn .nav-num { color: var(--purple-dim); margin-right: 4px; }
+
+.nav-btn:hover,
+.nav-btn.active {
+  color: var(--neon-bright);
+  text-shadow: 0 0 8px var(--purple);
+}
+
+.nav-btn.active .nav-num { color: var(--purple); }
+
+/* ── MOBILE ── */
+@media (max-width: 600px) {
+  .header { grid-template-columns: 1fr; }
+  .wizard-wrap { width: 100%; max-width: 220px; margin: 0 auto; }
+  .logo img { max-width: 100%; }
+  .nav { justify-content: center; gap: 8px; }
+  .nav-btn { font-size: 11px; }
+  .status-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── BLINK CURSOR ── */
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.cursor { display: inline-block; width: 8px; height: 13px; background: var(--purple); animation: blink 1s step-end infinite; vertical-align: middle; margin-left: 2px; }
+
+/* ── GLOW PULSE ── */
+@keyframes glow-pulse {
+  0%,100% { box-shadow: 0 0 8px var(--purple-glow); }
+  50% { box-shadow: 0 0 24px var(--purple-glow), 0 0 48px rgba(123,47,255,0.2); }
+}
+.terminal { animation: glow-pulse 4s ease-in-out infinite; }
+
+/* ── TYPING ANIMATION ── */
+@keyframes fadeInUp { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+.msg { animation: fadeInUp 0.2s ease both; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="wizard-wrap">
+      <img src="mobile_bg.jpg" alt="Twin Shadow" onerror="this.style.display='none'">
+    </div>
+    <div class="header-right">
+      <div class="logo">
+        <img src="desk_bg.jpg" alt="TWIN SHADOW" onerror="this.outerHTML='<div style=\'font-family:Orbitron,monospace;font-size:clamp(24px,5vw,52px);font-weight:900;color:#bf7fff;text-shadow:0 0 20px #7b2fff,0 0 40px #3d1a7a;letter-spacing:0.08em\'>TWIN SHADOW</div>'">
+      </div>
+      <div class="titlebar">
+        <span class="titlebar-left">/TWINSHADOW/CHAT.EXE</span>
+        <span class="titlebar-right">VERSION 2.0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TERMINAL -->
+  <div class="terminal">
+
+    <!-- [1] HOME -->
+    <div class="panel active" id="panel-home">
+      <div class="chat-output" id="chatOutput">
+        <div class="msg system">TWIN SHADOW v2.0 — SYSTEM READY<span class="cursor"></span></div>
+        <div class="msg system">Type an idea and hit EXECUTE to build.</div>
+      </div>
+      <div class="input-row">
+        <input class="cmd-input" id="cmdInput" type="text" placeholder="Describe your idea..." autocomplete="off" spellcheck="false">
+        <button class="send-btn" id="sendBtn" onclick="handleSend()">EXECUTE</button>
+      </div>
+    </div>
+
+    <!-- [2] PROJECTS -->
+    <div class="panel" id="panel-projects">
+      <div class="projects-list" id="projectsList">
+        <div class="no-projects">No projects yet. Build something first.</div>
+      </div>
+    </div>
+
+    <!-- [3] LAB -->
+    <div class="panel" id="panel-lab">
+      <div class="lab-sections">
+        <button class="lab-tab active" onclick="switchLab('boardroom', this)">BOARDROOM</button>
+        <button class="lab-tab" onclick="switchLab('brainstorm', this)">BRAINSTORM</button>
+        <button class="lab-tab" onclick="switchLab('pipeline', this)">PIPELINE</button>
+      </div>
+
+      <div class="lab-section active" id="lab-boardroom">
+        <div class="lab-label">LIVE EXECUTION FEED</div>
+        <div class="event-feed" id="eventFeed">
+          <div class="evt-line"><span class="evt-type">SYSTEM</span><span class="evt-payload">Waiting for events...</span></div>
+        </div>
+        <button class="lab-btn" onclick="connectEventStream()">CONNECT FEED</button>
+      </div>
+
+      <div class="lab-section" id="lab-brainstorm">
+        <div class="lab-label">QUICK BUILD — no approval needed</div>
+        <textarea class="lab-textarea" id="quickInput" placeholder="Drop a raw idea here..."></textarea>
+        <button class="lab-btn" onclick="quickBuild()">QUICK BUILD</button>
+        <div class="chat-output" id="quickOutput" style="flex:1;min-height:100px"></div>
+      </div>
+
+      <div class="lab-section" id="lab-pipeline">
+        <div class="lab-label">JOB STATUS — paste a job ID</div>
+        <div class="input-row" style="margin-bottom:12px">
+          <input class="cmd-input" id="jobInput" placeholder="job_id..." spellcheck="false">
+          <button class="send-btn" onclick="checkJob()">CHECK</button>
+        </div>
+        <div class="chat-output" id="jobOutput" style="flex:1;min-height:100px"></div>
+      </div>
+    </div>
+
+    <!-- [4] STATUS -->
+    <div class="panel" id="panel-status">
+      <div class="lab-label" style="margin-bottom:12px">PROVIDER STATUS</div>
+      <div class="status-grid" id="statusGrid">
+        <div class="status-card"><div class="status-card-name">LOADING</div><div class="status-card-val status-unk">...</div></div>
+      </div>
+      <button class="refresh-btn" onclick="loadStatus()">REFRESH</button>
+    </div>
+
+  </div>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <button class="nav-btn active" onclick="switchTab('home', this)"><span class="nav-num">[1]</span>HOME</button>
+    <button class="nav-btn" onclick="switchTab('projects', this)"><span class="nav-num">[2]</span>PROJECTS</button>
+    <button class="nav-btn" onclick="switchTab('lab', this)"><span class="nav-num">[3]</span>LAB</button>
+    <button class="nav-btn" onclick="switchTab('status', this)"><span class="nav-num">[4]</span>STATUS</button>
+  </nav>
+
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+const projects = {};
+let eventSource = null;
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'projects') renderProjects();
+  if (name === 'status') loadStatus();
+}
+
+function switchLab(name, btn) {
+  document.querySelectorAll('.lab-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.lab-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('lab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Chat output ────────────────────────────────────────────────────────────
+function addMsg(type, text, targetId) {
+  const output = document.getElementById(targetId || 'chatOutput');
+  const div = document.createElement('div');
+  div.className = 'msg ' + type;
+  div.textContent = text;
+  output.appendChild(div);
+  output.scrollTop = output.scrollHeight;
+}
+
+// ── Build ──────────────────────────────────────────────────────────────────
+async function handleSend() {
+  const input = document.getElementById('cmdInput');
+  const idea = input.value.trim();
+  if (!idea) return;
+  input.value = '';
+
+  addMsg('user', idea);
+  addMsg('system', 'Building brief...');
+
+  try {
+    const res = await fetch('/api/build', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idea })
+    });
+    const data = await res.json();
+
+    if (data.error) { addMsg('error', 'Error: ' + data.error); return; }
+
+    const pid = data.project_id;
+    projects[pid] = { id: pid, idea, brief: data.brief, status: 'pending_approval', results: [] };
+
+    addMsg('assistant', 'Brief generated: ' + (data.brief?.summary || 'Ready'));
+    addMsg('system', 'Project ID: ' + pid);
+
+    const pidEl = document.createElement('div');
+    pidEl.className = 'project-id';
+    pidEl.textContent = '[' + pid + '] → approve?';
+    pidEl.onclick = () => approveProject(pid);
+    document.getElementById('chatOutput').appendChild(pidEl);
+    document.getElementById('chatOutput').scrollTop = 99999;
+
+  } catch (e) {
+    addMsg('error', 'Request failed: ' + e.message);
+  }
+}
+
+// ── Approve ────────────────────────────────────────────────────────────────
+async function approveProject(pid) {
+  addMsg('system', 'Approving ' + pid + '...');
+  if (projects[pid]) projects[pid].status = 'executing';
+
+  try {
+    const res = await fetch('/api/approve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: pid })
+    });
+    const data = await res.json();
+
+    if (data.job_id && !data.job_id.startsWith('direct:')) {
+      addMsg('assistant', 'Queued → job ' + data.job_id);
+      addMsg('system', 'Watch BOARDROOM tab for live updates');
+      connectEventStream();
+    } else {
+      addMsg('assistant', 'Execution complete');
+      if (projects[pid]) { projects[pid].status = 'completed'; projects[pid].results = data.results || []; }
+    }
+  } catch (e) {
+    addMsg('error', 'Approve failed: ' + e.message);
+  }
+}
+
+// ── Quick Build ────────────────────────────────────────────────────────────
+async function quickBuild() {
+  const prompt = document.getElementById('quickInput').value.trim();
+  if (!prompt) return;
+  addMsg('system', 'Running...', 'quickOutput');
+
+  try {
+    const res = await fetch('/api/quick', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    const data = await res.json();
+    addMsg('assistant', data.output || JSON.stringify(data), 'quickOutput');
+  } catch (e) {
+    addMsg('error', 'Failed: ' + e.message, 'quickOutput');
+  }
+}
+
+// ── Job Status ─────────────────────────────────────────────────────────────
+async function checkJob() {
+  const jobId = document.getElementById('jobInput').value.trim();
+  if (!jobId) return;
+
+  try {
+    const res = await fetch('/api/job/' + jobId + '/status');
+    const data = await res.json();
+    addMsg('system', JSON.stringify(data, null, 2), 'jobOutput');
+  } catch (e) {
+    addMsg('error', 'Failed: ' + e.message, 'jobOutput');
+  }
+}
+
+// ── Event Stream ───────────────────────────────────────────────────────────
+function connectEventStream() {
+  if (eventSource) eventSource.close();
+  const feed = document.getElementById('eventFeed');
+  feed.innerHTML = '';
+
+  eventSource = new EventSource('/api/events');
+
+  eventSource.onmessage = (e) => {
+    try {
+      const evt = JSON.parse(e.data);
+      if (evt.event_type === 'HEARTBEAT') return;
+
+      const line = document.createElement('div');
+      line.className = 'evt-line';
+      const t = new Date(evt.created_at || Date.now()).toLocaleTimeString();
+      line.innerHTML =
+        '<span class="evt-time">' + t + '</span>' +
+        '<span class="evt-type">' + evt.event_type + '</span>' +
+        '<span class="evt-payload">' + JSON.stringify(evt.payload || {}) + '</span>';
+      feed.appendChild(line);
+      feed.scrollTop = feed.scrollHeight;
+
+      // Mirror to home chat
+      addMsg('event', evt.event_type + ' ' + JSON.stringify(evt.payload || {}));
+
+    } catch(err) {}
+  };
+
+  eventSource.onerror = () => {
+    const line = document.createElement('div');
+    line.className = 'evt-line';
+    line.innerHTML = '<span class="evt-type" style="color:#ff4d6d">DISCONNECTED</span>';
+    feed.appendChild(line);
+  };
+}
+
+// ── Projects ───────────────────────────────────────────────────────────────
+function renderProjects() {
+  const list = document.getElementById('projectsList');
+  const keys = Object.keys(projects);
+
+  if (!keys.length) {
+    list.innerHTML = '<div class="no-projects">No projects yet. Build something first.</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  keys.reverse().forEach(pid => {
+    const p = projects[pid];
+    const card = document.createElement('div');
+    card.className = 'project-card';
+    card.innerHTML = `
+      <div class="project-card-header">
+        <span class="project-card-id">${pid}</span>
+        <span class="project-card-status status-${p.status}">${p.status.toUpperCase()}</span>
+      </div>
+      <div class="project-card-idea">${p.idea}</div>
+      <div class="project-card-brief">${p.brief?.summary || ''}</div>
+      ${p.status === 'pending_approval' ? `<button class="approve-btn" onclick="approveProject('${pid}');switchTab('home',document.querySelector('.nav-btn'))">APPROVE &rarr; EXECUTE</button>` : ''}
+      ${p.results?.length ? `<div class="project-output open" id="out-${pid}">${p.results.map(r => '[' + r.module + ']\n' + r.output).join('\n\n---\n\n')}</div>` : ''}
+    `;
+    list.appendChild(card);
+  });
+}
+
+// ── Status ─────────────────────────────────────────────────────────────────
+async function loadStatus() {
+  const grid = document.getElementById('statusGrid');
+  grid.innerHTML = '<div class="status-card"><div class="status-card-name">LOADING</div><div class="status-card-val status-unk">...</div></div>';
+
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    grid.innerHTML = '';
+
+    Object.entries(data).forEach(([key, val]) => {
+      const ok = val === true || val === 'ok' || val === 200;
+      const card = document.createElement('div');
+      card.className = 'status-card';
+      card.innerHTML = `
+        <div class="status-card-name">${key.toUpperCase()}</div>
+        <div class="status-card-val ${ok ? 'status-ok' : typeof val === 'string' && val.includes('err') ? 'status-err' : 'status-unk'}">${JSON.stringify(val)}</div>
+      `;
+      grid.appendChild(card);
+    });
+  } catch (e) {
+    grid.innerHTML = '<div class="status-card"><div class="status-card-name">ERROR</div><div class="status-card-val status-err">' + e.message + '</div></div>';
+  }
+}
+
+// ── Keyboard shortcuts ─────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.activeElement === document.getElementById('cmdInput')) handleSend();
+  if (e.key >= '1' && e.key <= '4' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+    const btns = document.querySelectorAll('.nav-btn');
+    const tabs = ['home','projects','lab','status'];
+    const idx = parseInt(e.key) - 1;
+    if (btns[idx]) switchTab(tabs[idx], btns[idx]);
+  }
+});
+</script>
+</body>
+</html>
