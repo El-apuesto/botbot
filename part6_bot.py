@@ -1838,7 +1838,19 @@ def _auto_prune_local(max_age_hours: float = 24.0):
 
 Thread(target=_sb.setup_bucket, daemon=True).start()
 Thread(target=_auto_prune_local, daemon=True).start()
-Thread(target=lambda: _flask.run(host="0.0.0.0", port=_port, debug=False, use_reloader=False), daemon=True).start()
+@_flask.errorhandler(500)
+def _handle_500(e):
+    import traceback
+    log.error("Internal Server Error:\n" + traceback.format_exc())
+    return jsonify({"error": "Internal server error", "detail": str(e)}), 500
+
+@_flask.errorhandler(Exception)
+def _handle_exc(e):
+    import traceback
+    log.error(f"Unhandled exception on {request.path}:\n" + traceback.format_exc())
+    return jsonify({"error": str(e)}), 500
+
+Thread(target=lambda: _flask.run(host="0.0.0.0", port=_port, debug=False, use_reloader=False, threaded=True), daemon=True).start()
 
 _rate_cache:  dict[int, float] = {}
 _shadow_mode: dict[int, bool]  = {}   # per-chat freetext voice toggle
