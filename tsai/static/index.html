@@ -28,7 +28,7 @@
   --neon:        #dd99ff;
   --neon-bright: #f2eaff;
   --terminal-bg: rgba(8,0,20,0.82);
-  --border:      #8800cc;
+  --border:      #bb22ff;
   --text:        #e8d8ff;
   --muted:       #7744aa;
   --green:       #cc44ff;
@@ -168,11 +168,11 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 3px 10px;
-  border-bottom: 1px solid var(--purple-dim);
-  background: #0a0018;
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--border);
+  background: #000;
   flex-shrink: 0;
-  min-height: 24px;
+  min-height: 22px;
   gap: 8px;
   font-size: 10px;
   letter-spacing: 0.1em;
@@ -247,8 +247,8 @@ body::before {
   align-items: flex-end;
   gap: 6px;
   padding: 5px 8px;
-  border-top: 1px solid var(--border);
-  background: rgba(30,0,55,0.7);
+  border-top: none;
+  background: #000;
   flex-shrink: 0;
 }
 /* BBS command-prompt prefix */
@@ -630,6 +630,7 @@ audio { width: 100%; margin-top: 4px; }
       </div>
       <div id="msgs"></div>
       <div id="file-hint"></div>
+      <div class="bbs-sep"><span class="bbs-sep-line"></span></div>
       <div class="input-row">
         <textarea id="txt" rows="1" placeholder="Describe your idea..." onkeydown="onKey(event)" oninput="resize(this)"></textarea>
         <button id="send-btn" onclick="send()"><img src="/static/send_btn.jpg" alt="Send"></button>
