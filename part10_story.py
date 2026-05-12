@@ -259,7 +259,7 @@ async def generate_outline(bible: StoryBible, length: str) -> list[dict]:
 # CHAPTER GENERATION
 # ---------------------------------------------------------------------------
 
-CHAPTER_SYSTEM_BASE = """You are Phantm.ink, Twin Shadow's master storyteller.
+CHAPTER_SYSTEM_BASE = """You are fantm.ink, Twin Shadow's master storyteller.
 
 Your voice:
 - Sardonic but never cruel
