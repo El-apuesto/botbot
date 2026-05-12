@@ -33,7 +33,7 @@
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
-      padding: 0 24px 24px;
+      padding: 16px 24px 24px;
       position: relative;
       z-index: 1;
     }
@@ -53,23 +53,24 @@
       filter: drop-shadow(0 0 16px #cc44ff) drop-shadow(0 0 32px #8800cc) brightness(3) contrast(1.2);
     }
 
-    /* FIGURE */
+    /* FIGURE — full composition */
     .figure-wrap {
       width: 100%;
       max-width: 460px;
-      height: min(52vh, 400px);
+      height: min(48vh, 360px);
       overflow: hidden;
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      margin-top: -4px;
     }
     .figure-wrap img {
       width: 100%;
-      height: auto;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
       display: block;
       mix-blend-mode: screen;
-      filter: brightness(1.5) saturate(1.1);
+      filter: brightness(1.4) saturate(1.1);
     }
 
     /* FORM */
@@ -218,14 +219,9 @@
 <body>
 <div class="page">
 
-  <!-- LOGO -->
-  <div class="logo-wrap">
-    <img src="/static/send_btn_nobg.png" alt="Twin Shadow">
-  </div>
-
-  <!-- FIGURE -->
+  <!-- FIGURE — full composition (logo + reaper) -->
   <div class="figure-wrap">
-    <img src="/static/watermark.jpg" alt="">
+    <img src="/static/login_mobile.JPEG" alt="Twin Shadow">
   </div>
 
   <!-- FORM -->
