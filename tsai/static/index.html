@@ -622,33 +622,236 @@ audio { width: 100%; margin-top: 4px; }
       <div id="file-hint"></div>
     </div>
 
-    <!-- [2] PROJECTS — BUILDER -->
+    <!-- [2] PROJECTS — PIPELINE -->
     <div class="panel" id="panel-projects">
       <div class="panel-scroll">
-        <a href="/lab" target="_blank" class="btn" style="text-align:center;display:block">[ &#9658; VIDEO LAB ]</a>
-
         <div class="fg">
-          <label class="fl">BUILDER TASK</label>
-          <textarea class="fi" id="builder-input" rows="3" placeholder="Describe what to build..."></textarea>
+          <span class="fl">PROJECT PIPELINE</span>
         </div>
-        <div class="action-row">
-          <button class="btn" id="builder-go-btn" onclick="runBuilder()">[ RUN BUILDER ]</button>
-          <button class="btn" id="builder-lab-btn" style="display:none" onclick="sendToVideoLab('builder')">[ SEND TO VIDEO LAB ]</button>
+        <div class="fg">
+          <label class="fl">JOB NAME</label>
+          <input class="fi" id="pipeline-name" type="text" placeholder="Short label for this job..." autocomplete="off">
         </div>
-        <div class="deploy-row" id="builder-deploy-row">
-          <input class="fi" id="builder-deploy-name" type="text" placeholder="script name (a-z, _, -)">
-          <button class="btn" id="builder-deploy-btn" onclick="deployBuilder()">[ DEPLOY ]</button>
+        <div class="fg">
+          <label class="fl">WHAT TO BUILD</label>
+          <textarea class="fi" id="pipeline-desc" rows="3" placeholder="Describe exactly what you want built..."></textarea>
         </div>
-        <div id="builder-out" class="session-out"></div>
+        <button class="btn" onclick="addPipelineJob()">[ ADD JOB ]</button>
+        <div id="pipeline-list" style="display:flex;flex-direction:column;gap:5px;"></div>
+        <p class="ph-text" id="pipeline-empty">NO JOBS IN QUEUE.</p>
       </div>
     </div>
 
-    <!-- [3] LAB — BOARDROOM / BRAINSTORM / PIPELINE -->
+    <!-- [3] LABS — VIDEO / WRITE / CODE -->
     <div class="panel" id="panel-lab">
       <div class="lab-tab-row">
-        <button class="lab-tab active" onclick="switchLab('boardroom', this)">BOARDROOM</button>
-        <button class="lab-tab" onclick="switchLab('brainstorm', this)">BRAINSTORM</button>
-        <button class="lab-tab" onclick="switchLab('pipeline', this)">PIPELINE</button>
+        <button class="lab-tab active" onclick="switchLab('video', this)">VIDEO</button>
+        <button class="lab-tab" onclick="switchLab('write', this)">WRITE</button>
+        <button class="lab-tab" onclick="switchLab('code', this)">CODE</button>
+      </div>
+
+      <!-- VIDEO LAB -->
+      <div class="lab-section active" id="lab-video">
+        <div class="panel-scroll">
+          <a href="/lab" target="_blank" class="btn" style="text-align:center;display:block;margin-bottom:10px">[ &#9658; OPEN VIDEO LAB ]</a>
+          <p style="font-size:13px;color:var(--muted);line-height:1.6;padding:6px 0">
+            Full short-form video pipeline — storyboard, image generation per scene, AI video clips, voiceover, and FFMPEG render to MP4.
+          </p>
+        </div>
+      </div>
+
+      <!-- WRITE LAB — Bible / Reader / Book -->
+      <div class="lab-section" id="lab-write">
+        <div class="lab-tab-row" style="border-top:1px solid var(--purple-dim);margin-top:0">
+          <button class="lab-tab active" onclick="switchWrite('bible', this)">BIBLE</button>
+          <button class="lab-tab" onclick="switchWrite('reader', this)">READER</button>
+          <button class="lab-tab" onclick="switchWrite('book', this)">BOOK</button>
+        </div>
+
+        <!-- BIBLE -->
+        <div class="lab-section active" id="studio-bible">
+          <div class="panel-scroll">
+            <div class="fg">
+              <span class="fl">STORY BIBLE BUILDER</span>
+              <div id="bible-chat-out" class="session-out" style="min-height:100px;max-height:220px"></div>
+            </div>
+            <div style="display:flex;gap:5px;align-items:flex-end">
+              <textarea class="fi" id="bible-input" rows="2"
+                placeholder="Describe your story idea, or answer the architect's questions..."
+                onkeydown="bibleKey(event)"></textarea>
+              <button class="btn" style="white-space:nowrap;align-self:flex-end" onclick="bibleChat()">[ SEND ]</button>
+            </div>
+            <div class="action-row" style="flex-wrap:wrap">
+              <button class="btn" id="bible-complete-btn" onclick="bibleComplete()">[ AUTO-COMPLETE BIBLE ]</button>
+              <button class="btn" id="bible-generate-btn" onclick="studioGenerate()" style="display:none">[ GENERATE STORY ]</button>
+            </div>
+            <div class="fg" id="bible-preview-box" style="display:none">
+              <span class="fl">STORY BIBLE</span>
+              <div id="bible-preview" style="font-size:13px;line-height:1.6;color:var(--text);white-space:pre-wrap;max-height:160px;overflow-y:auto;border:1px solid var(--purple-dim);padding:6px"></div>
+            </div>
+            <div class="fg" id="bible-length-box" style="display:none">
+              <span class="fl">LENGTH</span>
+              <div class="opt-row" style="flex-wrap:wrap">
+                <button class="opt on"  id="sl-short"   onclick="setStoryLength('short',this)">SHORT<br><span style="font-size:9px;opacity:.6">3K WDS</span></button>
+                <button class="opt"     id="sl-medium"  onclick="setStoryLength('medium',this)">MEDIUM<br><span style="font-size:9px;opacity:.6">8K WDS</span></button>
+                <button class="opt"     id="sl-long"    onclick="setStoryLength('long',this)">LONG<br><span style="font-size:9px;opacity:.6">15K WDS</span></button>
+                <button class="opt"     id="sl-novella" onclick="setStoryLength('novella',this)">NOVELLA<br><span style="font-size:9px;opacity:.6">45K WDS</span></button>
+                <button class="opt"     id="sl-novel"   onclick="setStoryLength('novel',this)">NOVEL<br><span style="font-size:9px;opacity:.6">90K WDS</span></button>
+                <button class="opt"     id="sl-epic"    onclick="setStoryLength('epic',this)">EPIC<br><span style="font-size:9px;opacity:.6">140K WDS</span></button>
+              </div>
+            </div>
+            <div class="fg" id="bible-gen-status" style="display:none">
+              <span class="fl">GENERATION STATUS</span>
+              <div id="bible-gen-msg" style="font-size:13px;color:var(--cyan);padding:4px 0"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- READER -->
+        <div class="lab-section" id="studio-reader">
+          <div class="panel-scroll">
+            <div class="action-row">
+              <button class="btn" onclick="studioLoadList()">[ REFRESH STORIES ]</button>
+            </div>
+            <div id="studio-story-list" style="display:flex;flex-direction:column;gap:5px"></div>
+            <p class="ph-text" id="studio-list-empty" style="display:none">NO STORIES GENERATED YET.</p>
+            <div id="studio-dl-box" style="display:none;flex-direction:column;gap:8px;border:1px solid var(--purple-dim);padding:8px;margin-top:6px">
+              <span class="fl">KDP DOWNLOAD — <span id="studio-dl-title" style="color:var(--cyan)"></span></span>
+              <input class="fi" id="studio-dl-author"   type="text" placeholder="Author name (required)">
+              <input class="fi" id="studio-dl-subtitle" type="text" placeholder="Subtitle (optional)">
+              <div class="action-row">
+                <button class="btn" id="studio-dl-btn" onclick="studioDownload()">[ DOWNLOAD KDP ZIP ]</button>
+              </div>
+              <div id="studio-dl-msg" style="font-size:12px;color:var(--muted)"></div>
+            </div>
+            <div id="studio-chapter-box" style="display:none;flex-direction:column;gap:6px;margin-top:8px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span class="fl" id="studio-ch-label">CHAPTER</span>
+                <div style="display:flex;gap:4px">
+                  <button class="btn" style="font-size:10px;padding:3px 8px" onclick="studioChNav(-1)">&#9664; PREV</button>
+                  <button class="btn" style="font-size:10px;padding:3px 8px" onclick="studioChNav(1)">NEXT &#9654;</button>
+                </div>
+              </div>
+              <div id="studio-chapter-text"
+                style="font-size:13px;line-height:1.8;color:var(--text);white-space:pre-wrap;
+                       max-height:280px;overflow-y:auto;border:1px solid var(--purple-dim);padding:8px">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BOOK -->
+        <div class="lab-section" id="studio-book">
+          <div class="panel-scroll">
+            <div class="fg">
+              <span class="fl">CHILDREN'S BOOK GENERATOR</span>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <input class="fi" id="book-title"  type="text" placeholder="Book title..." style="flex:2">
+              <input class="fi" id="book-author" type="text" placeholder="Author name..." style="flex:1">
+            </div>
+            <div style="display:flex;gap:5px;align-items:flex-end;margin-top:6px">
+              <textarea class="fi" id="book-concept" rows="3"
+                placeholder="Story concept — who is it about, what happens, what's the message?..."
+                style="flex:1;resize:vertical"></textarea>
+            </div>
+            <div class="action-row" style="margin-top:4px">
+              <button class="btn" style="font-size:10px;padding:3px 9px" onclick="bookUseBible()">[ USE BIBLE CONCEPT ]</button>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+              <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:90px">
+                <span style="font-size:10px;color:var(--muted)">PAGES</span>
+                <select class="fi" id="book-pages" style="padding:4px 6px">
+                  <option value="8">8 pages</option>
+                  <option value="12">12 pages</option>
+                  <option value="16" selected>16 pages</option>
+                </select>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:100px">
+                <span style="font-size:10px;color:var(--muted)">TEMPLATE</span>
+                <select class="fi" id="book-template" style="padding:4px 6px" onchange="bookTemplateChange()">
+                  <option value="1">1 — Classic</option>
+                  <option value="2">2 — Immersive</option>
+                </select>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:110px">
+                <span style="font-size:10px;color:var(--muted)">IMAGE STYLE</span>
+                <select class="fi" id="book-style" style="padding:4px 6px">
+                  <option value="watercolor">Watercolor</option>
+                  <option value="cartoon">Cartoon</option>
+                  <option value="pencil">Pencil &amp; Ink</option>
+                  <option value="digital">Digital Art</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px;margin-top:6px">
+              <span style="font-size:10px;color:var(--muted)">PAPER / FOLD FORMAT</span>
+              <select class="fi" id="book-paper" style="padding:4px 6px" onchange="bookPaperChange()">
+                <option value="letter"  selected>Letter fold → 5.5" × 8.5" booklet (print on 8.5×11)</option>
+                <option value="tabloid">Tabloid fold → 8.5" × 11" booklet (print on 11×17)</option>
+                <option value="a5">A4 fold → A5 booklet 148×210 mm (print on A4)</option>
+                <option value="a4">A3 fold → A4 booklet 210×297 mm (print on A3)</option>
+              </select>
+            </div>
+            <div id="book-paper-note" style="font-size:10px;color:var(--muted);margin-top:3px;padding:3px 6px;border-left:2px solid var(--purple-dim)">
+              Two pages per sheet, fold on long edge &rarr; saddle-stitch spine. Any home printer works for Letter size.
+            </div>
+            <div id="book-pos-row" style="display:flex;flex-direction:column;gap:3px;margin-top:6px">
+              <span style="font-size:10px;color:var(--muted)">TEXT POSITION (TEMPLATE 1)</span>
+              <select class="fi" id="book-textpos" style="padding:4px 6px">
+                <option value="below">Below image</option>
+                <option value="above">Above image</option>
+                <option value="alternating">Alternating</option>
+              </select>
+            </div>
+            <div id="book-tpl-desc" style="font-size:11px;color:var(--muted);margin-top:4px;padding:4px 6px;border-left:2px solid var(--purple-dim)">
+              Template 1 — Classic: text stacked above or below each illustration on a white background strip.
+            </div>
+            <div class="action-row" style="margin-top:10px">
+              <button class="btn" id="book-gen-btn" onclick="bookGenerate()">[ GENERATE BOOK ]</button>
+            </div>
+            <div id="book-log" class="session-out"
+                 style="display:none;min-height:80px;max-height:200px;margin-top:8px;font-size:11px"></div>
+            <div id="book-dl-row" style="display:none;flex-direction:column;gap:6px;margin-top:8px">
+              <div style="display:flex;gap:6px">
+                <a id="book-dl-book"  class="btn" style="flex:1;text-align:center;text-decoration:none" download>[ DOWNLOAD BOOK PDF ]</a>
+                <a id="book-dl-instr" class="btn" style="flex:1;text-align:center;text-decoration:none" download>[ DOWNLOAD PRINT GUIDE ]</a>
+              </div>
+              <div style="font-size:10px;color:var(--muted);text-align:center">
+                Print guide includes supply list, print settings &amp; binding steps
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /lab-write -->
+
+      <!-- CODE LAB — Builder -->
+      <div class="lab-section" id="lab-code">
+        <div class="panel-scroll">
+          <div class="fg">
+            <label class="fl">BUILDER TASK</label>
+            <textarea class="fi" id="builder-input" rows="3" placeholder="Describe what to build..."></textarea>
+          </div>
+          <div class="action-row">
+            <button class="btn" id="builder-go-btn" onclick="runBuilder()">[ RUN BUILDER ]</button>
+            <button class="btn" id="builder-lab-btn" style="display:none" onclick="sendToVideoLab('builder')">[ SEND TO VIDEO LAB ]</button>
+          </div>
+          <div class="deploy-row" id="builder-deploy-row">
+            <input class="fi" id="builder-deploy-name" type="text" placeholder="script name (a-z, _, -)">
+            <button class="btn" id="builder-deploy-btn" onclick="deployBuilder()">[ DEPLOY ]</button>
+          </div>
+          <div id="builder-out" class="session-out"></div>
+        </div>
+      </div>
+
+    </div><!-- /panel-lab -->
+
+    <!-- [4] STUDIO — BOARDROOM / BRAINSTORM -->
+    <div class="panel" id="panel-studio">
+      <div class="lab-tab-row">
+        <button class="lab-tab active" onclick="switchStudio('boardroom', this)">BOARDROOM</button>
+        <button class="lab-tab" onclick="switchStudio('brainstorm', this)">BRAINSTORM</button>
       </div>
 
       <!-- BOARDROOM -->
@@ -736,25 +939,9 @@ audio { width: 100%; margin-top: 4px; }
         </div>
       </div>
 
-      <!-- PIPELINE -->
-      <div class="lab-section" id="lab-pipeline">
-        <div class="panel-scroll">
-          <div class="fg">
-            <label class="fl">JOB NAME</label>
-            <input class="fi" id="pipeline-name" type="text" placeholder="Short label for this job..." autocomplete="off">
-          </div>
-          <div class="fg">
-            <label class="fl">WHAT TO BUILD</label>
-            <textarea class="fi" id="pipeline-desc" rows="3" placeholder="Describe exactly what you want built..."></textarea>
-          </div>
-          <button class="btn" onclick="addPipelineJob()">[ ADD JOB ]</button>
-          <div id="pipeline-list" style="display:flex;flex-direction:column;gap:5px;"></div>
-          <p class="ph-text" id="pipeline-empty">NO JOBS IN QUEUE.</p>
-        </div>
-      </div>
-    </div>
+    </div><!-- /panel-studio -->
 
-    <!-- [4] SETTINGS -->
+    <!-- [5] SETTINGS -->
     <div class="panel" id="panel-settings">
       <div class="panel-scroll">
 
@@ -871,211 +1058,6 @@ audio { width: 100%; margin-top: 4px; }
       </div>
     </div>
 
-    <!-- [5] STUDIO — NOVEL / STORY GENERATOR -->
-    <div class="panel" id="panel-studio">
-      <div class="lab-tab-row">
-        <button class="lab-tab active" onclick="switchStudio('bible', this)">BIBLE</button>
-        <button class="lab-tab" onclick="switchStudio('reader', this)">READER</button>
-        <button class="lab-tab" onclick="switchStudio('book', this)">BOOK</button>
-      </div>
-
-      <!-- ── BIBLE TAB ── -->
-      <div class="lab-section active" id="studio-bible">
-        <div class="panel-scroll">
-
-          <div class="fg">
-            <span class="fl">STORY BIBLE BUILDER</span>
-            <div id="bible-chat-out" class="session-out" style="min-height:100px;max-height:220px"></div>
-          </div>
-
-          <div style="display:flex;gap:5px;align-items:flex-end">
-            <textarea class="fi" id="bible-input" rows="2"
-              placeholder="Describe your story idea, or answer the architect's questions..."
-              onkeydown="bibleKey(event)"></textarea>
-            <button class="btn" style="white-space:nowrap;align-self:flex-end" onclick="bibleChat()">[ SEND ]</button>
-          </div>
-
-          <div class="action-row" style="flex-wrap:wrap">
-            <button class="btn" id="bible-complete-btn" onclick="bibleComplete()">[ AUTO-COMPLETE BIBLE ]</button>
-            <button class="btn" id="bible-generate-btn" onclick="studioGenerate()" style="display:none">[ GENERATE STORY ]</button>
-          </div>
-
-          <!-- Bible preview -->
-          <div class="fg" id="bible-preview-box" style="display:none">
-            <span class="fl">STORY BIBLE</span>
-            <div id="bible-preview" style="font-size:13px;line-height:1.6;color:var(--text);white-space:pre-wrap;max-height:160px;overflow-y:auto;border:1px solid var(--purple-dim);padding:6px"></div>
-          </div>
-
-          <!-- Length selector -->
-          <div class="fg" id="bible-length-box" style="display:none">
-            <span class="fl">LENGTH</span>
-            <div class="opt-row" style="flex-wrap:wrap">
-              <button class="opt on"  id="sl-short"   onclick="setStoryLength('short',this)">SHORT<br><span style="font-size:9px;opacity:.6">3K WDS</span></button>
-              <button class="opt"     id="sl-medium"  onclick="setStoryLength('medium',this)">MEDIUM<br><span style="font-size:9px;opacity:.6">8K WDS</span></button>
-              <button class="opt"     id="sl-long"    onclick="setStoryLength('long',this)">LONG<br><span style="font-size:9px;opacity:.6">15K WDS</span></button>
-              <button class="opt"     id="sl-novella" onclick="setStoryLength('novella',this)">NOVELLA<br><span style="font-size:9px;opacity:.6">45K WDS</span></button>
-              <button class="opt"     id="sl-novel"   onclick="setStoryLength('novel',this)">NOVEL<br><span style="font-size:9px;opacity:.6">90K WDS</span></button>
-              <button class="opt"     id="sl-epic"    onclick="setStoryLength('epic',this)">EPIC<br><span style="font-size:9px;opacity:.6">140K WDS</span></button>
-            </div>
-          </div>
-
-          <!-- Generation status -->
-          <div class="fg" id="bible-gen-status" style="display:none">
-            <span class="fl">GENERATION STATUS</span>
-            <div id="bible-gen-msg" style="font-size:13px;color:var(--cyan);padding:4px 0"></div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- ── READER TAB ── -->
-      <div class="lab-section" id="studio-reader">
-        <div class="panel-scroll">
-
-          <div class="action-row">
-            <button class="btn" onclick="studioLoadList()">[ REFRESH STORIES ]</button>
-          </div>
-
-          <!-- Story list -->
-          <div id="studio-story-list" style="display:flex;flex-direction:column;gap:5px"></div>
-          <p class="ph-text" id="studio-list-empty" style="display:none">NO STORIES GENERATED YET.</p>
-
-          <!-- ── DOWNLOAD UI ── -->
-          <div id="studio-dl-box" style="display:none;flex-direction:column;gap:8px;border:1px solid var(--purple-dim);padding:8px;margin-top:6px">
-            <span class="fl">KDP DOWNLOAD — <span id="studio-dl-title" style="color:var(--cyan)"></span></span>
-            <input class="fi" id="studio-dl-author"   type="text" placeholder="Author name (required)">
-            <input class="fi" id="studio-dl-subtitle" type="text" placeholder="Subtitle (optional)">
-            <div class="action-row">
-              <button class="btn" id="studio-dl-btn" onclick="studioDownload()">[ DOWNLOAD KDP ZIP ]</button>
-            </div>
-            <div id="studio-dl-msg" style="font-size:12px;color:var(--muted)"></div>
-          </div>
-
-          <!-- Chapter content -->
-          <div id="studio-chapter-box" style="display:none;flex-direction:column;gap:6px;margin-top:8px">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span class="fl" id="studio-ch-label">CHAPTER</span>
-              <div style="display:flex;gap:4px">
-                <button class="btn" style="font-size:10px;padding:3px 8px" onclick="studioChNav(-1)">&#9664; PREV</button>
-                <button class="btn" style="font-size:10px;padding:3px 8px" onclick="studioChNav(1)">NEXT &#9654;</button>
-              </div>
-            </div>
-            <div id="studio-chapter-text"
-              style="font-size:13px;line-height:1.8;color:var(--text);white-space:pre-wrap;
-                     max-height:280px;overflow-y:auto;border:1px solid var(--purple-dim);padding:8px">
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- ── BOOK TAB ── -->
-      <div class="lab-section" id="studio-book">
-        <div class="panel-scroll">
-
-          <div class="fg">
-            <span class="fl">CHILDREN'S BOOK GENERATOR</span>
-          </div>
-
-          <!-- Title / Author -->
-          <div style="display:flex;gap:6px;margin-top:6px">
-            <input class="fi" id="book-title"  type="text" placeholder="Book title..." style="flex:2">
-            <input class="fi" id="book-author" type="text" placeholder="Author name..." style="flex:1">
-          </div>
-
-          <!-- Concept -->
-          <div style="display:flex;gap:5px;align-items:flex-end;margin-top:6px">
-            <textarea class="fi" id="book-concept" rows="3"
-              placeholder="Story concept — who is it about, what happens, what's the message?..."
-              style="flex:1;resize:vertical"></textarea>
-          </div>
-          <div class="action-row" style="margin-top:4px">
-            <button class="btn" style="font-size:10px;padding:3px 9px" onclick="bookUseBible()">[ USE BIBLE CONCEPT ]</button>
-          </div>
-
-          <!-- Options row 1: pages / template / style -->
-          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-            <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:90px">
-              <span style="font-size:10px;color:var(--muted)">PAGES</span>
-              <select class="fi" id="book-pages" style="padding:4px 6px">
-                <option value="8">8 pages</option>
-                <option value="12">12 pages</option>
-                <option value="16" selected>16 pages</option>
-              </select>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:100px">
-              <span style="font-size:10px;color:var(--muted)">TEMPLATE</span>
-              <select class="fi" id="book-template" style="padding:4px 6px" onchange="bookTemplateChange()">
-                <option value="1">1 — Classic</option>
-                <option value="2">2 — Immersive</option>
-              </select>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:110px">
-              <span style="font-size:10px;color:var(--muted)">IMAGE STYLE</span>
-              <select class="fi" id="book-style" style="padding:4px 6px">
-                <option value="watercolor">Watercolor</option>
-                <option value="cartoon">Cartoon</option>
-                <option value="pencil">Pencil &amp; Ink</option>
-                <option value="digital">Digital Art</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Options row 2: paper size -->
-          <div style="display:flex;flex-direction:column;gap:3px;margin-top:6px">
-            <span style="font-size:10px;color:var(--muted)">PAPER / FOLD FORMAT</span>
-            <select class="fi" id="book-paper" style="padding:4px 6px" onchange="bookPaperChange()">
-              <option value="letter"  selected>Letter fold → 5.5" × 8.5" booklet (print on 8.5×11)</option>
-              <option value="tabloid">Tabloid fold → 8.5" × 11" booklet (print on 11×17)</option>
-              <option value="a5">A4 fold → A5 booklet 148×210 mm (print on A4)</option>
-              <option value="a4">A3 fold → A4 booklet 210×297 mm (print on A3)</option>
-            </select>
-          </div>
-
-          <!-- Paper note -->
-          <div id="book-paper-note" style="font-size:10px;color:var(--muted);margin-top:3px;padding:3px 6px;border-left:2px solid var(--purple-dim)">
-            Two pages per sheet, fold on long edge &rarr; saddle-stitch spine. Any home printer works for Letter size.
-          </div>
-
-          <!-- Text position (template 1 only) -->
-          <div id="book-pos-row" style="display:flex;flex-direction:column;gap:3px;margin-top:6px">
-            <span style="font-size:10px;color:var(--muted)">TEXT POSITION (TEMPLATE 1)</span>
-            <select class="fi" id="book-textpos" style="padding:4px 6px">
-              <option value="below">Below image</option>
-              <option value="above">Above image</option>
-              <option value="alternating">Alternating</option>
-            </select>
-          </div>
-
-          <!-- Template description -->
-          <div id="book-tpl-desc" style="font-size:11px;color:var(--muted);margin-top:4px;padding:4px 6px;border-left:2px solid var(--purple-dim)">
-            Template 1 — Classic: text stacked above or below each illustration on a white background strip.
-          </div>
-
-          <!-- Generate -->
-          <div class="action-row" style="margin-top:10px">
-            <button class="btn" id="book-gen-btn" onclick="bookGenerate()">[ GENERATE BOOK ]</button>
-          </div>
-
-          <!-- Progress log -->
-          <div id="book-log" class="session-out"
-               style="display:none;min-height:80px;max-height:200px;margin-top:8px;font-size:11px"></div>
-
-          <!-- Download buttons (shown when done) -->
-          <div id="book-dl-row" style="display:none;flex-direction:column;gap:6px;margin-top:8px">
-            <div style="display:flex;gap:6px">
-              <a id="book-dl-book"  class="btn" style="flex:1;text-align:center;text-decoration:none" download>[ DOWNLOAD BOOK PDF ]</a>
-              <a id="book-dl-instr" class="btn" style="flex:1;text-align:center;text-decoration:none" download>[ DOWNLOAD PRINT GUIDE ]</a>
-            </div>
-            <div style="font-size:10px;color:var(--muted);text-align:center">
-              Print guide includes supply list, print settings &amp; binding steps
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-    </div>
 
   </div><!-- /terminal -->
 
@@ -1090,9 +1072,9 @@ audio { width: 100%; margin-top: 4px; }
   <nav class="nav">
     <button class="nav-btn active" onclick="switchTab('home', this)"><span class="nav-num">[1]</span>HOME</button>
     <button class="nav-btn" onclick="switchTab('projects', this)"><span class="nav-num">[2]</span>PROJECTS</button>
-    <button class="nav-btn" onclick="switchTab('lab', this)"><span class="nav-num">[3]</span>LAB</button>
-    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[4]</span>SETTINGS</button>
-    <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[5]</span>STUDIO</button>
+    <button class="nav-btn" onclick="switchTab('lab', this)"><span class="nav-num">[3]</span>LABS</button>
+    <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[4]</span>STUDIO</button>
+    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[5]</span>SETTINGS</button>
   </nav>
 
 </div><!-- /app -->
@@ -1155,14 +1137,28 @@ function switchTab(name, btn) {
   document.getElementById('panel-' + name).classList.add('active');
   if (btn) btn.classList.add('active');
   if (name === 'settings') { loadAudioGallery(); loadTranscripts(); }
+  if (name === 'projects') { loadPipeline(); }
 }
 
 function switchLab(name, btn) {
-  document.querySelectorAll('.lab-section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.lab-tab').forEach(b => b.classList.remove('active'));
+  ['video','write','code'].forEach(t => {
+    const el = document.getElementById('lab-' + t);
+    if (el) el.classList.remove('active');
+  });
+  document.querySelectorAll('#panel-lab > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
   document.getElementById('lab-' + name).classList.add('active');
   if (btn) btn.classList.add('active');
-  if (name === 'pipeline') loadPipeline();
+}
+
+function switchWrite(name, btn) {
+  ['bible','reader','book'].forEach(t => {
+    const el = document.getElementById('studio-' + t);
+    if (el) el.classList.remove('active');
+  });
+  document.querySelectorAll('#lab-write > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('studio-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'reader') studioLoadList();
 }
 
 /* ─────────────────────────────────────────
@@ -1894,11 +1890,13 @@ const ST = {
 };
 
 function switchStudio(tab, btn) {
-  document.querySelectorAll('#panel-studio .lab-section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('#panel-studio .lab-tab').forEach(b => b.classList.remove('active'));
-  document.getElementById('studio-' + tab).classList.add('active');
-  btn.classList.add('active');
-  if (tab === 'reader') studioLoadList();
+  ['boardroom','brainstorm'].forEach(t => {
+    const el = document.getElementById('lab-' + t);
+    if (el) el.classList.remove('active');
+  });
+  document.querySelectorAll('#panel-studio > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('lab-' + tab).classList.add('active');
+  if (btn) btn.classList.add('active');
 }
 
 /* ─────────────────────────────────────────
