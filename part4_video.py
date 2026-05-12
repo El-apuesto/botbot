@@ -223,6 +223,28 @@ def add_audio_to_video(video_path: str, audio_path: str, output_path: str) -> tu
     return (ok, output_path) if ok else (False, err)
 
 
+def mix_music_fullvol(video_path: str, music_path: str, output_path: str) -> tuple[bool, str]:
+    """Mix a full music track at 100% volume onto video.
+    Music loops if shorter than video; video ends when video ends (-shortest on video stream).
+    """
+    ok, err = _run_ffmpeg([
+        "-i", video_path,
+        "-stream_loop", "-1", "-i", music_path,
+        "-c:v", "copy", "-c:a", "aac",
+        "-map", "0:v:0", "-map", "1:a:0",
+        "-shortest", output_path,
+    ], timeout=600)
+    if not ok:
+        # Fallback: no loop, just lay the track as-is
+        ok, err = _run_ffmpeg([
+            "-i", video_path, "-i", music_path,
+            "-c:v", "copy", "-c:a", "aac",
+            "-map", "0:v:0", "-map", "1:a:0",
+            "-shortest", output_path,
+        ], timeout=600)
+    return (ok, output_path) if ok else (False, err)
+
+
 def extract_audio(video_path: str, output_path: str) -> tuple[bool, str]:
     """Extract audio as mono 16kHz MP3 — for pre-processing before Whisper transcription."""
     ok, err = _run_ffmpeg([

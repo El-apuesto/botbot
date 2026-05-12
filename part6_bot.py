@@ -39,7 +39,7 @@ import part9_supabase as _sb
 from part4_video import (
     fal_generate_image, extract_last_frame, download_file,
     images_to_slideshow, concatenate_clips, concatenate_clips_with_fade,
-    mix_audio_onto_video, get_video_duration,
+    mix_audio_onto_video, mix_music_fullvol, get_video_duration,
 )
 from part1_registry import (
     get_task_routing, get_provider_cfg,
@@ -1684,6 +1684,119 @@ def api_lab_render():
 
         except Exception as e:
             yield f"- RENDER ERROR: {str(e)[:200]}"
+
+    return _sse_stream(_run)
+
+
+# -- /api/lab/musicvideo (SSE) ------------------------------------------------
+@_flask.route("/api/lab/musicvideo", methods=["POST"])
+def api_lab_musicvideo():
+    """
+    Create a music video: images/clips + full music track at 100% volume.
+    Body: {music, files, slide_duration, transition, output_name}
+    SSE: text progress lines; final line "DONE:/renders/<file>"
+    """
+    data          = request.json or {}
+    music         = data.get("music", "")
+    files         = data.get("files") or []
+    slide_duration = float(data.get("slide_duration") or 0)
+    transition    = data.get("transition", "fade")
+    output_name   = re.sub(r"[^a-zA-Z0-9_-]", "_",
+                           data.get("output_name", f"musicvideo_{int(time.time())}"))
+
+    # Resolve music to absolute path
+    if music.startswith("/static/"):
+        music_path = str(Path(__file__).parent / music.lstrip("/"))
+    else:
+        music_path = music
+    if not music_path or not Path(music_path).exists():
+        return jsonify({"error": "Music file not found"}), 400
+    if not files:
+        return jsonify({"error": "No files provided"}), 400
+
+    image_exts = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
+    video_exts = {".mp4", ".mov", ".webm", ".mkv", ".avi"}
+    image_paths: list[str] = []
+    clip_paths:  list[str] = []
+    for f in files:
+        p = Path(f)
+        if not p.exists():
+            continue
+        if p.suffix.lower() in image_exts:
+            image_paths.append(str(p))
+        elif p.suffix.lower() in video_exts:
+            clip_paths.append(str(p))
+
+    if not image_paths and not clip_paths:
+        return jsonify({"error": "No valid image or video files found"}), 400
+
+    async def _run():
+        try:
+            # 1. Measure song
+            yield "ANALYSING MUSIC TRACK..."
+            song_dur = get_video_duration(music_path)
+            if song_dur <= 0:
+                yield "- COULD NOT READ TRACK DURATION — USING 180s"
+                song_dur = 180.0
+            else:
+                mins, secs = divmod(int(song_dur), 60)
+                yield f"- TRACK LENGTH: {mins}:{secs:02d}"
+
+            mv_clips: list[str] = list(clip_paths)
+
+            # 2. Build slideshow from images
+            if image_paths:
+                n       = len(image_paths)
+                per_img = slide_duration if slide_duration > 0 else max(2.0, round(song_dur / n, 2))
+                yield f"BUILDING SLIDESHOW ({n} IMAGES × {per_img:.1f}s EACH)..."
+                tmp_slide = str(_lab_renders_dir / f"_mvslide_{output_name}.mp4")
+                ok, err   = images_to_slideshow(image_paths, tmp_slide, duration=per_img)
+                if not ok:
+                    yield f"- SLIDESHOW FAILED: {err[:120]}"
+                    return
+                yield "- SLIDESHOW BUILT"
+                mv_clips.insert(0, tmp_slide)
+
+            # 3. Concatenate all clips
+            if len(mv_clips) > 1:
+                yield f"JOINING {len(mv_clips)} CLIPS ({transition.upper()})..."
+                concat_out = str(_lab_renders_dir / f"_mvconcat_{output_name}.mp4")
+                if transition == "fade":
+                    ok, err = concatenate_clips_with_fade(mv_clips, concat_out)
+                else:
+                    ok, err = concatenate_clips(mv_clips, concat_out)
+                if not ok:
+                    yield f"- JOIN FAILED: {err[:120]}"
+                    return
+                yield "- CLIPS JOINED"
+                base_video = concat_out
+            else:
+                base_video = mv_clips[0]
+
+            # 4. Mix full-volume music
+            final_out = str(_lab_renders_dir / f"{output_name}.mp4")
+            yield "MIXING FULL-VOLUME MUSIC TRACK..."
+            ok, err = mix_music_fullvol(base_video, music_path, final_out)
+            if not ok:
+                yield f"- AUDIO MIX FAILED: {err[:120]}"
+                return
+            yield "- MUSIC MIXED AT 100%"
+
+            # 5. Supabase backup
+            final_path = Path(final_out)
+            if final_path.exists() and _sb.is_configured():
+                yield "UPLOADING TO SUPABASE..."
+                try:
+                    sb_url, sb_path = _sb.upload_file(str(final_path), folder="renders")
+                    _sb.log_render(output_name + ".mp4", final_path.stat().st_size, sb_url, sb_path)
+                    yield "- SAVED TO SUPABASE"
+                except Exception as sb_err:
+                    yield f"- SUPABASE UPLOAD FAILED: {str(sb_err)[:80]}"
+
+            yield f"DONE:/renders/{output_name}.mp4"
+
+        except Exception as e:
+            yield f"- ERROR: {str(e)[:200]}"
 
     return _sse_stream(_run)
 

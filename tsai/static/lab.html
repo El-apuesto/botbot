@@ -241,6 +241,7 @@
       <button class="act-btn" id="btn-uploads"    onclick="openUploads()"     title="View uploaded files">[ FILES ]</button>
       <button class="act-btn" id="btn-smartedit"  onclick="openSmartEditor()" title="Smart Editor — auto-highlight, metadata, thumbnail">[ SMART EDIT ]</button>
       <button class="act-btn" id="btn-pexels"     onclick="openPexels()"      title="Search free Pexels stock video">[ STOCK VIDEO ]</button>
+      <button class="act-btn" id="btn-musicvideo" onclick="openMusicVideo()"  title="Create music video from images/clips + song">[ MUSIC VIDEO ]</button>
     </div>
 
     <!-- Input row -->
@@ -292,6 +293,80 @@
       </div>
       <div id="pexels-status" style="font-size:6px;color:var(--purple-dim);margin-top:4px;min-height:12px;"></div>
       <div id="pexels-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;"></div>
+    </div>
+  </div>
+
+  <!-- ═══ MUSIC VIDEO PANEL ═══ -->
+  <div class="panel" id="panel-musicvideo">
+    <div class="ph">
+      <span class="pt">[ MUSIC VIDEO STUDIO ]</span>
+      <button class="pc" onclick="closePanel('musicvideo')">X CLOSE</button>
+    </div>
+    <div class="pb">
+
+      <!-- STEP 1: Song -->
+      <div class="fg">
+        <span class="fl">1. SELECT TRACK FROM LIBRARY</span>
+        <select class="fi" id="mv-track-select" onchange="mvSelectTrack(this)">
+          <option value="">-- LOAD LIBRARY FIRST --</option>
+        </select>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn" onclick="mvLoadTracks()">[ LOAD LIBRARY ]</button>
+        </div>
+        <div id="mv-player-wrap" style="display:none;margin-top:4px">
+          <audio id="mv-audio-preview" controls style="width:100%;height:32px;accent-color:#cc44ff"></audio>
+          <div id="mv-track-dur" style="font-size:5px;color:var(--purple-dim);margin-top:2px"></div>
+        </div>
+      </div>
+
+      <!-- STEP 2: Images / Clips -->
+      <div class="fg">
+        <span class="fl">2. SELECT IMAGES OR VIDEO CLIPS</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+          <button class="btn" onclick="mvLoadFiles()">[ LOAD MY UPLOADS ]</button>
+        </div>
+        <div id="mv-file-list" style="display:flex;flex-direction:column;gap:4px;max-height:140px;overflow-y:auto;border:1px solid var(--purple-dim);padding:4px"></div>
+        <div id="mv-file-count" style="font-size:5px;color:var(--purple-dim);margin-top:2px">0 FILES SELECTED</div>
+      </div>
+
+      <!-- STEP 3: Options -->
+      <div class="fg">
+        <span class="fl">3. OPTIONS</span>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:3px">
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <span style="font-size:5px;color:var(--purple-dim)">SLIDE DURATION (IMAGES)</span>
+            <div style="display:flex;gap:4px">
+              <button class="se-opt active" id="mv-dur-auto" onclick="mvDur(0,this)">AUTO</button>
+              <button class="se-opt" id="mv-dur-3" onclick="mvDur(3,this)">3s</button>
+              <button class="se-opt" id="mv-dur-5" onclick="mvDur(5,this)">5s</button>
+              <button class="se-opt" id="mv-dur-8" onclick="mvDur(8,this)">8s</button>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <span style="font-size:5px;color:var(--purple-dim)">TRANSITION</span>
+            <div style="display:flex;gap:4px">
+              <button class="se-opt active" id="mv-tr-fade" onclick="mvTrans('fade',this)">FADE</button>
+              <button class="se-opt" id="mv-tr-cut" onclick="mvTrans('cut',this)">CUT</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CREATE -->
+      <button class="btn" id="mv-create-btn" onclick="mvCreate()" style="align-self:stretch;text-align:center">[ CREATE MUSIC VIDEO ]</button>
+
+      <!-- LOG -->
+      <div id="mv-log" style="display:flex;flex-direction:column;gap:2px;max-height:90px;overflow-y:auto"></div>
+
+      <!-- RESULT -->
+      <div id="mv-result" style="display:none;flex-direction:column;gap:8px">
+        <span class="fl">YOUR MUSIC VIDEO</span>
+        <video id="mv-video" controls style="width:100%;max-height:240px;background:#000;border:1px solid var(--purple)"></video>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <a id="mv-dl" class="dl-link" download="music_video.mp4">[ DOWNLOAD ]</a>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -1548,6 +1623,204 @@ async function seReformat() {
 /* ─────────────────────────────────────────
    STEP 6 — THUMBNAIL
 ───────────────────────────────────────── */
+/* ─────────────────────────────────────────
+   MUSIC VIDEO STUDIO
+───────────────────────────────────────── */
+const MV = { track: null, files: [], slideDur: 0, transition: 'fade', busy: false };
+
+function openMusicVideo() {
+  openPanel('musicvideo');
+  mvLoadTracks();
+  mvLoadFiles();
+}
+
+async function mvLoadTracks() {
+  const sel = document.getElementById('mv-track-select');
+  sel.innerHTML = '<option value="">LOADING...</option>';
+  try {
+    const tracks = await fetch('/api/lab/music').then(r => r.json());
+    sel.innerHTML = '<option value="">-- SELECT A TRACK --</option>';
+    tracks.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t.path;
+      o.textContent = t.name;
+      sel.appendChild(o);
+    });
+    if (!tracks.length) sel.innerHTML = '<option value="">NO TRACKS — ADD VIA [MUSIC] FIRST</option>';
+  } catch(e) {
+    sel.innerHTML = `<option value="">ERROR: ${e}</option>`;
+  }
+}
+
+function mvSelectTrack(sel) {
+  const path = sel.value;
+  if (!path) {
+    MV.track = null;
+    document.getElementById('mv-player-wrap').style.display = 'none';
+    return;
+  }
+  MV.track = { path, name: sel.options[sel.selectedIndex].text };
+  const aud = document.getElementById('mv-audio-preview');
+  aud.src = path;
+  document.getElementById('mv-player-wrap').style.display = 'block';
+  aud.onloadedmetadata = () => {
+    const m = Math.floor(aud.duration / 60), s = Math.floor(aud.duration % 60);
+    document.getElementById('mv-track-dur').textContent =
+      `DURATION: ${m}:${String(s).padStart(2,'0')}`;
+  };
+}
+
+async function mvLoadFiles() {
+  const list = document.getElementById('mv-file-list');
+  list.innerHTML = '<div class="log-line dim">SCANNING...</div>';
+  try {
+    const data  = await fetch('/api/lab/files').then(r => r.json());
+    const disk  = data.files || [];
+    const sess  = labState.uploadedFiles || [];
+    const seen  = new Set();
+    const all   = [];
+    [...sess, ...disk].forEach(f => {
+      const key = f.path || f.name;
+      if (key && !seen.has(key)) { seen.add(key); all.push(f); }
+    });
+    const imgExts = new Set(['jpg','jpeg','png','webp','gif','bmp']);
+    const vidExts = new Set(['mp4','mov','webm','mkv','avi']);
+    const media = all.filter(f => {
+      const ext = (f.name || f.path || '').split('.').pop().toLowerCase();
+      return imgExts.has(ext) || vidExts.has(ext);
+    });
+    list.innerHTML = '';
+    if (!media.length) {
+      list.innerHTML = '<div class="log-line dim">NO IMAGES OR VIDEOS UPLOADED YET</div>';
+      return;
+    }
+    media.forEach(f => {
+      const ext   = (f.name || '').split('.').pop().toLowerCase();
+      const isImg = imgExts.has(ext);
+      const path  = f.path || '';
+      const name  = f.name || path.split('/').pop();
+      const sel   = MV.files.some(x => x.path === path);
+      const row   = document.createElement('div');
+      row.className = 'upl-row';
+      row.style.cssText = 'cursor:pointer;gap:6px;align-items:center';
+      row.innerHTML =
+        `<input type="checkbox" ${sel ? 'checked' : ''} style="accent-color:#cc44ff;flex-shrink:0"
+           onchange="mvToggleFile(this,'${path.replace(/'/g,"\\'")}','${name.replace(/'/g,"\\'")}','${isImg?'image':'video'}')">
+         <span class="upl-name">${esc(name)}</span>
+         <span class="upl-type">${isImg ? '[IMG]' : '[VID]'}</span>`;
+      list.appendChild(row);
+    });
+    mvUpdateCount();
+  } catch(e) {
+    list.innerHTML = `<div class="log-line err">ERROR: ${esc(String(e))}</div>`;
+  }
+}
+
+function mvToggleFile(cb, path, name, type) {
+  if (cb.checked) {
+    if (!MV.files.some(f => f.path === path)) MV.files.push({ path, name, type });
+  } else {
+    MV.files = MV.files.filter(f => f.path !== path);
+  }
+  mvUpdateCount();
+}
+
+function mvUpdateCount() {
+  document.getElementById('mv-file-count').textContent =
+    `${MV.files.length} FILE${MV.files.length !== 1 ? 'S' : ''} SELECTED`;
+}
+
+function mvDur(val, btn) {
+  MV.slideDur = val;
+  document.querySelectorAll('[id^=mv-dur-]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function mvTrans(val, btn) {
+  MV.transition = val;
+  document.querySelectorAll('[id^=mv-tr-]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function mvLog(cls, msg) {
+  const log = document.getElementById('mv-log');
+  const d = document.createElement('div');
+  d.className = 'log-line ' + cls;
+  d.textContent = msg;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function mvCreate() {
+  if (MV.busy) return;
+  if (!MV.track) { alert('SELECT A TRACK FIRST'); return; }
+  if (!MV.files.length) { alert('SELECT AT LEAST ONE IMAGE OR VIDEO CLIP'); return; }
+
+  MV.busy = true;
+  const btn = document.getElementById('mv-create-btn');
+  btn.disabled = true; btn.textContent = '[ WORKING... ]';
+  document.getElementById('mv-log').innerHTML = '';
+  document.getElementById('mv-result').style.display = 'none';
+
+  const outName = 'musicvideo_' + Date.now();
+  try {
+    const res = await fetch('/api/lab/musicvideo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        music:          MV.track.path,
+        files:          MV.files.map(f => f.path),
+        slide_duration: MV.slideDur,
+        transition:     MV.transition,
+        output_name:    outName,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      mvLog('err', '✗ ' + (err.error || 'HTTP ' + res.status));
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const dec    = new TextDecoder();
+    let   buf    = '';
+    let   done   = false;
+
+    while (!done) {
+      const { value, done: rd } = await reader.read();
+      if (rd) break;
+      buf += dec.decode(value, { stream: true });
+      const parts = buf.split('\n\n');
+      buf = parts.pop();
+      for (const part of parts) {
+        if (!part.startsWith('data:')) continue;
+        let d; try { d = JSON.parse(part.slice(5).trim()); } catch { continue; }
+        if (d.done) { done = true; break; }
+        if (d.error) { mvLog('err', '✗ ' + d.error); done = true; break; }
+        if (d.text) {
+          const line = d.text.trim();
+          if (!line) continue;
+          const cls = line.startsWith('DONE') ? 'ok' :
+                      line.startsWith('-')    ? 'dim' : 'ok';
+          mvLog(cls, line);
+          if (line.startsWith('DONE:')) {
+            const url = line.slice(5).trim();
+            document.getElementById('mv-video').src = url;
+            document.getElementById('mv-dl').href   = url;
+            document.getElementById('mv-result').style.display = 'flex';
+            done = true;
+          }
+        }
+      }
+    }
+  } catch(e) {
+    mvLog('err', '✗ ERROR: ' + e);
+  } finally {
+    btn.disabled = false; btn.textContent = '[ CREATE MUSIC VIDEO ]';
+    MV.busy = false;
+  }
+}
+
 async function seThumbnail() {
   const src = SE.reformatPath || SE.reelPath || SE.sourcePath;
   if (!src) { alert('NO VIDEO SOURCE FOR THUMBNAIL'); return; }
