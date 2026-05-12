@@ -15,6 +15,8 @@ import asyncio
 import socket
 import threading
 import tempfile
+import zipfile
+import subprocess
 from pathlib import Path
 from threading import Thread
 
@@ -39,7 +41,7 @@ import part9_supabase as _sb
 from part4_video import (
     fal_generate_image, extract_last_frame, download_file,
     images_to_slideshow, concatenate_clips, concatenate_clips_with_fade,
-    mix_audio_onto_video, mix_music_fullvol, get_video_duration,
+    mix_audio_onto_video, get_video_duration,
 )
 from part1_registry import (
     get_task_routing, get_provider_cfg,
@@ -1688,119 +1690,6 @@ def api_lab_render():
     return _sse_stream(_run)
 
 
-# -- /api/lab/musicvideo (SSE) ------------------------------------------------
-@_flask.route("/api/lab/musicvideo", methods=["POST"])
-def api_lab_musicvideo():
-    """
-    Create a music video: images/clips + full music track at 100% volume.
-    Body: {music, files, slide_duration, transition, output_name}
-    SSE: text progress lines; final line "DONE:/renders/<file>"
-    """
-    data          = request.json or {}
-    music         = data.get("music", "")
-    files         = data.get("files") or []
-    slide_duration = float(data.get("slide_duration") or 0)
-    transition    = data.get("transition", "fade")
-    output_name   = re.sub(r"[^a-zA-Z0-9_-]", "_",
-                           data.get("output_name", f"musicvideo_{int(time.time())}"))
-
-    # Resolve music to absolute path
-    if music.startswith("/static/"):
-        music_path = str(Path(__file__).parent / music.lstrip("/"))
-    else:
-        music_path = music
-    if not music_path or not Path(music_path).exists():
-        return jsonify({"error": "Music file not found"}), 400
-    if not files:
-        return jsonify({"error": "No files provided"}), 400
-
-    image_exts = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
-    video_exts = {".mp4", ".mov", ".webm", ".mkv", ".avi"}
-    image_paths: list[str] = []
-    clip_paths:  list[str] = []
-    for f in files:
-        p = Path(f)
-        if not p.exists():
-            continue
-        if p.suffix.lower() in image_exts:
-            image_paths.append(str(p))
-        elif p.suffix.lower() in video_exts:
-            clip_paths.append(str(p))
-
-    if not image_paths and not clip_paths:
-        return jsonify({"error": "No valid image or video files found"}), 400
-
-    async def _run():
-        try:
-            # 1. Measure song
-            yield "ANALYSING MUSIC TRACK..."
-            song_dur = get_video_duration(music_path)
-            if song_dur <= 0:
-                yield "- COULD NOT READ TRACK DURATION — USING 180s"
-                song_dur = 180.0
-            else:
-                mins, secs = divmod(int(song_dur), 60)
-                yield f"- TRACK LENGTH: {mins}:{secs:02d}"
-
-            mv_clips: list[str] = list(clip_paths)
-
-            # 2. Build slideshow from images
-            if image_paths:
-                n       = len(image_paths)
-                per_img = slide_duration if slide_duration > 0 else max(2.0, round(song_dur / n, 2))
-                yield f"BUILDING SLIDESHOW ({n} IMAGES × {per_img:.1f}s EACH)..."
-                tmp_slide = str(_lab_renders_dir / f"_mvslide_{output_name}.mp4")
-                ok, err   = images_to_slideshow(image_paths, tmp_slide, duration=per_img)
-                if not ok:
-                    yield f"- SLIDESHOW FAILED: {err[:120]}"
-                    return
-                yield "- SLIDESHOW BUILT"
-                mv_clips.insert(0, tmp_slide)
-
-            # 3. Concatenate all clips
-            if len(mv_clips) > 1:
-                yield f"JOINING {len(mv_clips)} CLIPS ({transition.upper()})..."
-                concat_out = str(_lab_renders_dir / f"_mvconcat_{output_name}.mp4")
-                if transition == "fade":
-                    ok, err = concatenate_clips_with_fade(mv_clips, concat_out)
-                else:
-                    ok, err = concatenate_clips(mv_clips, concat_out)
-                if not ok:
-                    yield f"- JOIN FAILED: {err[:120]}"
-                    return
-                yield "- CLIPS JOINED"
-                base_video = concat_out
-            else:
-                base_video = mv_clips[0]
-
-            # 4. Mix full-volume music
-            final_out = str(_lab_renders_dir / f"{output_name}.mp4")
-            yield "MIXING FULL-VOLUME MUSIC TRACK..."
-            ok, err = mix_music_fullvol(base_video, music_path, final_out)
-            if not ok:
-                yield f"- AUDIO MIX FAILED: {err[:120]}"
-                return
-            yield "- MUSIC MIXED AT 100%"
-
-            # 5. Supabase backup
-            final_path = Path(final_out)
-            if final_path.exists() and _sb.is_configured():
-                yield "UPLOADING TO SUPABASE..."
-                try:
-                    sb_url, sb_path = _sb.upload_file(str(final_path), folder="renders")
-                    _sb.log_render(output_name + ".mp4", final_path.stat().st_size, sb_url, sb_path)
-                    yield "- SAVED TO SUPABASE"
-                except Exception as sb_err:
-                    yield f"- SUPABASE UPLOAD FAILED: {str(sb_err)[:80]}"
-
-            yield f"DONE:/renders/{output_name}.mp4"
-
-        except Exception as e:
-            yield f"- ERROR: {str(e)[:200]}"
-
-    return _sse_stream(_run)
-
-
 # -- /api/lab/concept ---------------------------------------------------------
 @_flask.route("/api/lab/concept", methods=["GET"])
 def api_lab_concept_get():
@@ -2421,6 +2310,62 @@ def api_story_chapter(story_id, num):
     if num < 1 or num > len(s.chapters):
         return jsonify({"error": "chapter not found"}), 404
     return jsonify({"story_id": story_id, "chapter_num": num, "content": s.chapters[num - 1]})
+
+
+
+# ===========================================================================
+# KDP DOWNLOAD ROUTE
+# ===========================================================================
+
+@_flask.route("/api/story/<story_id>/download", methods=["POST"])
+def api_story_download(story_id):
+    """
+    Generate KDP-formatted zip: .docx + .txt backup.
+    Body: { author: string, subtitle: string (optional) }
+    """
+    data     = request.get_json() or {}
+    author   = data.get("author", "").strip()
+    subtitle = data.get("subtitle", "").strip()
+    if not author:
+        return jsonify({"error": "author name required"}), 400
+    story = get_story(story_id)
+    if not story:
+        return jsonify({"error": "story not found"}), 404
+    if story.status != "completed":
+        return jsonify({"error": f"story not ready ({story.status})"}), 400
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            story_json_data = {
+                "title": story.title, "author": author,
+                "subtitle": subtitle, "year": str(datetime.now().year),
+                "chapters": story.chapters,
+            }
+            json_path = os.path.join(tmpdir, "story.json")
+            with open(json_path, "w") as f:
+                json.dump(story_json_data, f, ensure_ascii=False)
+            safe = "".join(c for c in story.title if c.isalnum() or c in " -_")[:60].strip()
+            docx_path = os.path.join(tmpdir, f"{safe}.docx")
+            txt_path  = os.path.join(tmpdir, f"{safe}.txt")
+            zip_path  = os.path.join(tmpdir, f"{safe}_KDP.zip")
+            formatter = os.path.join(os.path.dirname(__file__), "kdp_formatter.js")
+            result = subprocess.run(
+                ["node", formatter, json_path, docx_path],
+                capture_output=True, text=True, timeout=60
+            )
+            if result.returncode != 0:
+                return jsonify({"error": "formatter failed", "detail": result.stderr}), 500
+            with open(txt_path, "w", encoding="utf-8") as f:
+                f.write(f"{story.title}\nby {author}\n{'='*60}\n\n")
+                f.write(story.full_text)
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                zf.write(docx_path, f"{safe}.docx")
+                zf.write(txt_path,  f"{safe}.txt")
+            return send_file(zip_path, as_attachment=True,
+                download_name=f"{safe}_KDP.zip", mimetype="application/zip")
+    except subprocess.TimeoutExpired:
+        return jsonify({"error": "formatter timed out"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 def main():
