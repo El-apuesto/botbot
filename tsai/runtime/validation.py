@@ -1,5 +1,5 @@
 """
-Twin Shadow — runtime/validation.py
+Twin Shadow - runtime/validation.py
 Structured output validation with auto-retry support.
 """
 
@@ -22,14 +22,14 @@ _BRIEF_FALLBACK = {
 }
 
 
-# ── Generic validator ─────────────────────────────────────────────────────────
+# -- Generic validator ---------------------------------------------------------
 
 async def validate_payload(schema: type[BaseModel], raw_json: str) -> BaseModel:
     """Validate raw JSON string against any Pydantic schema. Raises ValidationError on failure."""
     return schema.model_validate_json(raw_json)
 
 
-# ── Brief-specific ────────────────────────────────────────────────────────────
+# -- Brief-specific ------------------------------------------------------------
 
 def _strip_fences(raw: str) -> str:
     """Strip markdown code fences from LLM output."""
@@ -49,7 +49,7 @@ async def validate_brief_with_retry(
     idea: str,
     raw: str,
     *,
-    call_fn,          # async callable(messages) → str
+    call_fn,          # async callable(messages) - str
     max_retries: int = 2,
 ) -> dict:
     """
@@ -63,7 +63,7 @@ async def validate_brief_with_retry(
         max_retries: How many re-prompt attempts before giving up.
 
     Returns:
-        dict — validated brief (or fallback with parse_error key set).
+        dict - validated brief (or fallback with parse_error key set).
     """
     from part3_modules import BRIEF_SYSTEM  # local import to avoid circular
 
@@ -85,7 +85,7 @@ async def validate_brief_with_retry(
                 fallback["parse_error"] = attempt[:300]
                 return fallback
 
-            log.warning("[VALIDATION] brief retry %d — re-prompting LLM", i + 1)
+            log.warning("[VALIDATION] brief retry %d - re-prompting LLM", i + 1)
             messages = [
                 {"role": "system", "content": BRIEF_SYSTEM},
                 {"role": "user",   "content": f"Idea: {idea}"},
@@ -112,7 +112,7 @@ async def validate_brief_with_retry(
     return fallback
 
 
-# ── ReviewResult validator ────────────────────────────────────────────────────
+# -- ReviewResult validator ----------------------------------------------------
 
 def validate_review_result(raw: str) -> dict:
     """
@@ -133,7 +133,7 @@ def validate_review_result(raw: str) -> dict:
         }
 
 
-# ── Retry gate ────────────────────────────────────────────────────────────────
+# -- Retry gate ----------------------------------------------------------------
 
 def should_retry(exc: Exception) -> bool:
     """Return True if the exception is a retryable failure type."""

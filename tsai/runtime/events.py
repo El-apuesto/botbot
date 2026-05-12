@@ -1,5 +1,5 @@
 """
-Twin Shadow — runtime/events.py
+Twin Shadow - runtime/events.py
 Real asyncio pub/sub event bus.
 
 Replaces the stub that just constructed a TaskEvent and returned it.
@@ -25,7 +25,7 @@ from .models import TaskEvent
 
 log = logging.getLogger("tsai.events")
 
-# ── Subscriber registry ───────────────────────────────────────────────────────
+# -- Subscriber registry -------------------------------------------------------
 
 _subscribers: list[asyncio.Queue] = []
 _MAX_QUEUE_SIZE = 256
@@ -46,7 +46,7 @@ def unsubscribe(q: asyncio.Queue) -> None:
         pass
 
 
-# ── Emit ─────────────────────────────────────────────────────────────────────
+# -- Emit ---------------------------------------------------------------------
 
 async def emit_event(
     task_id: str,
@@ -68,7 +68,7 @@ async def emit_event(
     )
     data = event.model_dump(mode="json")
 
-    log.debug("[EVENT] %s → %s %s", event_type, task_id, payload)
+    log.debug("[EVENT] %s - %s %s", event_type, task_id, payload)
 
     dead: list[asyncio.Queue] = []
     for q in _subscribers:
@@ -76,7 +76,7 @@ async def emit_event(
             q.put_nowait(data)
         except asyncio.QueueFull:
             log.warning(
-                "[EVENT] subscriber queue full — dropping event %s for %s",
+                "[EVENT] subscriber queue full - dropping event %s for %s",
                 event_type, task_id,
             )
         except Exception as exc:
@@ -89,7 +89,7 @@ async def emit_event(
     return data
 
 
-# ── Convenience async iterator for WebSocket / SSE handlers ──────────────────
+# -- Convenience async iterator for WebSocket / SSE handlers ------------------
 
 async def iter_events(
     q: asyncio.Queue,
@@ -114,13 +114,13 @@ async def iter_events(
             event = await asyncio.wait_for(q.get(), timeout=timeout)
             yield event
         except asyncio.TimeoutError:
-            # Heartbeat / keep-alive — caller can decide what to do
+            # Heartbeat / keep-alive - caller can decide what to do
             yield {"task_id": "", "event_type": "HEARTBEAT", "payload": {}}
         except asyncio.CancelledError:
             break
 
 
-# ── Canonical event type constants ───────────────────────────────────────────
+# -- Canonical event type constants -------------------------------------------
 
 class EventType:
     BUILD_STARTED        = "BUILD_STARTED"

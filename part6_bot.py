@@ -27,8 +27,13 @@ from part5_orchestrator import (
     vault_list, vault_get, vault_delete,
     vault_clear, vault_last, vault_undo,
     inject_capi_identity, hermes_exchange, committee_discuss,
+    vault_add,
 )
 from runtime.events import subscribe, unsubscribe, iter_events
+from part10_story import (
+    bible_chat, complete_bible, generate_full_story,
+    get_story, list_stories, StoryBible,
+)
 from part2_router import stream_task, call_task, direct_call
 import part9_supabase as _sb
 from part4_video import (
@@ -64,15 +69,16 @@ _raw_ids     = os.environ.get("ALLOWED_IDS", "")
 ALLOWED_IDS: set[int] = {int(x) for x in _raw_ids.split(",") if x.strip()} if _raw_ids else set()
 
 orch = Orchestrator()
+_bible_sessions: dict[str, dict] = {}
 
 def _find_port(start: int = 5000) -> int:
     return start
 
-_static_dir = Path(__file__).parent / "tsai" / "static"
-_audio_dir  = Path(__file__).parent / "tsai" / "audio"
+_static_dir = Path(__file__).parent / "static"
+_audio_dir  = Path(__file__).parent / "audio"
 
 _flask = Flask("TwinShadow", static_folder=str(_static_dir), static_url_path="/static",
-               template_folder=str(Path(__file__).parent / "tsai" / "static"))
+               template_folder=str(Path(__file__).parent / "static"))
 _flask.secret_key = os.environ.get("SB_SECRET") or os.environ.get("WEB_PASSWORD", "") or os.urandom(24).hex()
 
 # -- Web authentication --------------------------------------------------------
@@ -748,7 +754,7 @@ def api_lab_reformat():
     return jsonify({"ok": True, "url": f"/renders/{fname}", "path": out})
 
 
-_fonts_dir = Path(__file__).parent / "tsai" / "static" / "fonts"
+_fonts_dir = Path(__file__).parent / "static" / "fonts"
 
 _FONT_LABELS = {
     "BebasNeue":       "BEBAS NEUE",
@@ -1077,10 +1083,10 @@ def api_pipeline_delete(job_id):
 # VIDEO LAB - /lab + /api/lab/*
 # -------------------------------------------------------------------------------
 
-_lab_uploads_dir = Path(__file__).parent / "tsai" / "uploads"
-_lab_renders_dir = Path(__file__).parent / "tsai" / "renders"
-_lab_music_dir   = Path(__file__).parent / "tsai" / "static" / "music"
-_lab_music_meta  = Path(__file__).parent / "tsai" / "static" / "music" / "_meta.json"
+_lab_uploads_dir = Path(__file__).parent / "uploads"
+_lab_renders_dir = Path(__file__).parent / "renders"
+_lab_music_dir   = Path(__file__).parent / "static" / "music"
+_lab_music_meta  = Path(__file__).parent / "static" / "music" / "_meta.json"
 _lab_concept_store: dict = {}   # latest concept pushed from bots; cleared on GET
 _lab_jobs: dict = {}            # job_id - {status, url, error, provider, local_path}
 
@@ -1838,19 +1844,7 @@ def _auto_prune_local(max_age_hours: float = 24.0):
 
 Thread(target=_sb.setup_bucket, daemon=True).start()
 Thread(target=_auto_prune_local, daemon=True).start()
-@_flask.errorhandler(500)
-def _handle_500(e):
-    import traceback
-    log.error("Internal Server Error:\n" + traceback.format_exc())
-    return jsonify({"error": "Internal server error", "detail": str(e)}), 500
-
-@_flask.errorhandler(Exception)
-def _handle_exc(e):
-    import traceback
-    log.error(f"Unhandled exception on {request.path}:\n" + traceback.format_exc())
-    return jsonify({"error": str(e)}), 500
-
-Thread(target=lambda: _flask.run(host="0.0.0.0", port=_port, debug=False, use_reloader=False, threaded=True), daemon=True).start()
+Thread(target=lambda: _flask.run(host="0.0.0.0", port=_port, debug=False, use_reloader=False), daemon=True).start()
 
 _rate_cache:  dict[int, float] = {}
 _shadow_mode: dict[int, bool]  = {}   # per-chat freetext voice toggle
@@ -2221,6 +2215,100 @@ async def vlab_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # -- Main ----------------------------------------------------------------------
+
+
+# ===========================================================================
+# STORY / STUDIO API ROUTES
+# ===========================================================================
+
+@_flask.route("/api/story/bible/chat", methods=["POST"])
+def api_bible_chat():
+    data = request.get_json() or {}
+    session_id = data.get("session_id") or f"sess_{int(time.time())}"
+    message = data.get("message", "").strip()
+    if not message:
+        return jsonify({"error": "message required"}), 400
+    if session_id not in _bible_sessions:
+        _bible_sessions[session_id] = {"history": [], "partial_bible": None, "original_idea": message}
+    sess = _bible_sessions[session_id]
+    async def _run():
+        return await bible_chat(message, sess["history"], sess["partial_bible"])
+    response, bible_dict = _run_async(_run())
+    sess["history"].append({"role": "user", "content": message})
+    sess["history"].append({"role": "assistant", "content": response})
+    if bible_dict:
+        sess["partial_bible"] = bible_dict
+    return jsonify({"response": response, "bible": bible_dict, "session_id": session_id})
+
+
+@_flask.route("/api/story/bible/complete", methods=["POST"])
+def api_bible_complete():
+    data = request.get_json() or {}
+    session_id = data.get("session_id")
+    if session_id and session_id in _bible_sessions:
+        partial = _bible_sessions[session_id].get("partial_bible") or {}
+        original_idea = _bible_sessions[session_id].get("original_idea", "")
+    else:
+        partial = data.get("partial_bible", {})
+        original_idea = data.get("original_idea", "")
+    async def _run():
+        return await complete_bible(partial, original_idea)
+    bible = _run_async(_run())
+    return jsonify({"bible": bible.__dict__})
+
+
+@_flask.route("/api/story/generate", methods=["POST"])
+def api_story_generate():
+    data = request.get_json() or {}
+    bible_d = data.get("bible", {})
+    length = data.get("length", "short")
+    chat_id = int(data.get("chat_id", 0))
+    if not bible_d:
+        return jsonify({"error": "bible required"}), 400
+    bible = StoryBible.from_dict(bible_d)
+    holder = {}
+    def _bg():
+        import asyncio as _a
+        loop = _a.new_event_loop()
+        result = loop.run_until_complete(
+            generate_full_story(bible=bible, length=length, vault_fn=vault_add, chat_id=chat_id)
+        )
+        holder["id"] = result.story_id
+    threading.Thread(target=_bg, daemon=True).start()
+    time.sleep(0.15)
+    return jsonify({"story_id": holder.get("id", "pending"), "status": "generating"})
+
+
+@_flask.route("/api/story/list", methods=["GET"])
+def api_story_list():
+    return jsonify([{
+        "story_id": s.story_id, "title": s.title, "status": s.status,
+        "word_count": s.word_count, "chapters": len(s.chapters),
+    } for s in list_stories()])
+
+
+@_flask.route("/api/story/<story_id>", methods=["GET"])
+def api_story_get(story_id):
+    s = get_story(story_id)
+    if not s:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({
+        "story_id": s.story_id, "title": s.title, "status": s.status,
+        "word_count": s.word_count, "chapters": len(s.chapters),
+        "error": s.error, "bible": s.bible.__dict__,
+        "content": s.full_text if s.status == "completed" else None,
+    })
+
+
+@_flask.route("/api/story/<story_id>/chapter/<int:num>", methods=["GET"])
+def api_story_chapter(story_id, num):
+    s = get_story(story_id)
+    if not s:
+        return jsonify({"error": "not found"}), 404
+    if num < 1 or num > len(s.chapters):
+        return jsonify({"error": "chapter not found"}), 404
+    return jsonify({"story_id": story_id, "chapter_num": num, "content": s.chapters[num - 1]})
+
 
 def main():
     if not TOKEN: raise ValueError("TOKEN not set.")
