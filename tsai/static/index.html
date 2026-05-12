@@ -65,13 +65,12 @@ body::before {
   grid-template-rows: auto 1fr auto;
   height: 100vh;
   height: 100dvh;
-  /* Desktop: wizard occupies left ~28%, app floats right */
-  margin-left: 28%;
-  width: 70%;
+  max-width: 900px;
+  margin: 0 auto;
   padding: 0 10px;
 }
-@media (max-width: 900px) {
-  .app { margin-left: 0; width: 100%; padding: 0 8px; }
+@media (max-width: 600px) {
+  .app { padding: 0 4px; }
 }
 
 /* ── HEADER ── */
@@ -87,48 +86,72 @@ body::before {
 .header-right { display: flex; flex-direction: column; gap: 0; }
 .logo { display: none; }
 
-/* BBS title bar — top of the frame */
-.titlebar {
+/* BBS system info line — sits above the frame */
+.bbs-sysline {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #0d0020;
-  border: 2px solid var(--border);
-  border-bottom: 1px solid var(--purple-dim);
-  padding: 5px 10px;
-  font-size: 12px;
   font-family: var(--font);
-  letter-spacing: 0.1em;
-}
-.titlebar-left {
-  color: var(--neon-bright);
-  text-shadow: 0 0 10px var(--purple);
-}
-.titlebar-right {
-  color: var(--purple);
   font-size: 11px;
+  color: var(--muted);
+  padding: 2px 4px 3px;
   letter-spacing: 0.1em;
-  text-shadow: 0 0 6px var(--purple);
 }
+.bbs-sysline span { color: var(--purple); }
 
-/* ── TERMINAL ── */
+/* BBS frame top — ╔══[ TITLE ]═══════════════════╗ */
+.titlebar {
+  display: flex;
+  align-items: center;
+  background: #000;
+  border: 2px solid var(--border);
+  border-bottom: none;
+  padding: 4px 0;
+  font-family: var(--font);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  gap: 0;
+}
+.titlebar-left  { color: var(--border); flex-shrink: 0; padding-left: 8px; white-space: nowrap; text-shadow: 0 0 6px var(--purple); }
+.titlebar-center { flex: 1; text-align: center; color: var(--neon-bright); letter-spacing: 0.15em; text-shadow: 0 0 8px var(--purple); white-space: nowrap; overflow: hidden; }
+.titlebar-right { color: var(--border); flex-shrink: 0; padding-right: 8px; white-space: nowrap; text-shadow: 0 0 6px var(--purple); }
+
+/* ── TERMINAL — frame sides, pure black inside ── */
 .terminal {
   border: 2px solid var(--border);
   border-top: none;
   border-bottom: none;
-  background: rgba(6,0,16,0.94);
+  background: #000;
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 0 30px var(--purple-glow), inset 0 0 40px rgba(40,0,80,0.3);
+  box-shadow: 0 0 24px var(--purple-glow);
 }
 
 @keyframes glow-pulse {
-  0%,100% { box-shadow: 0 0 20px var(--purple-glow), inset 0 0 30px rgba(40,0,80,0.25); }
-  50%      { box-shadow: 0 0 40px var(--purple-glow), 0 0 80px rgba(140,0,220,0.15), inset 0 0 40px rgba(60,0,100,0.35); }
+  0%,100% { box-shadow: 0 0 16px var(--purple-glow); }
+  50%      { box-shadow: 0 0 36px var(--purple-glow), 0 0 60px rgba(140,0,220,0.12); }
 }
+.terminal { animation: glow-pulse 6s ease-in-out infinite; }
+
+/* ── BBS SEPARATOR — ╠───────────────────────╣ ── */
+.bbs-sep {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 14px;
+  background: #000;
+  color: var(--border);
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1;
+  text-shadow: 0 0 6px var(--purple);
+}
+.bbs-sep::before { content: '╠'; flex-shrink: 0; padding-left: 0; }
+.bbs-sep::after  { content: '╣'; flex-shrink: 0; padding-right: 0; }
+.bbs-sep-line    { flex: 1; border-top: 1px solid var(--border); }
 
 /* ── PANELS ── */
 .panel {
@@ -139,7 +162,6 @@ body::before {
   overflow: hidden;
 }
 .panel.active { display: flex; }
-.terminal { animation: glow-pulse 6s ease-in-out infinite; }
 
 /* ── HOME PANEL ── */
 .bot-strip {
@@ -495,7 +517,7 @@ audio { width: 100%; margin-top: 4px; }
 .gallery-row-name { font-size: 10px; color: var(--purple); }
 .gallery-row-meta { font-size: 11px; color: var(--muted); }
 
-/* ── NAV — BBS bottom status bar ── */
+/* ── NAV — BBS frame bottom ╚══[1]══╪══[2]══╝ ── */
 .nav {
   display: flex;
   justify-content: space-between;
@@ -503,11 +525,31 @@ audio { width: 100%; margin-top: 4px; }
   flex-wrap: nowrap;
   gap: 0;
   flex-shrink: 0;
-  background: #0d0020;
+  background: #000;
   border: 2px solid var(--border);
-  border-top: 1px solid var(--purple-dim);
-  padding: 5px 10px;
+  border-top: none;
+  padding: 4px 0;
   font-family: var(--font);
+  font-size: 12px;
+  box-shadow: 0 0 24px var(--purple-glow);
+}
+/* frame-bottom opening ╚══ */
+.nav::before {
+  content: '╚══';
+  color: var(--border);
+  flex-shrink: 0;
+  padding-left: 8px;
+  text-shadow: 0 0 6px var(--purple);
+  font-size: 13px;
+}
+/* frame-bottom closing ══╝ */
+.nav::after {
+  content: '══╝';
+  color: var(--border);
+  flex-shrink: 0;
+  padding-right: 8px;
+  text-shadow: 0 0 6px var(--purple);
+  font-size: 13px;
 }
 .nav-btn {
   background: none;
@@ -517,16 +559,16 @@ audio { width: 100%; margin-top: 4px; }
   font-size: 11px;
   letter-spacing: 0.1em;
   cursor: pointer;
-  padding: 3px 8px;
+  padding: 2px 6px;
   transition: color .1s, text-shadow .1s;
   white-space: nowrap;
 }
-/* │ divider between every nav item except the first */
 .nav-btn + .nav-btn::before {
-  content: '│';
-  color: var(--purple-dim);
-  margin-right: 8px;
+  content: '══╪══';
+  color: var(--border);
+  margin-right: 6px;
   font-size: 12px;
+  text-shadow: 0 0 4px var(--purple);
 }
 .nav-btn .nav-num { color: var(--purple); margin-right: 2px; }
 .nav-btn:hover, .nav-btn.active {
@@ -537,9 +579,10 @@ audio { width: 100%; margin-top: 4px; }
 
 /* ── MOBILE ── */
 @media (max-width: 600px) {
-  .nav { padding: 4px 6px; }
-  .nav-btn { font-size: 10px; padding: 3px 5px; }
-  .nav-btn + .nav-btn::before { margin-right: 5px; }
+  .nav::before { content: '╚'; padding-left: 4px; }
+  .nav::after  { content: '╝'; padding-right: 4px; }
+  .nav-btn { font-size: 10px; padding: 2px 4px; }
+  .nav-btn + .nav-btn::before { content: '│'; margin-right: 4px; }
 }
 
 /* ── CURSOR ── */
@@ -556,14 +599,15 @@ audio { width: 100%; margin-top: 4px; }
 
   <!-- ═══ HEADER ═══ -->
   <div class="header">
-    <div class="wizard-wrap">
-      <img src="/static/mobile_bg.jpg" alt="" onerror="this.style.display='none'">
-    </div>
     <div class="header-right">
-      <div class="logo">TWIN SHADOW</div>
+      <div class="bbs-sysline">
+        <span>TWIN SHADOW BBS v2.0</span>
+        <span>SYS: TWIN &nbsp;│&nbsp; USER: <span id="user-label">USER</span></span>
+      </div>
       <div class="titlebar">
-        <span class="titlebar-left">╔══[ /TWINSHADOW/CHAT.EXE ]</span>
-        <span class="titlebar-right">[ <span id="user-label">USER</span> ]══╗</span>
+        <span class="titlebar-left">╔══[</span>
+        <span class="titlebar-center">── MAIN CHAT CHANNEL ──</span>
+        <span class="titlebar-right">]══╗</span>
       </div>
     </div>
   </div>
