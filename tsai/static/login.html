@@ -4,211 +4,268 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Twin Shadow — Access</title>
-  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --purple:      #bb22ff;
-      --purple-dim:  #55008a;
-      --purple-glow: rgba(180,60,255,0.5);
-      --neon-bright: #f2eaff;
-      --muted:       #7744aa;
-    }
 
     html, body {
-      width: 100%; height: 100%;
+      width: 100%;
+      min-height: 100%;
       background: #000;
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Share Tech Mono', monospace;
+      font-family: 'VT323', monospace;
       cursor: crosshair;
+      color: #cc44ff;
     }
 
-    /* Scanlines */
     body::before {
       content: '';
       position: fixed; inset: 0;
       background: repeating-linear-gradient(
         0deg, transparent, transparent 3px,
-        rgba(0,0,0,0.1) 3px, rgba(0,0,0,0.1) 4px
+        rgba(0,0,0,0.09) 3px, rgba(0,0,0,0.09) 4px
       );
       pointer-events: none;
+      z-index: 100;
+    }
+
+    .page {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 0 24px 24px;
+      position: relative;
       z-index: 1;
     }
 
-    /* BBS terminal frame */
-    .bbs-frame {
-      position: relative;
-      z-index: 2;
-      width: min(420px, 92vw);
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 0 32px var(--purple-glow);
-    }
-
-    /* ╔══[ TOP BAR ]══╗ */
-    .frame-top {
-      display: flex;
-      align-items: center;
-      background: #000;
-      border: 2px solid var(--purple);
-      border-bottom: none;
-      padding: 4px 0;
-      font-size: 12px;
-      letter-spacing: 0.08em;
-    }
-    .frame-top-l { color: var(--purple); flex-shrink: 0; padding-left: 8px; text-shadow: 0 0 6px var(--purple); }
-    .frame-top-c { flex: 1; text-align: center; color: var(--neon-bright); letter-spacing: 0.15em; text-shadow: 0 0 8px var(--purple); }
-    .frame-top-r { color: var(--purple); flex-shrink: 0; padding-right: 8px; text-shadow: 0 0 6px var(--purple); }
-
-    /* frame body */
-    .frame-body {
-      background: #000;
-      border: 2px solid var(--purple);
-      border-top: none;
-      border-bottom: none;
-      padding: 20px 20px 0;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    /* Logo */
+    /* LOGO */
     .logo-wrap {
-      display: flex; justify-content: center;
-      padding: 8px 0 4px;
+      width: 100%;
+      max-width: 420px;
+      padding: 16px 0 0;
+      display: flex;
+      justify-content: center;
     }
     .logo-wrap img {
-      width: 100%;
-      max-width: 300px;
+      width: 80%;
+      max-width: 320px;
       height: auto;
-      object-fit: contain;
-      filter: drop-shadow(0 0 20px var(--purple)) brightness(1.1);
+      filter: drop-shadow(0 0 16px #cc44ff) drop-shadow(0 0 32px #8800cc) brightness(3) contrast(1.2);
     }
 
-    /* Info line */
-    .info-line {
+    /* FIGURE */
+    .figure-wrap {
+      width: 100%;
+      max-width: 460px;
+      height: min(52vh, 400px);
+      overflow: hidden;
       display: flex;
-      justify-content: space-between;
-      color: var(--neon-bright);
-      font-size: 11px;
-      letter-spacing: 0.12em;
-      border-bottom: 1px solid var(--purple-dim);
-      padding-bottom: 8px;
+      justify-content: center;
+      align-items: flex-start;
+      margin-top: -4px;
     }
-    .info-line-r { color: var(--purple); }
-
-    .sub { color: var(--muted); font-size: 10px; letter-spacing: 0.08em; }
-
-    input {
-      background: #000;
-      border: 1px solid var(--purple);
-      color: var(--neon-bright);
-      font-family: inherit; font-size: 13px;
-      padding: 8px 10px;
-      width: 100%; outline: none;
-      letter-spacing: 2px;
-      caret-color: var(--purple);
-      transition: box-shadow .15s;
+    .figure-wrap img {
+      width: 100%;
+      height: auto;
+      display: block;
+      mix-blend-mode: screen;
+      filter: brightness(1.5) saturate(1.1);
     }
-    input::placeholder { color: var(--purple-dim); letter-spacing: 1px; }
-    input:focus { box-shadow: 0 0 10px var(--purple-glow); border-color: var(--purple); }
 
-    .err { color: #ff44aa; font-size: 10px; letter-spacing: 0.08em; }
-
-    /* ╠─── SEPARATOR ─── ╣ */
-    .bbs-sep {
-      display: flex; align-items: center;
-      color: var(--purple);
-      font-size: 13px; height: 14px;
-      text-shadow: 0 0 6px var(--purple);
-    }
-    .bbs-sep::before { content: '╠'; flex-shrink: 0; }
-    .bbs-sep::after  { content: '╣'; flex-shrink: 0; }
-    .bbs-sep-line { flex: 1; border-top: 1px solid var(--purple); }
-
-    /* input area */
-    .input-area {
-      background: #000;
-      border: 2px solid var(--purple);
-      border-top: none;
-      border-bottom: none;
-      padding: 8px 20px 12px;
+    /* FORM */
+    .form-area {
+      width: 100%;
+      max-width: 380px;
       display: flex;
       flex-direction: column;
       gap: 10px;
+      margin-top: 10px;
     }
 
-    button {
-      background: #000;
-      color: var(--neon-bright);
-      border: 1px solid var(--purple);
-      font-family: inherit; font-size: 11px;
-      padding: 9px;
-      cursor: pointer; width: 100%;
-      letter-spacing: 2px;
-      transition: background .15s, box-shadow .15s;
-      text-shadow: 0 0 6px var(--purple);
-    }
-    button:hover {
-      background: rgba(100,0,160,0.5);
-      box-shadow: 0 0 14px var(--purple-glow);
-    }
-
-    /* ╚══[ PROMPT ]══╝ */
-    .frame-bot {
+    /* Input field rows — matching reference exactly */
+    .field-wrap {
+      position: relative;
       display: flex;
       align-items: center;
+      border: 2px solid #9900cc;
       background: #000;
-      border: 2px solid var(--purple);
-      border-top: none;
-      padding: 4px 0;
-      font-size: 11px;
-      box-shadow: 0 0 24px var(--purple-glow);
+      overflow: hidden;
     }
-    .frame-bot-l { color: var(--purple); flex-shrink: 0; padding-left: 8px; text-shadow: 0 0 6px var(--purple); }
-    .frame-bot-c { flex: 1; color: var(--muted); letter-spacing: 0.12em; padding: 0 8px; }
-    .frame-bot-r { color: var(--purple); flex-shrink: 0; padding-right: 8px; text-shadow: 0 0 6px var(--purple); }
+    .field-wrap:focus-within {
+      border-color: #cc44ff;
+      box-shadow: 0 0 12px rgba(180,60,255,0.4);
+    }
 
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-    .cursor { display: inline-block; width: 7px; height: 11px; background: var(--purple); animation: blink .7s step-end infinite; vertical-align: middle; margin-left: 2px; }
+    .field-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #cc44ff;
+      font-family: 'VT323', monospace;
+      font-size: 26px;
+      padding: 10px 14px;
+      letter-spacing: 2px;
+      caret-color: #cc44ff;
+      width: 100%;
+    }
+    .field-input::placeholder {
+      color: #cc44ff;
+      opacity: 1;
+      text-shadow: 0 0 6px #9900cc;
+    }
+
+    /* DOS blinking cursor on focus+empty */
+    @keyframes blink-cur { 0%,100%{opacity:1} 50%{opacity:0} }
+    .field-cursor {
+      display: none;
+      color: #f2eaff;
+      font-size: 24px;
+      animation: blink-cur 0.65s step-end infinite;
+      padding-right: 10px;
+      flex-shrink: 0;
+      text-shadow: 0 0 8px #cc44ff;
+    }
+    .field-input:focus:placeholder-shown ~ .field-cursor { display: inline; }
+    .field-input:focus:placeholder-shown { caret-color: transparent; }
+    .field-input:focus::placeholder { color: transparent; }
+
+    /* USERNAME row — cosmetic prefix + input */
+    .field-prefix {
+      color: #cc44ff;
+      font-size: 26px;
+      padding: 10px 4px 10px 14px;
+      flex-shrink: 0;
+      letter-spacing: 2px;
+      text-shadow: 0 0 6px #9900cc;
+      white-space: nowrap;
+    }
+
+    /* LOGIN button */
+    .login-btn {
+      width: 100%;
+      border: 2px solid #9900cc;
+      background: rgba(60,0,100,0.25);
+      color: #f2eaff;
+      font-family: 'VT323', monospace;
+      font-size: 30px;
+      padding: 10px;
+      cursor: pointer;
+      letter-spacing: 6px;
+      text-shadow: 0 0 12px #cc44ff;
+      box-shadow: 0 0 14px rgba(180,60,255,0.25);
+      transition: background .15s, box-shadow .15s, border-color .15s;
+    }
+    .login-btn:hover {
+      background: rgba(100,0,180,0.45);
+      border-color: #cc44ff;
+      box-shadow: 0 0 28px rgba(180,60,255,0.55);
+    }
+
+    .err-msg {
+      color: #ff44aa;
+      font-size: 20px;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+
+    /* EXTRAS */
+    .extras {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 100%;
+      max-width: 380px;
+      font-size: 20px;
+      color: #9944bb;
+      margin-top: 6px;
+    }
+    .remember-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+    .remember-row input[type="checkbox"] {
+      width: 15px; height: 15px;
+      accent-color: #cc44ff;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .forgot-row { font-size: 20px; color: #9944bb; }
+    .forgot-row a {
+      color: #dd88ff;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .forgot-row a:hover { color: #f2eaff; }
+
+    /* FOOTER */
+    .footer {
+      margin-top: auto;
+      padding: 16px 0 0;
+      width: 100%;
+      max-width: 460px;
+      text-align: center;
+      font-size: 15px;
+      color: #440055;
+      border-top: 1px solid #1a0025;
+    }
+    .footer a { color: #6633aa; text-decoration: none; }
+    .footer a:hover { color: #cc44ff; }
   </style>
 </head>
 <body>
-<div class="bbs-frame">
+<div class="page">
 
-  <div class="frame-top">
-    <span class="frame-top-l">╔══[</span>
-    <span class="frame-top-c">── TWIN SHADOW BBS v2.0 ──</span>
-    <span class="frame-top-r">]══╗</span>
+  <!-- LOGO -->
+  <div class="logo-wrap">
+    <img src="/static/send_btn_nobg.png" alt="Twin Shadow">
   </div>
 
-  <div class="frame-body">
-    <div class="logo-wrap">
-      <img src="/static/send_btn_nobg.png" alt="Twin Shadow">
+  <!-- FIGURE -->
+  <div class="figure-wrap">
+    <img src="/static/watermark.jpg" alt="">
+  </div>
+
+  <!-- FORM -->
+  <form class="form-area" method="POST" action="/login">
+
+    <!-- USERNAME (cosmetic display field) -->
+    <div class="field-wrap">
+      <input class="field-input" type="text" placeholder="USERNAME" autocomplete="username" tabindex="-1" readonly>
     </div>
-    <div class="info-line">
-      <span>/TWINSHADOW/AUTH.EXE</span>
-      <span class="info-line-r">v2.0</span>
+
+    <!-- PASSWORD -->
+    <div class="field-wrap">
+      <input class="field-input" type="password" name="password" placeholder="PASSWORD" autofocus autocomplete="current-password">
+      <span class="field-cursor">█</span>
     </div>
-    <div class="sub">RESTRICTED SYSTEM. AUTHORISED USERS ONLY.</div>
+
+    {% if error %}
+    <div class="err-msg">&#9888; {{ error }}</div>
+    {% endif %}
+
+    <button type="submit" class="login-btn">LOGIN</button>
+  </form>
+
+  <!-- EXTRAS -->
+  <div class="extras">
+    <label class="remember-row">
+      <input type="checkbox" name="remember"> Remember Me
+    </label>
+    <div class="forgot-row">
+      Forgot Password?&nbsp; <a href="#">Create New Account</a>
+    </div>
   </div>
 
-  <div class="bbs-sep"><span class="bbs-sep-line"></span></div>
-
-  <div class="input-area">
-    <form method="POST" action="/login" style="display:flex;flex-direction:column;gap:10px">
-      <input type="password" name="password" placeholder="ENTER ACCESS CODE" autofocus autocomplete="current-password">
-      {% if error %}
-      <div class="err">&#9888; {{ error }}</div>
-      {% endif %}
-      <button type="submit">[ AUTHENTICATE ]</button>
-    </form>
-  </div>
-
-  <div class="frame-bot">
-    <span class="frame-bot-l">╚══</span>
-    <span class="frame-bot-c">AWAITING INPUT <span class="cursor"></span></span>
-    <span class="frame-bot-r">══╝</span>
+  <!-- FOOTER -->
+  <div class="footer">
+    &copy; 2026 TWIN SHADOW All rights reserved.&nbsp;|&nbsp;
+    A:\&gt; DIR&nbsp;
+    <a href="#">Privacy Policy</a>&nbsp;|&nbsp;
+    <a href="#">Terms of Service</a>&nbsp;|&nbsp;
+    <a href="#">Contact</a>
   </div>
 
 </div>

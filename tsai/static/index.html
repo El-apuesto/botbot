@@ -15,7 +15,7 @@
 <meta name="twitter:title" content="Twin Shadow">
 <meta name="twitter:description" content="AI engine active.">
 <meta name="twitter:image" content="{{ og_url }}/static/send_btn.jpg">
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -34,8 +34,8 @@
   --green:       #cc44ff;
   --cyan:        #cc88ff;
   --red:         #ff44aa;
-  --font:        'Share Tech Mono', monospace;
-  --font-head:   'Share Tech Mono', monospace;
+  --font:        'VT323', monospace;
+  --font-head:   'VT323', monospace;
 }
 
 html, body {
@@ -86,16 +86,34 @@ body::before {
 .header-right { display: flex; flex-direction: column; gap: 0; }
 .logo { display: none; }
 
+/* ── BANNER — logo/figure above the terminal ── */
+#app-banner {
+  width: 100%;
+  height: min(200px, 26vh);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow: hidden;
+}
+#app-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  mix-blend-mode: screen;
+  filter: brightness(1.8);
+}
+
 /* BBS system info line — sits above the frame */
 .bbs-sysline {
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-family: var(--font);
-  font-size: 11px;
+  font-size: 16px;
   color: var(--muted);
   padding: 2px 4px 3px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
 }
 .bbs-sysline span { color: var(--purple); }
 
@@ -108,8 +126,8 @@ body::before {
   border-bottom: none;
   padding: 4px 0;
   font-family: var(--font);
-  font-size: 12px;
-  letter-spacing: 0.08em;
+  font-size: 20px;
+  letter-spacing: 0.04em;
   gap: 0;
 }
 .titlebar-left  { color: var(--border); flex-shrink: 0; padding-left: 8px; white-space: nowrap; text-shadow: 0 0 6px var(--purple); }
@@ -145,7 +163,7 @@ body::before {
   background: #000;
   color: var(--border);
   font-family: var(--font);
-  font-size: 13px;
+  font-size: 18px;
   line-height: 1;
   text-shadow: 0 0 6px var(--purple);
 }
@@ -172,17 +190,17 @@ body::before {
   border-bottom: 1px solid var(--border);
   background: #000;
   flex-shrink: 0;
-  min-height: 22px;
+  min-height: 28px;
   gap: 8px;
-  font-size: 10px;
-  letter-spacing: 0.1em;
+  font-size: 17px;
+  letter-spacing: 0.05em;
 }
 .bot-strip-left { display: flex; align-items: center; gap: 8px; }
 #bot-toggle {
   display: flex; align-items: center; gap: 6px;
   cursor: pointer; user-select: none;
 }
-#toggle-name { font-size: 10px; color: var(--purple); text-shadow: 0 0 6px var(--purple); letter-spacing: 1px; min-width: 50px; text-align: right; }
+#toggle-name { font-size: 17px; color: var(--purple); text-shadow: 0 0 6px var(--purple); letter-spacing: 1px; min-width: 50px; text-align: right; }
 .sw { position: relative; width: 28px; height: 12px; background: #0a0018; border: 1px solid var(--purple); }
 .sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 6px; height: 6px; background: var(--purple); box-shadow: 0 0 4px var(--purple); transition: transform .15s; }
 .sw.on::after { transform: translateX(16px); }
@@ -209,7 +227,7 @@ body::before {
 /* BBS-style: inline prefix `NAME > text` on one line when possible */
 .msg { display: flex; flex-direction: row; flex-wrap: wrap; gap: 0 6px; align-items: baseline; animation: fadeInUp .15s ease both; }
 .msg-who {
-  font-size: 11px;
+  font-size: 18px;
   color: var(--purple);
   letter-spacing: 1px;
   flex-shrink: 0;
@@ -218,16 +236,16 @@ body::before {
 }
 .msg-who::after { content: ' ►'; margin-left: 2px; opacity: 0.7; }
 .msg-body {
-  font-size: 12px;
+  font-size: 18px;
   color: var(--neon-bright);
-  line-height: 1.5;
+  line-height: 1.4;
   word-break: break-word;
   white-space: pre-wrap;
   flex: 1;
   min-width: 0;
   text-shadow: 0 0 4px rgba(200,160,255,0.3);
 }
-@media (min-width: 700px) { .msg-who { font-size: 12px; } .msg-body { font-size: 13px; } }
+@media (min-width: 700px) { .msg-who { font-size: 20px; } .msg-body { font-size: 20px; } }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 .typing::after { content: '█'; animation: blink .7s step-end infinite; color: var(--purple); }
 @keyframes fadeInUp { from { opacity:0; transform:translateY(2px); } to { opacity:1; transform:translateY(0); } }
@@ -251,16 +269,37 @@ body::before {
   background: #000;
   flex-shrink: 0;
 }
-/* BBS command-prompt prefix */
+/* MS-DOS command prompt prefix */
 .input-row::before {
   content: '►';
   color: var(--purple);
-  font-size: 13px;
+  font-size: 20px;
   line-height: 1;
   align-self: center;
   flex-shrink: 0;
   text-shadow: 0 0 8px var(--purple);
+  transition: color .1s;
 }
+.input-row:focus-within::before {
+  content: 'C:\\>';
+  color: var(--neon-bright);
+  text-shadow: 0 0 12px var(--purple);
+}
+/* Blinking block cursor — shown when input focused + empty */
+@keyframes blink-cur { 0%,100%{opacity:1} 50%{opacity:0} }
+.dos-cursor {
+  display: none;
+  color: var(--neon-bright);
+  font-size: 20px;
+  animation: blink-cur 0.65s step-end infinite;
+  align-self: center;
+  flex-shrink: 0;
+  line-height: 1;
+  text-shadow: 0 0 8px var(--purple);
+}
+#txt:focus:placeholder-shown ~ .dos-cursor { display: inline; }
+#txt:focus:placeholder-shown { color: transparent; caret-color: transparent; }
+#txt:focus::placeholder { color: transparent; }
 #txt {
   flex: 1;
   background: transparent;
@@ -268,10 +307,10 @@ body::before {
   outline: none;
   color: var(--neon-bright);
   font-family: var(--font);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 20px;
+  line-height: 1.4;
   resize: none;
-  min-height: 22px;
+  min-height: 26px;
   max-height: 80px;
   overflow-y: auto;
   caret-color: var(--purple);
@@ -354,9 +393,9 @@ body::before {
   border: 1px solid var(--border);
   color: var(--muted);
   font-family: var(--font);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  padding: 5px 12px;
+  font-size: 18px;
+  letter-spacing: 0.05em;
+  padding: 4px 12px;
   cursor: pointer;
   transition: all .15s;
 }
@@ -370,14 +409,14 @@ body::before {
 
 /* ── FORM ELEMENTS ── */
 .fg { display: flex; flex-direction: column; gap: 5px; }
-.fl { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; }
+.fl { font-size: 17px; color: var(--muted); letter-spacing: 0.05em; }
 .fi {
   background: rgba(0,0,0,0.5);
   border: 1px solid var(--border);
   color: var(--neon-bright);
   font-family: var(--font);
-  font-size: 12px;
-  padding: 7px 10px;
+  font-size: 18px;
+  padding: 6px 10px;
   outline: none;
   width: 100%;
   transition: border-color .2s, box-shadow .2s;
@@ -388,8 +427,8 @@ textarea.fi { resize: vertical; min-height: 52px; line-height: 1.7; }
 
 .opt-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .opt {
-  font-size: 10px;
-  padding: 4px 10px;
+  font-size: 17px;
+  padding: 3px 10px;
   background: transparent;
   border: 1px solid var(--border);
   color: var(--muted);
@@ -406,10 +445,10 @@ textarea.fi { resize: vertical; min-height: 52px; line-height: 1.7; }
   border: 1px solid var(--border);
   color: var(--neon-bright);
   font-family: var(--font);
-  font-size: 11px;
-  padding: 7px 16px;
+  font-size: 18px;
+  padding: 5px 16px;
   cursor: pointer;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
   transition: background .15s, box-shadow .15s;
   white-space: nowrap;
   text-decoration: none;
@@ -434,10 +473,10 @@ textarea.fi { resize: vertical; min-height: 52px; line-height: 1.7; }
 .session-out::-webkit-scrollbar-thumb { background: var(--purple-dim); }
 
 .turn { display: flex; flex-direction: row; flex-wrap: wrap; gap: 0 6px; align-items: baseline; animation: fadeInUp .15s ease both; }
-.turn-who { font-size: 11px; color: var(--purple); letter-spacing: 1px; flex-shrink: 0; text-shadow: 0 0 6px var(--purple); white-space: nowrap; }
+.turn-who { font-size: 18px; color: var(--purple); letter-spacing: 1px; flex-shrink: 0; text-shadow: 0 0 6px var(--purple); white-space: nowrap; }
 .turn-who::after { content: ' ►'; margin-left: 2px; opacity: 0.7; }
-.turn-body { font-size: 12px; color: var(--neon-bright); line-height: 1.5; white-space: pre-wrap; word-break: break-word; flex: 1; min-width: 0; text-shadow: 0 0 4px rgba(200,160,255,0.25); }
-@media (min-width: 700px) { .turn-who { font-size: 12px; } .turn-body { font-size: 13px; } }
+.turn-body { font-size: 18px; color: var(--neon-bright); line-height: 1.4; white-space: pre-wrap; word-break: break-word; flex: 1; min-width: 0; text-shadow: 0 0 4px rgba(200,160,255,0.25); }
+@media (min-width: 700px) { .turn-who { font-size: 20px; } .turn-body { font-size: 20px; } }
 
 /* ── ACTION ROW ── */
 .action-row {
@@ -449,11 +488,11 @@ textarea.fi { resize: vertical; min-height: 52px; line-height: 1.7; }
 }
 .action-link {
   font-family: var(--font);
-  font-size: 11px;
+  font-size: 18px;
   color: var(--purple);
   text-decoration: none;
   border: 1px solid var(--purple-dim);
-  padding: 7px 14px;
+  padding: 5px 14px;
   letter-spacing: 0.08em;
   transition: border-color .15s, color .15s;
 }
@@ -528,9 +567,9 @@ audio { width: 100%; margin-top: 4px; }
   background: #000;
   border: 2px solid var(--border);
   border-top: none;
-  padding: 4px 0;
+  padding: 2px 0;
   font-family: var(--font);
-  font-size: 12px;
+  font-size: 20px;
   box-shadow: 0 0 24px var(--purple-glow);
 }
 /* frame-bottom opening ╚══ */
@@ -540,7 +579,7 @@ audio { width: 100%; margin-top: 4px; }
   flex-shrink: 0;
   padding-left: 8px;
   text-shadow: 0 0 6px var(--purple);
-  font-size: 13px;
+  font-size: 20px;
 }
 /* frame-bottom closing ══╝ */
 .nav::after {
@@ -549,25 +588,25 @@ audio { width: 100%; margin-top: 4px; }
   flex-shrink: 0;
   padding-right: 8px;
   text-shadow: 0 0 6px var(--purple);
-  font-size: 13px;
+  font-size: 20px;
 }
 .nav-btn {
   background: none;
   border: none;
   color: var(--muted);
   font-family: var(--font);
-  font-size: 11px;
-  letter-spacing: 0.1em;
+  font-size: 20px;
+  letter-spacing: 0.05em;
   cursor: pointer;
-  padding: 2px 6px;
+  padding: 1px 4px;
   transition: color .1s, text-shadow .1s;
   white-space: nowrap;
 }
 .nav-btn + .nav-btn::before {
   content: '══╪══';
   color: var(--border);
-  margin-right: 6px;
-  font-size: 12px;
+  margin-right: 4px;
+  font-size: 20px;
   text-shadow: 0 0 4px var(--purple);
 }
 .nav-btn .nav-num { color: var(--purple); margin-right: 2px; }
@@ -581,8 +620,8 @@ audio { width: 100%; margin-top: 4px; }
 @media (max-width: 600px) {
   .nav::before { content: '╚'; padding-left: 4px; }
   .nav::after  { content: '╝'; padding-right: 4px; }
-  .nav-btn { font-size: 10px; padding: 2px 4px; }
-  .nav-btn + .nav-btn::before { content: '│'; margin-right: 4px; }
+  .nav-btn { font-size: 17px; padding: 1px 3px; }
+  .nav-btn + .nav-btn::before { content: '│'; margin-right: 3px; font-size: 17px; }
 }
 
 /* ── CURSOR ── */
@@ -599,16 +638,13 @@ audio { width: 100%; margin-top: 4px; }
 
   <!-- ═══ HEADER ═══ -->
   <div class="header">
-    <div class="header-right">
-      <div class="bbs-sysline">
-        <span>TWIN SHADOW BBS v2.0</span>
-        <span>SYS: TWIN &nbsp;│&nbsp; USER: <span id="user-label">USER</span></span>
-      </div>
-      <div class="titlebar">
-        <span class="titlebar-left">╔══[</span>
-        <span class="titlebar-center">── MAIN CHAT CHANNEL ──</span>
-        <span class="titlebar-right">]══╗</span>
-      </div>
+    <div id="app-banner">
+      <img src="/static/watermark.jpg" alt="Twin Shadow">
+    </div>
+    <div class="titlebar">
+      <span class="titlebar-left">╔══[</span>
+      <span class="titlebar-center">── MAIN CHAT CHANNEL ──</span>
+      <span class="titlebar-right">]══╗</span>
     </div>
   </div>
 
@@ -617,7 +653,6 @@ audio { width: 100%; margin-top: 4px; }
 
     <!-- [1] HOME — CHAT -->
     <div class="panel active" id="panel-home" style="position:relative">
-      <div id="chat-watermark"><img src="/static/watermark.jpg" alt=""></div>
       <div class="bot-strip">
         <div class="bot-strip-left">
           <button id="upload-btn" onclick="document.getElementById('file-input').click()" title="Attach file">&#128206;</button>
@@ -633,6 +668,7 @@ audio { width: 100%; margin-top: 4px; }
       <div class="bbs-sep"><span class="bbs-sep-line"></span></div>
       <div class="input-row">
         <textarea id="txt" rows="1" placeholder="Describe your idea..." onkeydown="onKey(event)" oninput="resize(this)"></textarea>
+        <span class="dos-cursor">█</span>
         <button id="send-btn" onclick="send()"><img src="/static/send_btn_nobg.png" alt="Send"></button>
       </div>
     </div>
