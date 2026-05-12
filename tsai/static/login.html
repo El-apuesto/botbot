@@ -74,12 +74,15 @@
 
     /* Logo */
     .logo-wrap {
-      display: flex; justify-content: center; padding-bottom: 4px;
+      display: flex; justify-content: center;
+      padding: 8px 0 4px;
     }
     .logo-wrap img {
-      width: 100px; height: 100px;
+      width: 100%;
+      max-width: 300px;
+      height: auto;
       object-fit: contain;
-      filter: drop-shadow(0 0 14px var(--purple)) brightness(1.05);
+      filter: drop-shadow(0 0 20px var(--purple)) brightness(1.1);
     }
 
     /* Info line */
@@ -181,7 +184,7 @@
 
   <div class="frame-body">
     <div class="logo-wrap">
-      <img src="/static/send_btn.jpg" alt="Twin Shadow">
+      <img src="/static/send_btn_nobg.png" alt="Twin Shadow">
     </div>
     <div class="info-line">
       <span>/TWINSHADOW/AUTH.EXE</span>

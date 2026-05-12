@@ -285,11 +285,11 @@ body::before {
   flex-shrink: 0;
   background: transparent;
   border: 1px solid var(--border);
-  padding: 0;
+  padding: 2px;
   cursor: pointer;
   transition: box-shadow .15s, border-color .15s;
   width: 44px;
-  height: 36px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -298,9 +298,9 @@ body::before {
 #send-btn img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
-  opacity: 0.85;
+  opacity: 0.88;
   transition: opacity .15s;
 }
 #send-btn:hover { border-color: var(--purple); box-shadow: 0 0 14px var(--purple-glow); }
@@ -633,7 +633,7 @@ audio { width: 100%; margin-top: 4px; }
       <div class="bbs-sep"><span class="bbs-sep-line"></span></div>
       <div class="input-row">
         <textarea id="txt" rows="1" placeholder="Describe your idea..." onkeydown="onKey(event)" oninput="resize(this)"></textarea>
-        <button id="send-btn" onclick="send()"><img src="/static/send_btn.jpg" alt="Send"></button>
+        <button id="send-btn" onclick="send()"><img src="/static/send_btn_nobg.png" alt="Send"></button>
       </div>
     </div>
 
