@@ -272,6 +272,10 @@ TASK_MODELS: dict = {
     "creative_dolphin": ("venice",       "gemma4_uncensored"),
     "multimodal":       ("nvidia",       "glm51"),
 
+    # ── prose / novel / story writing (Groq Llama = best for long-form prose) ──
+    "story":            ("groq",         "llama"),
+    "story_fallback":   ("openrouter",   "llama_70b"),
+
     # ── code chain: CAPI (Ollama, free, uncensored) → NVIDIA free fallback ────
     "code":             ("ollama_cloud", "qwen"),
     "code_fallback":    ("nvidia",       "qwen_coder_480"),

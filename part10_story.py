@@ -148,9 +148,9 @@ async def bible_chat(
     messages.append({"role": "user", "content": user_message})
 
     try:
-        raw = await call_task("creative", messages)
+        raw = await call_task("story", messages)
     except Exception:
-        raw, _ = await call_task_with_fallback("creative", messages, "shadow_chat")
+        raw, _ = await call_task_with_fallback("story", messages, "story_fallback")
 
     # Check if model returned a completed bible
     bible_dict = None
@@ -187,7 +187,7 @@ async def complete_bible(partial: dict, original_idea: str) -> StoryBible:
     ]
 
     try:
-        raw = await call_task("creative", messages)
+        raw = await call_task("story", messages)
         clean = raw.strip()
         if "```" in clean:
             clean = clean.split("```")[1]
@@ -241,7 +241,7 @@ async def generate_outline(bible: StoryBible, length: str) -> list[dict]:
     ]
 
     try:
-        raw = await call_task("creative", messages)
+        raw = await call_task("story", messages)
         clean = raw.strip()
         if "```" in clean:
             lines = clean.split("\n")
@@ -261,6 +261,8 @@ async def generate_outline(bible: StoryBible, length: str) -> list[dict]:
 
 CHAPTER_SYSTEM_BASE = """You are fantm.ink, Twin Shadow's master storyteller.
 
+You write PROSE FICTION ONLY. Never output code, JSON, markdown formatting, bullet lists, or any technical content. Every word you produce is part of the story itself — narrative text, dialogue, description, inner monologue.
+
 Your voice:
 - Sardonic but never cruel
 - Sharp observations on human absurdity
@@ -269,7 +271,7 @@ Your voice:
 - Eloquent yet conversational
 - Occasionally breaks the fourth wall
 
-Write ONLY story content. No preamble. No meta-commentary.
+Write ONLY story prose. No preamble. No meta-commentary. No code. No JSON.
 Never contradict the story bible. Never break established rules."""
 
 
@@ -312,7 +314,7 @@ async def generate_chapter(
         ]
 
         try:
-            chunk, _ = await call_task_with_fallback("creative", messages, "creative_alt")
+            chunk, _ = await call_task_with_fallback("story", messages, "story_fallback")
         except Exception as e:
             log.error("[STORY] chapter chunk failed: %s", e)
             break
@@ -351,7 +353,7 @@ async def generate_title(bible: StoryBible, preview: str) -> str:
         {"role": "user",   "content": f"Genre: {bible.genre}\nTone: {bible.tone}\nLogline: {bible.logline}\nPreview: {preview[:400]}\n\nTitle:"},
     ]
     try:
-        title = await call_task("creative", messages)
+        title = await call_task("story", messages)
         return title.strip().strip('"').strip("'")[:100]
     except Exception:
         return f"{bible.genre.title()}: {bible.logline[:40]}"
