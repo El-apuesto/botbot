@@ -499,23 +499,42 @@ audio { width: 100%; margin-top: 4px; }
 /* ── PIPELINE JOBS ── */
 .job-row {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
   border: 1px solid var(--border);
-  padding: 7px 12px;
-  gap: 8px;
+  padding: 8px 12px;
+  gap: 4px;
+  transition: border-color .15s;
 }
-.job-name { font-size: 11px; color: var(--neon-bright); flex: 1; }
-.job-status { font-size: 10px; color: var(--purple); }
+.job-row:hover { border-color: var(--purple-dim); }
+.job-top { display: flex; align-items: center; gap: 8px; }
+.job-name { font-size: 11px; color: var(--neon-bright); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.job-desc { font-size: 10px; color: var(--muted); padding-left: 2px; white-space: pre-wrap; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.job-meta { font-size: 9px; color: var(--purple-dim); padding-left: 2px; }
+.job-status {
+  font-size: 9px;
+  font-family: var(--font);
+  cursor: pointer;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.job-status[data-s="queued"]      { color: var(--purple); }
+.job-status[data-s="in-progress"] { color: var(--cyan); }
+.job-status[data-s="done"]        { color: #44cc88; }
+.job-status[data-s="blocked"]     { color: var(--red); }
+.job-status:hover { opacity: .7; }
 .job-del {
   background: transparent;
   border: 1px solid rgba(123,0,80,.6);
   color: #cc4488;
   font-family: var(--font);
   font-size: 10px;
-  padding: 3px 7px;
+  padding: 2px 7px;
   cursor: pointer;
   transition: border-color .15s;
+  flex-shrink: 0;
 }
 .job-del:hover { border-color: var(--red); color: var(--red); }
 .ph-text { font-size: 11px; color: var(--muted); text-align: center; padding: 24px 0; letter-spacing: 0.05em; }
@@ -1680,6 +1699,8 @@ async function sendToVideoLab(source) {
 /* ─────────────────────────────────────────
    PIPELINE
 ───────────────────────────────────────── */
+const _STATUS_CYCLE = ['queued', 'in-progress', 'done', 'blocked'];
+
 async function loadPipeline() {
   const list  = document.getElementById('pipeline-list');
   const empty = document.getElementById('pipeline-empty');
@@ -1688,13 +1709,42 @@ async function loadPipeline() {
     list.innerHTML = '';
     empty.style.display = jobs.length ? 'none' : '';
     jobs.forEach(job => {
-      const row = document.createElement('div'); row.className = 'job-row';
+      const date = job.created_at
+        ? new Date(job.created_at).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' })
+        : '';
+      const desc = job.description ? `<div class="job-desc">${_esc(job.description)}</div>` : '';
+      const meta = date ? `<div class="job-meta">ADDED ${date.toUpperCase()}</div>` : '';
+      const row = document.createElement('div');
+      row.className = 'job-row';
       row.innerHTML =
-        `<span class="job-name">${job.name}</span>` +
-        `<span class="job-status">[${job.status}]</span>` +
-        `<button class="job-del" onclick="delJob(${job.id})">DEL</button>`;
+        `<div class="job-top">` +
+          `<span class="job-name" title="${_esc(job.name)}">${_esc(job.name)}</span>` +
+          `<button class="job-status" data-s="${job.status}" data-id="${job.id}"
+                   onclick="cycleStatus(this)" title="Click to cycle status">[${job.status.toUpperCase()}]</button>` +
+          `<button class="job-del" onclick="delJob(${job.id})">[ DEL ]</button>` +
+        `</div>` +
+        desc + meta;
       list.appendChild(row);
     });
+  } catch {}
+}
+
+function _esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function cycleStatus(btn) {
+  const id  = parseInt(btn.dataset.id);
+  const cur = btn.dataset.s;
+  const nxt = _STATUS_CYCLE[(_STATUS_CYCLE.indexOf(cur) + 1) % _STATUS_CYCLE.length];
+  try {
+    await fetch('/api/pipeline/' + id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: nxt })
+    });
+    btn.dataset.s = nxt;
+    btn.textContent = '[' + nxt.toUpperCase() + ']';
   } catch {}
 }
 
@@ -1714,6 +1764,7 @@ async function addPipelineJob() {
 }
 
 async function delJob(id) {
+  if (!confirm('Remove this project from the pipeline?')) return;
   try {
     await fetch('/api/pipeline/' + id, { method: 'DELETE' });
     loadPipeline();

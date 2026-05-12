@@ -1080,6 +1080,20 @@ def api_pipeline_delete(job_id):
     _pipeline_save(jobs)
     return jsonify({"ok": True})
 
+@_flask.route("/api/pipeline/<int:job_id>", methods=["PATCH"])
+def api_pipeline_patch(job_id):
+    data = request.json or {}
+    jobs = _pipeline_load()
+    for job in jobs:
+        if job.get("id") == job_id:
+            if "status" in data:
+                job["status"] = data["status"]
+            if "description" in data:
+                job["description"] = data["description"]
+            break
+    _pipeline_save(jobs)
+    return jsonify({"ok": True})
+
 
 # -------------------------------------------------------------------------------
 # VIDEO LAB - /lab + /api/lab/*
