@@ -986,9 +986,9 @@ audio { width: 100%; margin-top: 4px; }
             <button class="btn" style="font-size:10px;padding:3px 9px" onclick="bookUseBible()">[ USE BIBLE CONCEPT ]</button>
           </div>
 
-          <!-- Options row 1 -->
+          <!-- Options row 1: pages / template / style -->
           <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-            <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:100px">
+            <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:90px">
               <span style="font-size:10px;color:var(--muted)">PAGES</span>
               <select class="fi" id="book-pages" style="padding:4px 6px">
                 <option value="8">8 pages</option>
@@ -996,14 +996,14 @@ audio { width: 100%; margin-top: 4px; }
                 <option value="16" selected>16 pages</option>
               </select>
             </div>
-            <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:110px">
+            <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:100px">
               <span style="font-size:10px;color:var(--muted)">TEMPLATE</span>
               <select class="fi" id="book-template" style="padding:4px 6px" onchange="bookTemplateChange()">
                 <option value="1">1 — Classic</option>
                 <option value="2">2 — Immersive</option>
               </select>
             </div>
-            <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:120px">
+            <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:110px">
               <span style="font-size:10px;color:var(--muted)">IMAGE STYLE</span>
               <select class="fi" id="book-style" style="padding:4px 6px">
                 <option value="watercolor">Watercolor</option>
@@ -1012,6 +1012,22 @@ audio { width: 100%; margin-top: 4px; }
                 <option value="digital">Digital Art</option>
               </select>
             </div>
+          </div>
+
+          <!-- Options row 2: paper size -->
+          <div style="display:flex;flex-direction:column;gap:3px;margin-top:6px">
+            <span style="font-size:10px;color:var(--muted)">PAPER / FOLD FORMAT</span>
+            <select class="fi" id="book-paper" style="padding:4px 6px" onchange="bookPaperChange()">
+              <option value="letter"  selected>Letter fold → 5.5" × 8.5" booklet (print on 8.5×11)</option>
+              <option value="tabloid">Tabloid fold → 8.5" × 11" booklet (print on 11×17)</option>
+              <option value="a5">A4 fold → A5 booklet 148×210 mm (print on A4)</option>
+              <option value="a4">A3 fold → A4 booklet 210×297 mm (print on A3)</option>
+            </select>
+          </div>
+
+          <!-- Paper note -->
+          <div id="book-paper-note" style="font-size:10px;color:var(--muted);margin-top:3px;padding:3px 6px;border-left:2px solid var(--purple-dim)">
+            Two pages per sheet, fold on long edge &rarr; saddle-stitch spine. Any home printer works for Letter size.
           </div>
 
           <!-- Text position (template 1 only) -->
@@ -1894,6 +1910,18 @@ function bookTemplateChange() {
   document.getElementById('book-pos-row').style.display = v === '1' ? 'flex' : 'none';
 }
 
+const _PAPER_NOTES = {
+  'letter':  'Two pages per sheet, fold on long edge \u2192 saddle-stitch spine. Any home printer works for Letter size.',
+  'tabloid': 'Two pages per 11\u00d717" sheet, fold on long edge \u2192 8.5\u00d711" booklet. Needs wide-format or print shop.',
+  'a5':      'Two pages per A4 sheet, fold on long edge \u2192 A5 booklet. Standard on any A4-capable printer.',
+  'a4':      'Two pages per A3 sheet, fold on long edge \u2192 A4 booklet. Requires A3-capable or wide-format printer.',
+};
+
+function bookPaperChange() {
+  const v = document.getElementById('book-paper').value;
+  document.getElementById('book-paper-note').textContent = _PAPER_NOTES[v] || '';
+}
+
 function bookUseBible() {
   const logline = document.getElementById('bible-logline');
   const concept = document.getElementById('book-concept');
@@ -1948,6 +1976,7 @@ async function bookGenerate() {
     template:    parseInt(document.getElementById('book-template').value),
     image_style: document.getElementById('book-style').value,
     text_pos:    document.getElementById('book-textpos').value,
+    paper_size:  document.getElementById('book-paper').value,
   };
 
   try {

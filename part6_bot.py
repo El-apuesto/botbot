@@ -2244,6 +2244,7 @@ def api_book_generate():
     template    = int(data.get("template") or 1)
     image_style = data.get("image_style", "watercolor")
     text_pos    = data.get("text_pos", "below")
+    paper_size  = data.get("paper_size", "letter")
 
     if not concept:
         return jsonify({"error": "concept required"}), 400
@@ -2287,6 +2288,7 @@ def api_book_generate():
                 template=template,
                 text_pos=text_pos,
                 image_style=image_style,
+                paper_size=paper_size,
             )
 
             # 3. Build book PDF
