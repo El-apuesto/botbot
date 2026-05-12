@@ -2220,6 +2220,102 @@ async def vlab_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ===========================================================================
+# CHILDREN'S BOOK API ROUTE
+# ===========================================================================
+
+@_flask.route("/api/book/generate", methods=["POST"])
+def api_book_generate():
+    """
+    SSE route. Generates a fully illustrated children's book PDF.
+    Body: { title, author, concept, num_pages, template, image_style, text_pos }
+    Streams progress; final line: DONE:/renders/<book>.pdf|/renders/<instr>.pdf
+    """
+    from part11_book import (
+        split_story, IMAGE_STYLES, BookPage, ChildrensBook,
+        build_pdf_template1, build_pdf_template2, build_instructions_pdf,
+        download_image_to,
+    )
+
+    data        = request.json or {}
+    title       = data.get("title", "My Story").strip() or "My Story"
+    author      = data.get("author", "Anonymous").strip() or "Anonymous"
+    concept     = data.get("concept", "").strip()
+    num_pages   = max(4, min(20, int(data.get("num_pages") or 8)))
+    template    = int(data.get("template") or 1)
+    image_style = data.get("image_style", "watercolor")
+    text_pos    = data.get("text_pos", "below")
+
+    if not concept:
+        return jsonify({"error": "concept required"}), 400
+
+    safe_title  = re.sub(r"[^a-zA-Z0-9_-]", "_", title)[:36]
+    output_name = f"{safe_title}_{int(time.time())}"
+
+    async def _run():
+        try:
+            # 1. Split story into pages
+            yield f"SPLITTING STORY INTO {num_pages} PAGES..."
+            raw_pages = await split_story(concept, title, num_pages)
+            actual = len(raw_pages)
+            yield f"- {actual} PAGES PLANNED"
+
+            style_suffix = IMAGE_STYLES.get(image_style, IMAGE_STYLES["watercolor"])
+            book_pages: list[BookPage] = []
+
+            # 2. Generate one image per page
+            for i, p in enumerate(raw_pages):
+                img_prompt = f"{p.get('image_prompt', 'scene')}, {style_suffix}"
+                yield f"GENERATING IMAGE {i + 1}/{actual}..."
+                result = await fal_generate_image(img_prompt, "", None)
+                img_path = None
+                if not result.get("error"):
+                    url = result.get("url", "")
+                    if url and url.startswith("http"):
+                        dest = str(_lab_renders_dir / f"book_{output_name}_p{i + 1}.jpg")
+                        img_path = download_image_to(url, dest)
+                yield f"- IMAGE {i + 1} {'READY' if img_path else 'FAILED (placeholder used)'}"
+                book_pages.append(BookPage(
+                    num=i + 1,
+                    text=p.get("text", ""),
+                    image_prompt=p.get("image_prompt", ""),
+                    image_path=img_path,
+                ))
+
+            book = ChildrensBook(
+                title=title, author=author,
+                pages=book_pages,
+                template=template,
+                text_pos=text_pos,
+                image_style=image_style,
+            )
+
+            # 3. Build book PDF
+            book_fname = f"{output_name}_book.pdf"
+            instr_fname = f"{output_name}_instructions.pdf"
+            book_path  = str(_lab_renders_dir / book_fname)
+            instr_path = str(_lab_renders_dir / instr_fname)
+
+            yield "ASSEMBLING BOOK PDF..."
+            if template == 2:
+                build_pdf_template2(book, book_path)
+            else:
+                build_pdf_template1(book, book_path)
+            yield f"- BOOK PDF DONE ({len(book_pages)} PAGES)"
+
+            # 4. Build instructions PDF
+            yield "ASSEMBLING PRINT INSTRUCTIONS..."
+            build_instructions_pdf(book, instr_path)
+            yield "- INSTRUCTIONS PDF DONE"
+
+            yield f"DONE:/renders/{book_fname}|/renders/{instr_fname}"
+
+        except Exception as e:
+            yield f"- ERROR: {str(e)[:300]}"
+
+    return _sse_stream(_run)
+
+
+# ===========================================================================
 # STORY / STUDIO API ROUTES
 # ===========================================================================
 

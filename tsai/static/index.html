@@ -869,6 +869,7 @@ audio { width: 100%; margin-top: 4px; }
       <div class="lab-tab-row">
         <button class="lab-tab active" onclick="switchStudio('bible', this)">BIBLE</button>
         <button class="lab-tab" onclick="switchStudio('reader', this)">READER</button>
+        <button class="lab-tab" onclick="switchStudio('book', this)">BOOK</button>
       </div>
 
       <!-- ── BIBLE TAB ── -->
@@ -960,6 +961,97 @@ audio { width: 100%; margin-top: 4px; }
 
         </div>
       </div>
+
+      <!-- ── BOOK TAB ── -->
+      <div class="lab-section" id="studio-book">
+        <div class="panel-scroll">
+
+          <div class="fg">
+            <span class="fl">CHILDREN'S BOOK GENERATOR</span>
+          </div>
+
+          <!-- Title / Author -->
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <input class="fi" id="book-title"  type="text" placeholder="Book title..." style="flex:2">
+            <input class="fi" id="book-author" type="text" placeholder="Author name..." style="flex:1">
+          </div>
+
+          <!-- Concept -->
+          <div style="display:flex;gap:5px;align-items:flex-end;margin-top:6px">
+            <textarea class="fi" id="book-concept" rows="3"
+              placeholder="Story concept — who is it about, what happens, what's the message?..."
+              style="flex:1;resize:vertical"></textarea>
+          </div>
+          <div class="action-row" style="margin-top:4px">
+            <button class="btn" style="font-size:10px;padding:3px 9px" onclick="bookUseBible()">[ USE BIBLE CONCEPT ]</button>
+          </div>
+
+          <!-- Options row 1 -->
+          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+            <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:100px">
+              <span style="font-size:10px;color:var(--muted)">PAGES</span>
+              <select class="fi" id="book-pages" style="padding:4px 6px">
+                <option value="8">8 pages</option>
+                <option value="12">12 pages</option>
+                <option value="16" selected>16 pages</option>
+              </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:110px">
+              <span style="font-size:10px;color:var(--muted)">TEMPLATE</span>
+              <select class="fi" id="book-template" style="padding:4px 6px" onchange="bookTemplateChange()">
+                <option value="1">1 — Classic</option>
+                <option value="2">2 — Immersive</option>
+              </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:120px">
+              <span style="font-size:10px;color:var(--muted)">IMAGE STYLE</span>
+              <select class="fi" id="book-style" style="padding:4px 6px">
+                <option value="watercolor">Watercolor</option>
+                <option value="cartoon">Cartoon</option>
+                <option value="pencil">Pencil &amp; Ink</option>
+                <option value="digital">Digital Art</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Text position (template 1 only) -->
+          <div id="book-pos-row" style="display:flex;flex-direction:column;gap:3px;margin-top:6px">
+            <span style="font-size:10px;color:var(--muted)">TEXT POSITION (TEMPLATE 1)</span>
+            <select class="fi" id="book-textpos" style="padding:4px 6px">
+              <option value="below">Below image</option>
+              <option value="above">Above image</option>
+              <option value="alternating">Alternating</option>
+            </select>
+          </div>
+
+          <!-- Template description -->
+          <div id="book-tpl-desc" style="font-size:11px;color:var(--muted);margin-top:4px;padding:4px 6px;border-left:2px solid var(--purple-dim)">
+            Template 1 — Classic: text stacked above or below each illustration on a white background strip.
+          </div>
+
+          <!-- Generate -->
+          <div class="action-row" style="margin-top:10px">
+            <button class="btn" id="book-gen-btn" onclick="bookGenerate()">[ GENERATE BOOK ]</button>
+          </div>
+
+          <!-- Progress log -->
+          <div id="book-log" class="session-out"
+               style="display:none;min-height:80px;max-height:200px;margin-top:8px;font-size:11px"></div>
+
+          <!-- Download buttons (shown when done) -->
+          <div id="book-dl-row" style="display:none;flex-direction:column;gap:6px;margin-top:8px">
+            <div style="display:flex;gap:6px">
+              <a id="book-dl-book"  class="btn" style="flex:1;text-align:center;text-decoration:none" download>[ DOWNLOAD BOOK PDF ]</a>
+              <a id="book-dl-instr" class="btn" style="flex:1;text-align:center;text-decoration:none" download>[ DOWNLOAD PRINT GUIDE ]</a>
+            </div>
+            <div style="font-size:10px;color:var(--muted);text-align:center">
+              Print guide includes supply list, print settings &amp; binding steps
+            </div>
+          </div>
+
+        </div>
+      </div>
+
     </div>
 
   </div><!-- /terminal -->
@@ -1784,6 +1876,128 @@ function switchStudio(tab, btn) {
   document.getElementById('studio-' + tab).classList.add('active');
   btn.classList.add('active');
   if (tab === 'reader') studioLoadList();
+}
+
+/* ─────────────────────────────────────────
+   CHILDREN'S BOOK GENERATOR
+───────────────────────────────────────── */
+const BOOK = { busy: false, bookUrl: null, instrUrl: null };
+
+const _TPL_DESC = {
+  '1': 'Template 1 — Classic: text stacked above or below each illustration on a white background strip.',
+  '2': 'Template 2 — Immersive: full-bleed illustration with a white text box overlaid on each page.',
+};
+
+function bookTemplateChange() {
+  const v = document.getElementById('book-template').value;
+  document.getElementById('book-tpl-desc').textContent = _TPL_DESC[v] || '';
+  document.getElementById('book-pos-row').style.display = v === '1' ? 'flex' : 'none';
+}
+
+function bookUseBible() {
+  const logline = document.getElementById('bible-logline');
+  const concept = document.getElementById('book-concept');
+  if (logline && logline.textContent.trim()) {
+    concept.value = logline.textContent.trim();
+  } else {
+    const chatOut = document.getElementById('bible-chat-out');
+    const lines   = chatOut ? Array.from(chatOut.querySelectorAll('.ai')) : [];
+    if (lines.length) concept.value = lines[lines.length - 1].textContent.replace(/^>\s*/, '').trim();
+    else concept.value = '';
+  }
+  if (!concept.value) concept.placeholder = 'No Bible concept found — type one above instead.';
+}
+
+function bookLog(msg) {
+  const out = document.getElementById('book-log');
+  out.style.display = 'block';
+  const d = document.createElement('div');
+  d.className = 'session-line ' + (msg.startsWith('-') ? 'ai' : 'user');
+  d.textContent = msg;
+  out.appendChild(d);
+  out.scrollTop = out.scrollHeight;
+}
+
+async function bookGenerate() {
+  if (BOOK.busy) return;
+  const title   = document.getElementById('book-title').value.trim();
+  const author  = document.getElementById('book-author').value.trim();
+  const concept = document.getElementById('book-concept').value.trim();
+  if (!title)   { alert('Please enter a book title.'); return; }
+  if (!concept) { alert('Please enter a story concept.'); return; }
+
+  BOOK.busy = true;
+  BOOK.bookUrl = null;
+  BOOK.instrUrl = null;
+
+  const genBtn  = document.getElementById('book-gen-btn');
+  const log     = document.getElementById('book-log');
+  const dlRow   = document.getElementById('book-dl-row');
+
+  genBtn.disabled = true;
+  genBtn.textContent = '[ GENERATING... ]';
+  log.innerHTML = '';
+  log.style.display = 'block';
+  dlRow.style.display = 'none';
+
+  const body = {
+    title,
+    author:      author || 'Anonymous',
+    concept,
+    num_pages:   parseInt(document.getElementById('book-pages').value),
+    template:    parseInt(document.getElementById('book-template').value),
+    image_style: document.getElementById('book-style').value,
+    text_pos:    document.getElementById('book-textpos').value,
+  };
+
+  try {
+    const resp = await fetch('/api/book/generate', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    });
+
+    const reader  = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let   buf     = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const parts = buf.split('\n\n');
+      buf = parts.pop();
+      for (const part of parts) {
+        const line = part.trim();
+        if (!line || line.startsWith(':')) continue;
+        const json = line.replace(/^data:\s*/, '');
+        try {
+          const ev = JSON.parse(json);
+          if (ev.error) { bookLog('- ERROR: ' + ev.error); }
+          else if (ev.done) { /* finished */ }
+          else if (ev.text) {
+            const txt = ev.text;
+            bookLog(txt);
+            if (txt.startsWith('DONE:')) {
+              const [bookPart, instrPart] = txt.replace('DONE:', '').split('|');
+              BOOK.bookUrl  = bookPart.trim();
+              BOOK.instrUrl = instrPart ? instrPart.trim() : null;
+              document.getElementById('book-dl-book').href  = BOOK.bookUrl;
+              if (BOOK.instrUrl)
+                document.getElementById('book-dl-instr').href = BOOK.instrUrl;
+              dlRow.style.display = 'flex';
+            }
+          }
+        } catch (_) {}
+      }
+    }
+  } catch (e) {
+    bookLog('- FETCH ERROR: ' + e.message);
+  } finally {
+    BOOK.busy = false;
+    genBtn.disabled = false;
+    genBtn.textContent = '[ GENERATE BOOK ]';
+  }
 }
 
 /* ── Bible chat ── */
