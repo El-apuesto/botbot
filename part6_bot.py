@@ -1428,10 +1428,12 @@ def _run_video_job_sync(job_id: str, prompt: str, image_url: str | None):
     _lab_jobs[job_id] = {"status": "processing", "provider": "replicate"}
     try:
         import replicate
+        _rep_token = "".join(c for c in os.environ.get("REPLICATE_API_TOKEN", "") if ord(c) < 128).strip()
+        _rep_client = replicate.Client(api_token=_rep_token)
         inp: dict = {"prompt": prompt}
         if image_url:
             inp["first_frame_image"] = image_url
-        output = replicate.run("minimax/video-01", input=inp)
+        output = _rep_client.run("minimax/video-01", input=inp)
         url3   = output[0] if isinstance(output, list) else str(output)
         lpath3 = download_file(url3, str(_lab_renders_dir), f"aivideo_{job_id[:8]}.mp4")
         _lab_jobs[job_id] = {"status": "done", "url": url3, "local_path": lpath3, "provider": "replicate"}

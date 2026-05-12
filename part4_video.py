@@ -449,13 +449,15 @@ async def _replicate_generate(prompt: str, image_url: str | None = None) -> str:
     import asyncio
     import replicate
 
+    _token = "".join(c for c in os.environ.get("REPLICATE_API_TOKEN", "") if ord(c) < 128).strip()
+    _client = replicate.Client(api_token=_token)
     loop   = asyncio.get_event_loop()
     inp    = {"prompt": prompt}
     if image_url:
         inp["first_frame_image"] = image_url
     output = await loop.run_in_executor(
         None,
-        lambda: replicate.run("minimax/video-01", input=inp),
+        lambda: _client.run("minimax/video-01", input=inp),
     )
     return output[0] if isinstance(output, list) else str(output)
 
