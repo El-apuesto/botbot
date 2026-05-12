@@ -213,6 +213,59 @@
     }
     .footer a { color: #6633aa; text-decoration: none; }
     .footer a:hover { color: #cc44ff; }
+
+    /* ── DESKTOP ── */
+    @media (min-width: 700px) {
+      html, body {
+        height: 100%;
+        overflow: hidden;
+      }
+      body {
+        background-image: url('/static/desk_bg_login.jpeg');
+        background-size: cover;
+        background-position: center center;
+        background-repeat: no-repeat;
+      }
+      .page {
+        flex-direction: row;
+        align-items: stretch;
+        justify-content: flex-end;
+        min-height: 100vh;
+        padding: 0;
+      }
+      /* Left half is the background image — nothing rendered there */
+      .figure-wrap { display: none; }
+      .logo-wrap   { display: none; }
+      /* Right column: form + footer stacked */
+      .form-col {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 46%;
+        min-height: 100vh;
+        padding: 40px 48px;
+        background: rgba(4,0,12,0.72);
+        backdrop-filter: blur(2px);
+        border-left: 1px solid #2a0040;
+      }
+      .form-area {
+        max-width: 360px;
+        width: 100%;
+      }
+      .extras {
+        max-width: 360px;
+        width: 100%;
+        margin-top: 8px;
+      }
+      .footer {
+        max-width: 360px;
+        width: 100%;
+        border-top: 1px solid #1a0025;
+        padding-top: 12px;
+        margin-top: 24px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -223,45 +276,50 @@
     <img src="/static/login_mobile.JPEG" alt="Twin Shadow">
   </div>
 
-  <!-- FORM -->
-  <form class="form-area" method="POST" action="/login">
+  <!-- FORM COL (right panel on desktop, inline on mobile) -->
+  <div class="form-col">
 
-    <!-- USERNAME (cosmetic display field) -->
-    <div class="field-wrap">
-      <input class="field-input" type="text" placeholder="USERNAME" autocomplete="username" tabindex="-1" readonly>
+    <!-- FORM -->
+    <form class="form-area" method="POST" action="/login">
+
+      <!-- USERNAME (cosmetic display field) -->
+      <div class="field-wrap">
+        <input class="field-input" type="text" placeholder="USERNAME" autocomplete="username" tabindex="-1" readonly>
+      </div>
+
+      <!-- PASSWORD -->
+      <div class="field-wrap">
+        <input class="field-input" type="password" name="password" placeholder="PASSWORD" autofocus autocomplete="current-password">
+        <span class="field-cursor">█</span>
+      </div>
+
+      {% if error %}
+      <div class="err-msg">&#9888; {{ error }}</div>
+      {% endif %}
+
+      <button type="submit" class="login-btn">LOGIN</button>
+    </form>
+
+    <!-- EXTRAS -->
+    <div class="extras">
+      <label class="remember-row">
+        <input type="checkbox" name="remember"> Remember Me
+      </label>
+      <div class="forgot-row">
+        Forgot Password?&nbsp; <a href="#">Create New Account</a>
+      </div>
     </div>
 
-    <!-- PASSWORD -->
-    <div class="field-wrap">
-      <input class="field-input" type="password" name="password" placeholder="PASSWORD" autofocus autocomplete="current-password">
-      <span class="field-cursor">█</span>
+    <!-- FOOTER -->
+    <div class="footer">
+      &copy; 2026 TWIN SHADOW All rights reserved.&nbsp;|&nbsp;
+      A:\&gt; DIR&nbsp;
+      <a href="#">Privacy Policy</a>&nbsp;|&nbsp;
+      <a href="#">Terms of Service</a>&nbsp;|&nbsp;
+      <a href="#">Contact</a>
     </div>
 
-    {% if error %}
-    <div class="err-msg">&#9888; {{ error }}</div>
-    {% endif %}
-
-    <button type="submit" class="login-btn">LOGIN</button>
-  </form>
-
-  <!-- EXTRAS -->
-  <div class="extras">
-    <label class="remember-row">
-      <input type="checkbox" name="remember"> Remember Me
-    </label>
-    <div class="forgot-row">
-      Forgot Password?&nbsp; <a href="#">Create New Account</a>
-    </div>
-  </div>
-
-  <!-- FOOTER -->
-  <div class="footer">
-    &copy; 2026 TWIN SHADOW All rights reserved.&nbsp;|&nbsp;
-    A:\&gt; DIR&nbsp;
-    <a href="#">Privacy Policy</a>&nbsp;|&nbsp;
-    <a href="#">Terms of Service</a>&nbsp;|&nbsp;
-    <a href="#">Contact</a>
-  </div>
+  </div><!-- /form-col -->
 
 </div>
 </body>
