@@ -864,6 +864,104 @@ audio { width: 100%; margin-top: 4px; }
       </div>
     </div>
 
+    <!-- [5] STUDIO — NOVEL / STORY GENERATOR -->
+    <div class="panel" id="panel-studio">
+      <div class="lab-tab-row">
+        <button class="lab-tab active" onclick="switchStudio('bible', this)">BIBLE</button>
+        <button class="lab-tab" onclick="switchStudio('reader', this)">READER</button>
+      </div>
+
+      <!-- ── BIBLE TAB ── -->
+      <div class="lab-section active" id="studio-bible">
+        <div class="panel-scroll">
+
+          <div class="fg">
+            <span class="fl">STORY BIBLE BUILDER</span>
+            <div id="bible-chat-out" class="session-out" style="min-height:100px;max-height:220px"></div>
+          </div>
+
+          <div style="display:flex;gap:5px;align-items:flex-end">
+            <textarea class="fi" id="bible-input" rows="2"
+              placeholder="Describe your story idea, or answer the architect's questions..."
+              onkeydown="bibleKey(event)"></textarea>
+            <button class="btn" style="white-space:nowrap;align-self:flex-end" onclick="bibleChat()">[ SEND ]</button>
+          </div>
+
+          <div class="action-row" style="flex-wrap:wrap">
+            <button class="btn" id="bible-complete-btn" onclick="bibleComplete()">[ AUTO-COMPLETE BIBLE ]</button>
+            <button class="btn" id="bible-generate-btn" onclick="studioGenerate()" style="display:none">[ GENERATE STORY ]</button>
+          </div>
+
+          <!-- Bible preview -->
+          <div class="fg" id="bible-preview-box" style="display:none">
+            <span class="fl">STORY BIBLE</span>
+            <div id="bible-preview" style="font-size:13px;line-height:1.6;color:var(--text);white-space:pre-wrap;max-height:160px;overflow-y:auto;border:1px solid var(--purple-dim);padding:6px"></div>
+          </div>
+
+          <!-- Length selector -->
+          <div class="fg" id="bible-length-box" style="display:none">
+            <span class="fl">LENGTH</span>
+            <div class="opt-row" style="flex-wrap:wrap">
+              <button class="opt on"  id="sl-short"   onclick="setStoryLength('short',this)">SHORT<br><span style="font-size:9px;opacity:.6">3K WDS</span></button>
+              <button class="opt"     id="sl-medium"  onclick="setStoryLength('medium',this)">MEDIUM<br><span style="font-size:9px;opacity:.6">8K WDS</span></button>
+              <button class="opt"     id="sl-long"    onclick="setStoryLength('long',this)">LONG<br><span style="font-size:9px;opacity:.6">15K WDS</span></button>
+              <button class="opt"     id="sl-novella" onclick="setStoryLength('novella',this)">NOVELLA<br><span style="font-size:9px;opacity:.6">45K WDS</span></button>
+              <button class="opt"     id="sl-novel"   onclick="setStoryLength('novel',this)">NOVEL<br><span style="font-size:9px;opacity:.6">90K WDS</span></button>
+              <button class="opt"     id="sl-epic"    onclick="setStoryLength('epic',this)">EPIC<br><span style="font-size:9px;opacity:.6">140K WDS</span></button>
+            </div>
+          </div>
+
+          <!-- Generation status -->
+          <div class="fg" id="bible-gen-status" style="display:none">
+            <span class="fl">GENERATION STATUS</span>
+            <div id="bible-gen-msg" style="font-size:13px;color:var(--cyan);padding:4px 0"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── READER TAB ── -->
+      <div class="lab-section" id="studio-reader">
+        <div class="panel-scroll">
+
+          <div class="action-row">
+            <button class="btn" onclick="studioLoadList()">[ REFRESH STORIES ]</button>
+          </div>
+
+          <!-- Story list -->
+          <div id="studio-story-list" style="display:flex;flex-direction:column;gap:5px"></div>
+          <p class="ph-text" id="studio-list-empty" style="display:none">NO STORIES GENERATED YET.</p>
+
+          <!-- ── DOWNLOAD UI ── -->
+          <div id="studio-dl-box" style="display:none;flex-direction:column;gap:8px;border:1px solid var(--purple-dim);padding:8px;margin-top:6px">
+            <span class="fl">KDP DOWNLOAD — <span id="studio-dl-title" style="color:var(--cyan)"></span></span>
+            <input class="fi" id="studio-dl-author"   type="text" placeholder="Author name (required)">
+            <input class="fi" id="studio-dl-subtitle" type="text" placeholder="Subtitle (optional)">
+            <div class="action-row">
+              <button class="btn" id="studio-dl-btn" onclick="studioDownload()">[ DOWNLOAD KDP ZIP ]</button>
+            </div>
+            <div id="studio-dl-msg" style="font-size:12px;color:var(--muted)"></div>
+          </div>
+
+          <!-- Chapter content -->
+          <div id="studio-chapter-box" style="display:none;flex-direction:column;gap:6px;margin-top:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span class="fl" id="studio-ch-label">CHAPTER</span>
+              <div style="display:flex;gap:4px">
+                <button class="btn" style="font-size:10px;padding:3px 8px" onclick="studioChNav(-1)">&#9664; PREV</button>
+                <button class="btn" style="font-size:10px;padding:3px 8px" onclick="studioChNav(1)">NEXT &#9654;</button>
+              </div>
+            </div>
+            <div id="studio-chapter-text"
+              style="font-size:13px;line-height:1.8;color:var(--text);white-space:pre-wrap;
+                     max-height:280px;overflow-y:auto;border:1px solid var(--purple-dim);padding:8px">
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
   </div><!-- /terminal -->
 
   <!-- ═══ INPUT ROW — below the box ═══ -->
@@ -879,6 +977,7 @@ audio { width: 100%; margin-top: 4px; }
     <button class="nav-btn" onclick="switchTab('projects', this)"><span class="nav-num">[2]</span>PROJECTS</button>
     <button class="nav-btn" onclick="switchTab('lab', this)"><span class="nav-num">[3]</span>LAB</button>
     <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[4]</span>SETTINGS</button>
+    <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[5]</span>STUDIO</button>
   </nav>
 
 </div><!-- /app -->
@@ -1667,16 +1766,287 @@ async function deployBuilder() {
 }
 
 /* ─────────────────────────────────────────
+   STUDIO — NOVEL / STORY GENERATOR
+───────────────────────────────────────── */
+const ST = {
+  sessionId:    null,
+  bible:        null,
+  storyLength:  'short',
+  activeStoryId: null,
+  chapterNum:   1,
+  chapterTotal: 0,
+  pollTimer:    null,
+};
+
+function switchStudio(tab, btn) {
+  document.querySelectorAll('#panel-studio .lab-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('#panel-studio .lab-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('studio-' + tab).classList.add('active');
+  btn.classList.add('active');
+  if (tab === 'reader') studioLoadList();
+}
+
+/* ── Bible chat ── */
+function bibleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); bibleChat(); }
+}
+
+function bibleOut(cls, text) {
+  const out = document.getElementById('bible-chat-out');
+  const d = document.createElement('div');
+  d.className = 'session-line ' + cls;
+  d.textContent = text;
+  out.appendChild(d);
+  out.scrollTop = out.scrollHeight;
+}
+
+async function bibleChat() {
+  const inp = document.getElementById('bible-input');
+  const msg = inp.value.trim();
+  if (!msg) return;
+  inp.value = '';
+  bibleOut('user', '> ' + msg);
+
+  try {
+    const res  = await fetch('/api/story/bible/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg, session_id: ST.sessionId }),
+    });
+    const data = await res.json();
+    if (data.error) { bibleOut('err', '✗ ' + data.error); return; }
+    ST.sessionId = data.session_id;
+    bibleOut('assistant', data.response);
+    if (data.bible) {
+      ST.bible = data.bible;
+      showBiblePreview(data.bible);
+    }
+  } catch(e) {
+    bibleOut('err', '✗ ERROR: ' + e);
+  }
+}
+
+async function bibleComplete() {
+  bibleOut('system', '> AUTO-COMPLETING BIBLE...');
+  const btn = document.getElementById('bible-complete-btn');
+  btn.disabled = true; btn.textContent = '[ COMPLETING... ]';
+  try {
+    const res  = await fetch('/api/story/bible/complete', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: ST.sessionId }),
+    });
+    const data = await res.json();
+    if (data.error) { bibleOut('err', '✗ ' + data.error); return; }
+    ST.bible = data.bible;
+    showBiblePreview(data.bible);
+    bibleOut('system', '✓ BIBLE COMPLETE — REVIEW ABOVE, THEN GENERATE STORY');
+  } catch(e) {
+    bibleOut('err', '✗ ERROR: ' + e);
+  } finally {
+    btn.disabled = false; btn.textContent = '[ AUTO-COMPLETE BIBLE ]';
+  }
+}
+
+function showBiblePreview(bible) {
+  const box = document.getElementById('bible-preview-box');
+  const pre = document.getElementById('bible-preview');
+  const lines = [
+    `TITLE:    ${bible.title || '(untitled)'}`,
+    `GENRE:    ${bible.genre || '—'}`,
+    `TONE:     ${bible.tone || '—'}`,
+    `LOGLINE:  ${bible.logline || '—'}`,
+    `SETTING:  ${bible.setting || '—'}`,
+    `CONFLICT: ${bible.central_conflict || '—'}`,
+    `THEMES:   ${(bible.themes || []).join(', ') || '—'}`,
+    `CHARS:    ${(bible.characters || []).map(c => c.name || c).join(', ') || '—'}`,
+  ];
+  pre.textContent = lines.join('\n');
+  box.style.display = 'block';
+  document.getElementById('bible-length-box').style.display = 'block';
+  document.getElementById('bible-generate-btn').style.display = '';
+}
+
+function setStoryLength(val, btn) {
+  ST.storyLength = val;
+  document.querySelectorAll('[id^=sl-]').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+}
+
+async function studioGenerate() {
+  if (!ST.bible) { alert('BUILD A BIBLE FIRST'); return; }
+  const btn = document.getElementById('bible-generate-btn');
+  btn.disabled = true; btn.textContent = '[ GENERATING... ]';
+  document.getElementById('bible-gen-status').style.display = 'block';
+  document.getElementById('bible-gen-msg').textContent = 'SUBMITTING JOB...';
+
+  try {
+    const res  = await fetch('/api/story/generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bible: ST.bible, length: ST.storyLength }),
+    });
+    const data = await res.json();
+    if (data.error) {
+      document.getElementById('bible-gen-msg').textContent = '✗ ' + data.error;
+      return;
+    }
+    ST.activeStoryId = data.story_id;
+    document.getElementById('bible-gen-msg').textContent =
+      `STORY ${data.story_id} — GENERATING (THIS TAKES A WHILE FOR LONGER WORKS)...`;
+    studioPoll(data.story_id);
+  } catch(e) {
+    document.getElementById('bible-gen-msg').textContent = '✗ ERROR: ' + e;
+  } finally {
+    btn.disabled = false; btn.textContent = '[ GENERATE STORY ]';
+  }
+}
+
+function studioPoll(storyId) {
+  if (ST.pollTimer) clearInterval(ST.pollTimer);
+  ST.pollTimer = setInterval(async () => {
+    try {
+      const res  = await fetch('/api/story/' + storyId);
+      const data = await res.json();
+      const msg  = document.getElementById('bible-gen-msg');
+      if (!msg) { clearInterval(ST.pollTimer); return; }
+      if (data.status === 'completed') {
+        clearInterval(ST.pollTimer);
+        msg.textContent = `✓ "${data.title}" COMPLETE — ${data.word_count?.toLocaleString()} WORDS, ${data.chapters} CHAPTERS`;
+        msg.style.color = 'var(--green)';
+        studioLoadList();
+      } else if (data.status === 'failed') {
+        clearInterval(ST.pollTimer);
+        msg.textContent = '✗ GENERATION FAILED: ' + (data.error || 'unknown');
+        msg.style.color = 'var(--red)';
+      } else {
+        msg.textContent = `GENERATING "${data.title || storyId}"... (${data.word_count || 0} WORDS SO FAR)`;
+      }
+    } catch {}
+  }, 5000);
+}
+
+/* ── Reader / story list ── */
+async function studioLoadList() {
+  const list  = document.getElementById('studio-story-list');
+  const empty = document.getElementById('studio-list-empty');
+  list.innerHTML = '<div style="font-size:12px;color:var(--muted)">LOADING...</div>';
+  empty.style.display = 'none';
+  try {
+    const stories = await fetch('/api/story/list').then(r => r.json());
+    list.innerHTML = '';
+    if (!stories.length) { empty.style.display = ''; return; }
+    stories.reverse().forEach(s => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;flex-direction:column;gap:4px;border:1px solid var(--purple-dim);padding:6px;';
+      const statusColor = s.status === 'completed' ? 'var(--green)' :
+                          s.status === 'failed'    ? 'var(--red)'   : 'var(--cyan)';
+      row.innerHTML =
+        `<div style="display:flex;justify-content:space-between;align-items:center">
+           <span style="font-size:13px;color:var(--neon-bright)">${s.title || s.story_id}</span>
+           <span style="font-size:10px;color:${statusColor}">[${s.status.toUpperCase()}]</span>
+         </div>
+         <div style="font-size:10px;color:var(--muted)">${s.story_id} &nbsp;·&nbsp; ${(s.word_count||0).toLocaleString()} WDS &nbsp;·&nbsp; ${s.chapters} CH</div>`;
+      if (s.status === 'completed') {
+        const btnRow = document.createElement('div');
+        btnRow.style.cssText = 'display:flex;gap:5px;flex-wrap:wrap;margin-top:2px';
+        btnRow.innerHTML =
+          `<button class="btn" style="font-size:10px;padding:3px 8px"
+             onclick="studioOpenReader('${s.story_id}','${s.title.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${s.chapters})">[ READ ]</button>
+           <button class="btn" style="font-size:10px;padding:3px 8px"
+             onclick="studioShowDl('${s.story_id}','${s.title.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">[ DOWNLOAD KDP ]</button>`;
+        row.appendChild(btnRow);
+      }
+      list.appendChild(row);
+    });
+  } catch(e) {
+    list.innerHTML = `<div style="font-size:12px;color:var(--red)">ERROR: ${e}</div>`;
+  }
+}
+
+function studioShowDl(storyId, title) {
+  ST.activeStoryId = storyId;
+  const box = document.getElementById('studio-dl-box');
+  box.style.display = 'flex';
+  document.getElementById('studio-dl-title').textContent = title;
+  document.getElementById('studio-dl-msg').textContent = '';
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function studioDownload() {
+  const author   = document.getElementById('studio-dl-author').value.trim();
+  const subtitle = document.getElementById('studio-dl-subtitle').value.trim();
+  if (!author) { alert('ENTER AN AUTHOR NAME'); return; }
+  if (!ST.activeStoryId) { alert('NO STORY SELECTED'); return; }
+
+  const btn = document.getElementById('studio-dl-btn');
+  btn.disabled = true; btn.textContent = '[ PACKAGING... ]';
+  document.getElementById('studio-dl-msg').textContent = 'GENERATING KDP PACKAGE...';
+
+  try {
+    const res = await fetch(`/api/story/${ST.activeStoryId}/download`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ author, subtitle }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      document.getElementById('studio-dl-msg').textContent = '✗ ' + (err.error || 'HTTP ' + res.status);
+      return;
+    }
+    const blob = await res.blob();
+    const cd   = res.headers.get('Content-Disposition') || '';
+    const match = cd.match(/filename="?([^"]+)"?/);
+    const fname = match ? match[1] : 'story_KDP.zip';
+    const url   = URL.createObjectURL(blob);
+    const a     = document.createElement('a');
+    a.href = url; a.download = fname; a.click();
+    URL.revokeObjectURL(url);
+    document.getElementById('studio-dl-msg').textContent = '✓ DOWNLOADED: ' + fname;
+  } catch(e) {
+    document.getElementById('studio-dl-msg').textContent = '✗ ERROR: ' + e;
+  } finally {
+    btn.disabled = false; btn.textContent = '[ DOWNLOAD KDP ZIP ]';
+  }
+}
+
+async function studioOpenReader(storyId, title, totalChapters) {
+  ST.activeStoryId = storyId;
+  ST.chapterNum    = 1;
+  ST.chapterTotal  = totalChapters;
+  document.getElementById('studio-chapter-box').style.display = 'flex';
+  await studioLoadChapter();
+}
+
+async function studioChNav(dir) {
+  const next = ST.chapterNum + dir;
+  if (next < 1 || next > ST.chapterTotal) return;
+  ST.chapterNum = next;
+  await studioLoadChapter();
+}
+
+async function studioLoadChapter() {
+  const box  = document.getElementById('studio-chapter-text');
+  const lbl  = document.getElementById('studio-ch-label');
+  lbl.textContent = `CHAPTER ${ST.chapterNum} / ${ST.chapterTotal}`;
+  box.textContent = 'LOADING...';
+  box.scrollTop   = 0;
+  try {
+    const data = await fetch(`/api/story/${ST.activeStoryId}/chapter/${ST.chapterNum}`).then(r => r.json());
+    if (data.error) { box.textContent = '✗ ' + data.error; return; }
+    box.textContent = data.content || '';
+  } catch(e) {
+    box.textContent = '✗ ERROR: ' + e;
+  }
+}
+
+/* ─────────────────────────────────────────
    KEYBOARD SHORTCUTS
 ───────────────────────────────────────── */
 document.addEventListener('keydown', e => {
   const tag = document.activeElement?.tagName;
   if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT') return;
   const navBtns = document.querySelectorAll('.nav-btn');
-  const map = { '1': 'home', '2': 'projects', '3': 'lab', '4': 'settings' };
+  const map = { '1': 'home', '2': 'projects', '3': 'lab', '4': 'settings', '5': 'studio' };
   if (map[e.key]) {
     const name = map[e.key];
-    const idx  = ['home','projects','lab','settings'].indexOf(name);
+    const idx  = ['home','projects','lab','settings','studio'].indexOf(name);
     switchTab(name, navBtns[idx] || null);
   }
   if (e.key === 'Enter' && document.activeElement === document.getElementById('txt')) {
