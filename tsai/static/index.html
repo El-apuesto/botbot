@@ -1311,25 +1311,27 @@ audio { width: 100%; margin-top: 4px; }
           </div>
         </div>
 
-        <div class="fg">
-          <label class="fl">TWIN — SYSTEM PROMPT</label>
-          <textarea class="fi" id="p-twin" rows="3" placeholder="You are TWIN..."></textarea>
-        </div>
-        <div class="fg">
-          <label class="fl">SHADOW — SYSTEM PROMPT</label>
-          <textarea class="fi" id="p-shadow" rows="3" placeholder="You are SHADOW..."></textarea>
-        </div>
-        <div class="fg">
-          <label class="fl">BUILDER — SYSTEM PROMPT</label>
-          <textarea class="fi" id="p-builder" rows="3" placeholder="You are the Builder..."></textarea>
-        </div>
-        <div class="fg">
-          <label class="fl">BOARDROOM — SYSTEM PROMPT</label>
-          <textarea class="fi" id="p-boardroom" rows="3" placeholder="You are a board member..."></textarea>
-        </div>
-        <div class="fg">
-          <label class="fl">BRAINSTORM — SYSTEM PROMPT</label>
-          <textarea class="fi" id="p-brainstorm" rows="3" placeholder="You are a creative contributor..."></textarea>
+        <div id="admin-prompts" style="display:none;flex-direction:column;gap:6px">
+          <div class="fg">
+            <label class="fl">TWIN — SYSTEM PROMPT</label>
+            <textarea class="fi" id="p-twin" rows="3" placeholder="You are TWIN..."></textarea>
+          </div>
+          <div class="fg">
+            <label class="fl">SHADOW — SYSTEM PROMPT</label>
+            <textarea class="fi" id="p-shadow" rows="3" placeholder="You are SHADOW..."></textarea>
+          </div>
+          <div class="fg">
+            <label class="fl">BUILDER — SYSTEM PROMPT</label>
+            <textarea class="fi" id="p-builder" rows="3" placeholder="You are the Builder..."></textarea>
+          </div>
+          <div class="fg">
+            <label class="fl">BOARDROOM — SYSTEM PROMPT</label>
+            <textarea class="fi" id="p-boardroom" rows="3" placeholder="You are a board member..."></textarea>
+          </div>
+          <div class="fg">
+            <label class="fl">BRAINSTORM — SYSTEM PROMPT</label>
+            <textarea class="fi" id="p-brainstorm" rows="3" placeholder="You are a creative contributor..."></textarea>
+          </div>
         </div>
 
         <div class="fg">
@@ -1518,6 +1520,12 @@ const _labConcepts = {};
   setDef(defBot, true);
   setMode(teamMode, true);
   addMsg('SYSTEM', 'TWIN SHADOW v2.0 — AI ENGINE ACTIVE. TYPE YOUR COMMAND.');
+  fetch('/api/me').then(r => r.json()).then(me => {
+    if (me.is_admin) {
+      const ap = document.getElementById('admin-prompts');
+      if (ap) { ap.style.display = 'flex'; }
+    }
+  }).catch(() => {});
   fetch('/api/user/settings').then(r => r.json()).then(sv => {
     const fields = ['p_twin','p_shadow','p_builder','p_boardroom','p_brainstorm'];
     fields.forEach(k => {

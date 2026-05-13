@@ -167,6 +167,16 @@ def _login():
             session["web_authed"] = True
             session["username"]   = display_name
             session.permanent     = remember
+            # Admin: WEB_PASSWORD login always admin; otherwise first user in users.json
+            if _WEB_PASS and pw == _WEB_PASS:
+                session["is_admin"] = True
+            else:
+                all_users = _users_load()
+                u = _find_user(display_name)
+                session["is_admin"] = bool(
+                    (u and u.get("admin")) or
+                    (all_users and all_users[0]["username"].lower() == display_name.lower())
+                )
             return redirect("/")
         error = "INCORRECT USERNAME OR PASSWORD."
     return render_template("login.html", error=error, username_val=username_val)
@@ -191,11 +201,13 @@ def _register():
             error = "USERNAME ALREADY TAKEN."
         else:
             users = _users_load()
+            is_first = len(users) == 0
             users.append({
                 "id":            int(time.time() * 1000),
                 "username":      username,
                 "password_hash": generate_password_hash(pw),
                 "created_at":    time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "admin":         is_first,
             })
             _users_save(users)
             success = "ACCOUNT CREATED. YOU MAY NOW LOGIN."
@@ -208,7 +220,11 @@ def _logout():
 
 @_flask.route("/api/me")
 def _api_me():
-    return jsonify({"username": session.get("username", ""), "authed": _is_web_authed()})
+    return jsonify({
+        "username": session.get("username", ""),
+        "authed":   _is_web_authed(),
+        "is_admin": session.get("is_admin", False),
+    })
 
 @_flask.route("/api/user/settings", methods=["GET"])
 @_require_web_auth
