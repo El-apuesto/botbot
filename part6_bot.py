@@ -971,10 +971,57 @@ def api_lab_thumbnail():
 
 
 # -- /api/tts ------------------------------------------------------------------
+def _tts_apply_pitch_speed(audio_bytes: bytes, pitch: float, speed: float) -> bytes:
+    """Apply pitch/speed adjustment to audio bytes via ffmpeg. Returns original if unchanged or ffmpeg fails."""
+    if abs(pitch - 1.0) < 0.02 and abs(speed - 1.0) < 0.02:
+        return audio_bytes
+    import subprocess, tempfile as _tempfile
+    in_f  = None
+    out_f = None
+    try:
+        in_f  = _tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
+        out_f = _tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
+        in_f.write(audio_bytes); in_f.flush(); in_f.close()
+        out_f.close()
+        filters = []
+        if abs(pitch - 1.0) >= 0.02:
+            filters.append(f"asetrate=44100*{pitch:.4f},aresample=44100")
+        if abs(speed - 1.0) >= 0.02:
+            spd = max(0.5, min(4.0, speed))
+            if spd < 0.5:
+                filters.append(f"atempo=0.5,atempo={spd/0.5:.4f}")
+            elif spd > 2.0:
+                filters.append(f"atempo=2.0,atempo={spd/2.0:.4f}")
+            else:
+                filters.append(f"atempo={spd:.4f}")
+        af = ",".join(filters)
+        r = subprocess.run(["ffmpeg", "-y", "-i", in_f.name, "-af", af, out_f.name],
+                           capture_output=True, timeout=30)
+        if r.returncode == 0:
+            with open(out_f.name, "rb") as fh:
+                return fh.read()
+    except Exception as e:
+        print(f"[TTS pitch/speed] ffmpeg error: {e}")
+    finally:
+        for p in [getattr(in_f, 'name', None), getattr(out_f, 'name', None)]:
+            if p:
+                try: os.unlink(p)
+                except: pass
+    return audio_bytes
+
+
+def _tts_parse_override(val):
+    """Return (voice_str, pitch, speed) from a voice_override value (str or dict)."""
+    if isinstance(val, dict):
+        return val.get("voice", "Ava-PlayAI"), float(val.get("pitch", 1.0)), float(val.get("speed", 1.0))
+    return str(val), 1.0, 1.0
+
+
 @_flask.route("/api/tts", methods=["POST"])
 def api_tts():
     """
     Body: { "turns": [{"speaker": "TWIN", "text": "..."}, ...], "voice_overrides": {} }
+    voice_overrides values can be a plain voice string OR {voice, pitch, speed} dict.
     Returns: { "url": "/audio/<filename>" }
     Falls back to gTTS single-voice if Google Cloud TTS not configured.
     """
@@ -1050,15 +1097,17 @@ def api_tts():
                 text    = turn.get("text", "").strip()
                 if not text:
                     continue
-                voice = voice_overrides.get(speaker) or PLAYAI_VOICES.get(speaker, "Ava-PlayAI")
+                ov = voice_overrides.get(speaker)
+                voice_name, pitch, speed = _tts_parse_override(ov) if ov else (PLAYAI_VOICES.get(speaker, "Ava-PlayAI"), 1.0, 1.0)
                 resp = _httpx.post(
                     "https://api.groq.com/openai/v1/audio/speech",
                     headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
-                    json={"model": "playai-tts", "input": text[:4096], "voice": voice},
+                    json={"model": "playai-tts", "input": text[:4096], "voice": voice_name},
                     timeout=30,
                 )
                 if resp.status_code == 200:
-                    seg = AudioSegment.from_mp3(io.BytesIO(resp.content))
+                    raw = _tts_apply_pitch_speed(resp.content, pitch, speed)
+                    seg = AudioSegment.from_mp3(io.BytesIO(raw))
                     segments.append(seg)
                 else:
                     print(f"[TTS] PlayAI {speaker} failed: {resp.status_code} {resp.text[:200]}")
