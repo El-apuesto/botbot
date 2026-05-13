@@ -1431,7 +1431,7 @@ const _labConcepts = {};
 ───────────────────────────────────────── */
 (function init() {
   applyBot(bot);
-  document.getElementById('user-label').textContent = uname;
+  const _ul = document.getElementById('user-label'); if (_ul) _ul.textContent = uname;
   document.getElementById('s-name').value      = uname;
   document.getElementById('p-twin').value      = S.get('p_twin', '');
   document.getElementById('p-shadow').value    = S.get('p_shadow', '');
@@ -2462,7 +2462,7 @@ function saveSettings() {
     S.set('voice_' + k, el.value);
   });
   bot = defBot; S.set('bot', bot); applyBot(bot);
-  document.getElementById('user-label').textContent = uname;
+  const _ul2 = document.getElementById('user-label'); if (_ul2) _ul2.textContent = uname;
   addMsg('SYSTEM', 'SETTINGS SAVED. WELCOME, ' + uname + '.');
   switchTab('home', document.querySelector('.nav-btn'));
 }
