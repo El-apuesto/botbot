@@ -632,9 +632,10 @@ audio { width: 100%; margin-top: 4px; }
     --font-size-xl:   16px;
   }
 
-  /* banner — natural aspect ratio, never overlaps terminal */
-  #app-banner { max-height: none; overflow: visible; }
-  #app-banner img { width: 100%; height: auto; object-fit: initial; object-position: initial; }
+  /* banner — portrait mobile image, fixed height, top-aligned */
+  #app-banner { height: 200px; overflow: hidden; }
+  #app-banner picture { display: block; width: 100%; height: 100%; }
+  #app-banner img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
 
   /* hide username/exit — no room with 7 tabs */
   .nav-user { display: none; }
@@ -670,7 +671,10 @@ audio { width: 100%; margin-top: 4px; }
   <!-- ═══ HEADER ═══ -->
   <div class="header">
     <div id="app-banner">
-      <img src="/static/header_mobile.JPEG" alt="Twin Shadow">
+      <picture>
+        <source media="(max-width: 600px)" srcset="/static/header_mobile2.jpeg">
+        <img src="/static/header_mobile.JPEG" alt="Twin Shadow">
+      </picture>
     </div>
   </div>
 
