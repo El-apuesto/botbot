@@ -594,6 +594,20 @@ audio { width: 100%; margin-top: 4px; }
   text-shadow: 0 0 10px var(--purple);
 }
 .nav-btn.active .nav-num { color: var(--neon-bright); }
+.nav-user {
+  font-size: 11px;
+  color: var(--purple-dim);
+  white-space: nowrap;
+  margin-left: auto;
+  padding: 0 8px;
+  letter-spacing: 0.05em;
+}
+.nav-logout {
+  color: #cc4488;
+  text-decoration: none;
+  font-size: 11px;
+}
+.nav-logout:hover { color: var(--red); }
 
 /* ── MOBILE ── */
 @media (max-width: 600px) {
@@ -1094,6 +1108,7 @@ audio { width: 100%; margin-top: 4px; }
     <button class="nav-btn" onclick="switchTab('lab', this)"><span class="nav-num">[3]</span>LABS</button>
     <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[4]</span>STUDIO</button>
     <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[5]</span>SETTINGS</button>
+    <span class="nav-user">{{ session.get('username', '') | upper }}&nbsp;<a class="nav-logout" href="/logout">EXIT</a></span>
   </nav>
 
 </div><!-- /app -->

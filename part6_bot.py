@@ -20,6 +20,8 @@ import subprocess
 from pathlib import Path
 from threading import Thread
 
+from datetime import timedelta
+from werkzeug.security import generate_password_hash, check_password_hash
 from flask import Flask, send_from_directory, send_file, request, Response, jsonify, session, redirect, render_template
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -82,15 +84,33 @@ _audio_dir  = Path(__file__).parent / "audio"
 _flask = Flask("TwinShadow", static_folder=str(_static_dir), static_url_path="/static",
                template_folder=str(Path(__file__).parent / "static"))
 _flask.secret_key = os.environ.get("SB_SECRET") or os.environ.get("WEB_PASSWORD", "") or os.urandom(24).hex()
+_flask.permanent_session_lifetime = timedelta(days=30)
 
 # -- Web authentication --------------------------------------------------------
 _WEB_PASS = os.environ.get("WEB_PASSWORD") or os.environ.get("SB_SECRET", "")
 
+# -- User store (users.json) ---------------------------------------------------
+_users_file = Path(__file__).parent / "users.json"
+
+def _users_load() -> list:
+    try:
+        return json.loads(_users_file.read_text()) if _users_file.exists() else []
+    except Exception:
+        return []
+
+def _users_save(users: list):
+    try: _users_file.write_text(json.dumps(users, indent=2))
+    except Exception: pass
+
+def _find_user(username: str):
+    return next((u for u in _users_load() if u["username"].lower() == username.lower()), None)
+
 def _is_web_authed() -> bool:
-    return not _WEB_PASS or session.get("web_authed") is True
+    return not (_WEB_PASS or _users_load()) or session.get("web_authed") is True
 
 _AUTH_EXEMPT = {
     "/login",
+    "/register",
     "/logout",
     "/health",
     "/api/video/status",
@@ -108,34 +128,81 @@ def _check_web_auth():
     if not _is_web_authed():
         if request.path.startswith("/api/"):
             token = request.headers.get("Authorization", "")
-
             if token == f"Bearer {_WEB_PASS}":
                 return None
-
-            return jsonify({
-                "error": "Not authenticated"
-            }), 401
+            return jsonify({"error": "Not authenticated"}), 401
         return redirect("/login")
 
 def _require_web_auth(fn):
-    return fn  # kept for decorator syntax on / and /audio - before_request covers all
+    return fn  # kept for decorator syntax — before_request covers all
 
 @_flask.route("/login", methods=["GET", "POST"])
 def _login():
     error = None
+    username_val = ""
     if request.method == "POST":
-        pw = request.form.get("password", "")
-        if pw == _WEB_PASS:
+        username_val = request.form.get("username", "").strip()
+        pw           = request.form.get("password", "")
+        remember     = bool(request.form.get("remember"))
+        authed       = False
+        display_name = username_val
+
+        # Check users.json
+        user = _find_user(username_val)
+        if user and check_password_hash(user["password_hash"], pw):
+            authed = True
+            display_name = user["username"]  # preserve original casing
+        # Master password fallback (WEB_PASSWORD env var)
+        elif _WEB_PASS and pw == _WEB_PASS:
+            authed = True
+            display_name = username_val or "admin"
+
+        if authed:
             session["web_authed"] = True
-            session.permanent = True
+            session["username"]   = display_name
+            session.permanent     = remember
             return redirect("/")
-        error = "INCORRECT ACCESS CODE."
-    return render_template("login.html", error=error)
+        error = "INCORRECT USERNAME OR PASSWORD."
+    return render_template("login.html", error=error, username_val=username_val)
+
+@_flask.route("/register", methods=["GET", "POST"])
+def _register():
+    error = None
+    success = None
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        pw       = request.form.get("password", "")
+        pw2      = request.form.get("confirm", "")
+        if not username or len(username) < 3:
+            error = "USERNAME MUST BE AT LEAST 3 CHARACTERS."
+        elif not re.match(r'^[a-zA-Z0-9_-]+$', username):
+            error = "USERNAME: LETTERS, NUMBERS, _ AND - ONLY."
+        elif len(pw) < 6:
+            error = "PASSWORD MUST BE AT LEAST 6 CHARACTERS."
+        elif pw != pw2:
+            error = "PASSWORDS DO NOT MATCH."
+        elif _find_user(username):
+            error = "USERNAME ALREADY TAKEN."
+        else:
+            users = _users_load()
+            users.append({
+                "id":            int(time.time() * 1000),
+                "username":      username,
+                "password_hash": generate_password_hash(pw),
+                "created_at":    time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            })
+            _users_save(users)
+            success = "ACCOUNT CREATED. YOU MAY NOW LOGIN."
+    return render_template("register.html", error=error, success=success)
 
 @_flask.route("/logout")
 def _logout():
     session.clear()
     return redirect("/login")
+
+@_flask.route("/api/me")
+def _api_me():
+    return jsonify({"username": session.get("username", ""), "authed": _is_web_authed()})
 
 @_flask.route("/")
 @_require_web_auth
