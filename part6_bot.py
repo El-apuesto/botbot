@@ -580,6 +580,98 @@ def api_brainstorm():
 
     return _sse_stream(_run)
 
+# -- /api/advisor --------------------------------------------------------------
+@_flask.route("/api/advisor", methods=["POST"])
+def api_advisor():
+    data        = request.json or {}
+    adv_type    = data.get("advisor", "legal").strip().lower()
+    message     = data.get("message", "").strip()
+    prior       = data.get("prior", "").strip()
+    if not message:
+        return jsonify({"error": "No message"}), 400
+
+    sys_p = LEGAL_ADVISOR_SYSTEM if adv_type == "legal" else MARKETING_ADVISOR_SYSTEM
+    msgs: list[dict] = [{"role": "system", "content": sys_p}]
+    if prior:
+        for line in prior.split("\n\n"):
+            line = line.strip()
+            if line.startswith("USER: "):
+                msgs.append({"role": "user",      "content": line[6:]})
+            elif line.startswith("ADVISOR: "):
+                msgs.append({"role": "assistant",  "content": line[9:]})
+    msgs.append({"role": "user", "content": message})
+
+    speaker = "LEGAL" if adv_type == "legal" else "MARKETING"
+
+    async def _run():
+        yield f"\x1eSPEAKER:{speaker}\x1f"
+        try:
+            async for chunk in stream_task("twin", msgs, max_tokens=TOKEN_LIMITS.get("chat", 800)):
+                yield chunk
+        except Exception as e:
+            yield f"[{speaker} offline: {e}]"
+        yield "\x1eEND\x1f"
+
+    return _sse_stream(_run)
+
+
+# -- /api/podcast --------------------------------------------------------------
+@_flask.route("/api/podcast", methods=["POST"])
+def api_podcast():
+    data       = request.json or {}
+    speakers   = data.get("speakers", [])   # [{name, role, personality}]
+    topic      = data.get("topic", "").strip()
+    show_type  = data.get("show_type", "podcast").strip().lower()
+    rounds     = min(int(data.get("rounds", 1)), 4)
+    complexity = data.get("complexity", "simple").strip().lower()
+    prior      = data.get("prior_context", "").strip()
+    steer      = data.get("steer", "").strip()
+
+    if not topic:
+        return jsonify({"error": "No topic"}), 400
+    if len(speakers) < 2:
+        return jsonify({"error": "Need at least 2 speakers"}), 400
+
+    async def _run():
+        context_turns: list[str] = [f"TOPIC: {topic}", f"SHOW FORMAT: {show_type}"]
+        if prior:
+            context_turns.append(f"[Prior exchange]\n{prior[-600:]}")
+        if steer:
+            context_turns.append(f"[DIRECTION]: {steer}")
+
+        for rnd in range(1, rounds + 1):
+            for sp in speakers:
+                name        = sp.get("name", "SPEAKER").upper()
+                role        = sp.get("role", "Co-host")
+                personality = sp.get("personality", "Opinionated and direct")
+                sys_p       = podcast_character_system(
+                    name, role, personality, show_type, complexity
+                )
+                context     = "\n\n".join(context_turns[-8:])
+                msgs = [
+                    {"role": "system", "content": sys_p},
+                    {"role": "user",   "content": context + f"\n\n{name}:"},
+                ]
+                cap = TOKEN_LIMITS.get("brainstorm", 350)
+                if complexity == "all-in":
+                    cap = 200
+                elif complexity == "complex":
+                    cap = 450
+
+                yield f"\x1eSPEAKER:{name}\x1f"
+                resp = ""
+                try:
+                    async for chunk in stream_task("twin", msgs, max_tokens=cap):
+                        resp += chunk
+                        yield chunk
+                except Exception as e:
+                    yield f"[{name} offline: {e}]"
+                yield "\x1eEND\x1f"
+                context_turns.append(f"{name}: {resp[:300]}")
+
+    return _sse_stream(_run)
+
+
 # -- /api/transcript/save ------------------------------------------------------
 @_flask.route("/api/transcript/save", methods=["POST"])
 def api_transcript_save():

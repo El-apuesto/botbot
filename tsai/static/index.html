@@ -626,8 +626,10 @@ audio { width: 100%; margin-top: 4px; }
 @media (max-width: 600px) {
   .nav::before { content: none; }
   .nav::after  { content: none; }
-  .nav-btn { font-size: 17px; padding: 2px 6px; }
+  .nav-btn { font-size: 10px; padding: 2px 3px; letter-spacing: 0; }
+  .nav-btn .nav-num { margin-right: 1px; }
   .nav-btn + .nav-btn::before { content: none; }
+  .nav-user { font-size: 9px; padding: 0 4px; }
 }
 
 /* ── CURSOR ── */
@@ -872,12 +874,29 @@ audio { width: 100%; margin-top: 4px; }
 
       </div><!-- /lab-write -->
 
-      <!-- CODE LAB — Builder -->
+      <!-- CODE LAB — Builder + Architect -->
       <div class="lab-section" id="lab-code">
         <div class="panel-scroll">
           <div class="fg">
-            <label class="fl">BUILDER TASK</label>
+            <span class="fl">MODE</span>
+            <div class="opt-row">
+              <button class="opt on" id="code-m-build"     onclick="setCodeMode('build')">BUILD</button>
+              <button class="opt"    id="code-m-architect" onclick="setCodeMode('architect')">ARCHITECT</button>
+            </div>
+          </div>
+          <div class="fg" id="code-arch-note" style="display:none">
+            <p style="color:var(--purple-dim);font-size:var(--font-size-sm);margin:0;line-height:1.5">
+              ARCHITECT MODE: generates full project plan → file structure → all files complete.
+              Describe the application; the system designs and codes the entire thing.
+            </p>
+          </div>
+          <div class="fg">
+            <label class="fl">TASK</label>
             <textarea class="fi" id="builder-input" rows="3" placeholder="Describe what to build..."></textarea>
+          </div>
+          <div class="fg" id="code-stack-row" style="display:none">
+            <label class="fl">TECH STACK (optional)</label>
+            <input class="fi" id="code-stack" type="text" placeholder="e.g. Python Flask + SQLite, or React + Node...">
           </div>
           <div class="action-row">
             <button class="btn" id="builder-go-btn" onclick="runBuilder()">[ RUN BUILDER ]</button>
@@ -887,21 +906,153 @@ audio { width: 100%; margin-top: 4px; }
             <input class="fi" id="builder-deploy-name" type="text" placeholder="script name (a-z, _, -)">
             <button class="btn" id="builder-deploy-btn" onclick="deployBuilder()">[ DEPLOY ]</button>
           </div>
+          <!-- file structure sidebar -->
+          <div id="code-files-row" style="display:none;margin-top:8px">
+            <span class="fl">GENERATED FILES</span>
+            <div id="code-files-list" style="font-size:var(--font-size-sm);color:var(--purple-dim);line-height:1.8;margin-top:4px"></div>
+          </div>
           <div id="builder-out" class="session-out"></div>
         </div>
       </div>
 
     </div><!-- /panel-lab -->
 
-    <!-- [4] STUDIO — BOARDROOM / BRAINSTORM -->
+    <!-- [4] STUDIO — BRAINSTORM / PODCAST -->
     <div class="panel" id="panel-studio">
       <div class="lab-tab-row">
-        <button class="lab-tab active" onclick="switchStudio('boardroom', this)">BOARDROOM</button>
-        <button class="lab-tab" onclick="switchStudio('brainstorm', this)">BRAINSTORM</button>
+        <button class="lab-tab active" onclick="switchStudio('brainstorm', this)">BRAINSTORM</button>
+        <button class="lab-tab" onclick="switchStudio('podcast', this)">PODCAST</button>
       </div>
 
-      <!-- BOARDROOM -->
-      <div class="lab-section active" id="lab-boardroom">
+      <!-- BRAINSTORM -->
+      <div class="lab-section active" id="lab-brainstorm">
+        <div class="panel-scroll">
+          <div class="fg">
+            <label class="fl">TOPIC</label>
+            <textarea class="fi" id="brainstorm-topic" rows="2" placeholder="What are we riffing on?"></textarea>
+          </div>
+          <div class="fg">
+            <span class="fl">MODE</span>
+            <div class="opt-row">
+              <button class="opt on" id="bs-normal"  onclick="setBrainstormMode('normal')">NORMAL</button>
+              <button class="opt"    id="bs-shadow"  onclick="setBrainstormMode('shadow')">SHADOW</button>
+              <button class="opt"    id="bs-podcast" onclick="setBrainstormMode('podcast')">PODCAST</button>
+            </div>
+          </div>
+          <div class="fg">
+            <span class="fl">ROUNDS</span>
+            <div class="opt-row">
+              <button class="opt on" id="bs-r1" onclick="setBsRounds(1)">1</button>
+              <button class="opt"    id="bs-r2" onclick="setBsRounds(2)">2</button>
+              <button class="opt"    id="bs-r3" onclick="setBsRounds(3)">3</button>
+            </div>
+          </div>
+          <div class="action-row">
+            <button class="btn" id="brainstorm-go-btn" onclick="runBrainstorm()">[ START SESSION ]</button>
+            <button class="btn" id="brainstorm-audio-btn" style="display:none" onclick="renderTTS('brainstorm')">[ PLAY AUDIO ]</button>
+            <button class="btn" id="brainstorm-save-btn" style="display:none" onclick="saveTranscript('brainstorm')">[ SAVE ]</button>
+            <a id="brainstorm-export-btn" class="action-link" style="display:none" download="brainstorm_transcript.txt">[ EXPORT ]</a>
+            <a id="brainstorm-mp3-btn"   class="action-link" style="display:none" download="brainstorm_audio.mp3">[ DL MP3 ]</a>
+          </div>
+          <div class="steer-box" id="brainstorm-extend-row">
+            <span class="fl">EXTEND SESSION — NEW DIRECTION (OPTIONAL)</span>
+            <textarea class="fi" id="brainstorm-extend-steer" rows="2" placeholder="New angle, push further, add a twist..."></textarea>
+            <button class="btn" onclick="extendBrainstorm()">[ + EXTEND ]</button>
+          </div>
+          <audio id="brainstorm-audio" controls></audio>
+          <div id="brainstorm-out" class="session-out"></div>
+        </div>
+      </div>
+
+      <!-- PODCAST -->
+      <div class="lab-section" id="lab-podcast">
+        <div class="panel-scroll">
+
+          <!-- Show type + format -->
+          <div class="fg">
+            <span class="fl">SHOW TYPE</span>
+            <div class="opt-row" id="pod-type-row">
+              <button class="opt on" id="pod-t-podcast"   onclick="setPodType('podcast')">PODCAST</button>
+              <button class="opt"    id="pod-t-interview"  onclick="setPodType('interview')">INTERVIEW</button>
+              <button class="opt"    id="pod-t-debate"     onclick="setPodType('debate')">DEBATE</button>
+              <button class="opt"    id="pod-t-talk"       onclick="setPodType('talk show')">TALK SHOW</button>
+              <button class="opt"    id="pod-t-comedy"     onclick="setPodType('comedy')">COMEDY</button>
+              <button class="opt"    id="pod-t-improv"     onclick="setPodType('improv')">IMPROV</button>
+            </div>
+          </div>
+
+          <div class="fg">
+            <span class="fl">CAST FORMAT</span>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">
+              <span class="fl" style="width:100%;margin-bottom:2px;color:var(--purple-dim);font-size:var(--font-size-sm)">SIMPLE —</span>
+              <button class="opt on" id="pod-f-1v1"   onclick="setPodFormat('1v1',   'simple',2)">1v1</button>
+              <button class="opt"    id="pod-f-2v1"   onclick="setPodFormat('2v1',   'simple',3)">2v1</button>
+              <button class="opt"    id="pod-f-1v2"   onclick="setPodFormat('1v2',   'simple',3)">1v2</button>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">
+              <span class="fl" style="width:100%;margin-bottom:2px;color:var(--purple-dim);font-size:var(--font-size-sm)">COMPLEX —</span>
+              <button class="opt"    id="pod-f-2v3"   onclick="setPodFormat('2v3',   'complex',5)">2v3</button>
+              <button class="opt"    id="pod-f-3v2"   onclick="setPodFormat('3v2',   'complex',5)">3v2</button>
+              <button class="opt"    id="pod-f-3v3"   onclick="setPodFormat('3v3',   'complex',6)">3v3</button>
+              <button class="opt"    id="pod-f-3v4"   onclick="setPodFormat('3v4',   'complex',7)">3v4</button>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px">
+              <span class="fl" style="width:100%;margin-bottom:2px;color:var(--purple-dim);font-size:var(--font-size-sm)">ALL-IN —</span>
+              <button class="opt"    id="pod-f-allin" onclick="setPodFormat('allin', 'all-in', 6)">1v1v1v1v1v1</button>
+            </div>
+          </div>
+
+          <!-- Cast builder -->
+          <div class="fg">
+            <span class="fl">CAST  <span id="pod-cast-count" style="color:var(--purple-dim)">(2 speakers)</span></span>
+            <div id="pod-cast-list"></div>
+            <div class="action-row" style="margin-top:6px">
+              <button class="btn" onclick="podAddSpeaker()">[ + ADD SPEAKER ]</button>
+              <button class="btn" onclick="podRemoveSpeaker()">[ - REMOVE ]</button>
+            </div>
+          </div>
+
+          <!-- Topic + rounds -->
+          <div class="fg">
+            <label class="fl">TOPIC / CONCEPT</label>
+            <textarea class="fi" id="pod-topic" rows="2" placeholder="What is this show about?"></textarea>
+          </div>
+          <div class="fg">
+            <span class="fl">ROUNDS</span>
+            <div class="opt-row">
+              <button class="opt on" id="pod-r1" onclick="setPodRounds(1)">1</button>
+              <button class="opt"    id="pod-r2" onclick="setPodRounds(2)">2</button>
+              <button class="opt"    id="pod-r3" onclick="setPodRounds(3)">3</button>
+              <button class="opt"    id="pod-r4" onclick="setPodRounds(4)">4</button>
+            </div>
+          </div>
+
+          <div class="action-row">
+            <button class="btn" id="pod-go-btn" onclick="runPodcast()">[ RECORD ]</button>
+            <button class="btn" id="pod-audio-btn" style="display:none" onclick="renderPodcastTTS()">[ PLAY AUDIO ]</button>
+            <button class="btn" id="pod-save-btn"  style="display:none" onclick="savePodcastTranscript()">[ SAVE ]</button>
+            <a id="pod-export-btn" class="action-link" style="display:none" download="podcast_transcript.txt">[ EXPORT ]</a>
+            <a id="pod-mp3-btn"    class="action-link" style="display:none" download="podcast_audio.mp3">[ DL MP3 ]</a>
+          </div>
+          <div class="steer-box" id="pod-extend-row" style="display:none">
+            <span class="fl">CONTINUE SESSION — NEW DIRECTION (OPTIONAL)</span>
+            <textarea class="fi" id="pod-extend-steer" rows="2" placeholder="New topic, new tension, redirect..."></textarea>
+            <button class="btn" onclick="extendPodcast()">[ + CONTINUE ]</button>
+          </div>
+          <audio id="pod-audio" controls style="display:none"></audio>
+          <div id="pod-out" class="session-out"></div>
+        </div>
+      </div>
+
+    </div><!-- /panel-studio -->
+
+    <!-- [5] BOARD — BOARDROOM -->
+    <div class="panel" id="panel-board">
+      <div class="lab-tab-row">
+        <button class="lab-tab active" onclick="switchBoard('boardroom', this)">BOARDROOM</button>
+      </div>
+
+      <div class="lab-section active" id="board-boardroom">
         <div class="panel-scroll">
           <div class="fg">
             <label class="fl">TOPIC / IDEA</label>
@@ -944,50 +1095,59 @@ audio { width: 100%; margin-top: 4px; }
           <div id="boardroom-out" class="session-out"></div>
         </div>
       </div>
+    </div><!-- /panel-board -->
 
-      <!-- BRAINSTORM -->
-      <div class="lab-section" id="lab-brainstorm">
+    <!-- [6] ADVISORS — LEGAL / MARKETING -->
+    <div class="panel" id="panel-advisors">
+      <div class="lab-tab-row">
+        <button class="lab-tab active" onclick="switchAdvisors('legal', this)">LEGAL</button>
+        <button class="lab-tab"        onclick="switchAdvisors('marketing', this)">MARKETING</button>
+      </div>
+
+      <!-- LEGAL -->
+      <div class="lab-section active" id="adv-legal">
         <div class="panel-scroll">
           <div class="fg">
-            <label class="fl">TOPIC</label>
-            <textarea class="fi" id="brainstorm-topic" rows="2" placeholder="What are we riffing on?"></textarea>
+            <p style="color:var(--purple-dim);font-size:var(--font-size-sm);margin:0 0 8px 0;line-height:1.5">
+              COPYRIGHT · MUSIC LICENSING · CONTENT RIGHTS · DMCA · FAIR USE · PLATFORM COMPLIANCE
+            </p>
           </div>
           <div class="fg">
-            <span class="fl">MODE</span>
-            <div class="opt-row">
-              <button class="opt on" id="bs-normal"  onclick="setBrainstormMode('normal')">NORMAL</button>
-              <button class="opt"    id="bs-shadow"  onclick="setBrainstormMode('shadow')">SHADOW</button>
-              <button class="opt"    id="bs-podcast" onclick="setBrainstormMode('podcast')">PODCAST</button>
-            </div>
-          </div>
-          <div class="fg">
-            <span class="fl">ROUNDS</span>
-            <div class="opt-row">
-              <button class="opt on" id="bs-r1" onclick="setBsRounds(1)">1</button>
-              <button class="opt"    id="bs-r2" onclick="setBsRounds(2)">2</button>
-              <button class="opt"    id="bs-r3" onclick="setBsRounds(3)">3</button>
-            </div>
+            <label class="fl">YOUR QUESTION</label>
+            <textarea class="fi" id="legal-input" rows="3" placeholder="Ask about rights, licensing, fair use, DMCA, content liability..."></textarea>
           </div>
           <div class="action-row">
-            <button class="btn" id="brainstorm-go-btn" onclick="runBrainstorm()">[ START SESSION ]</button>
-            <button class="btn" id="brainstorm-audio-btn" style="display:none" onclick="renderTTS('brainstorm')">[ PLAY AUDIO ]</button>
-            <button class="btn" id="brainstorm-save-btn" style="display:none" onclick="saveTranscript('brainstorm')">[ SAVE ]</button>
-            <a id="brainstorm-export-btn" class="action-link" style="display:none" download="brainstorm_transcript.txt">[ EXPORT ]</a>
-            <a id="brainstorm-mp3-btn"   class="action-link" style="display:none" download="brainstorm_audio.mp3">[ DL MP3 ]</a>
+            <button class="btn" id="legal-go-btn" onclick="runAdvisor('legal')">[ ASK LEGAL ]</button>
+            <button class="btn" id="legal-clear-btn" onclick="clearAdvisor('legal')">[ NEW MATTER ]</button>
+            <a id="legal-export-btn" class="action-link" style="display:none" download="legal_advice.txt">[ EXPORT ]</a>
           </div>
-          <div class="steer-box" id="brainstorm-extend-row">
-            <span class="fl">EXTEND SESSION — NEW DIRECTION (OPTIONAL)</span>
-            <textarea class="fi" id="brainstorm-extend-steer" rows="2" placeholder="New angle, push further, add a twist..."></textarea>
-            <button class="btn" onclick="extendBrainstorm()">[ + EXTEND ]</button>
-          </div>
-          <audio id="brainstorm-audio" controls></audio>
-          <div id="brainstorm-out" class="session-out"></div>
+          <div id="legal-out" class="session-out"></div>
         </div>
       </div>
 
-    </div><!-- /panel-studio -->
+      <!-- MARKETING -->
+      <div class="lab-section" id="adv-marketing">
+        <div class="panel-scroll">
+          <div class="fg">
+            <p style="color:var(--purple-dim);font-size:var(--font-size-sm);margin:0 0 8px 0;line-height:1.5">
+              LAUNCH STRATEGY · ADVERTISING · AUDIENCE GROWTH · PLATFORM STRATEGY · BRAND
+            </p>
+          </div>
+          <div class="fg">
+            <label class="fl">YOUR QUESTION</label>
+            <textarea class="fi" id="marketing-input" rows="3" placeholder="Ask about launches, ads, audience building, brand strategy, campaigns..."></textarea>
+          </div>
+          <div class="action-row">
+            <button class="btn" id="marketing-go-btn" onclick="runAdvisor('marketing')">[ ASK MARKETING ]</button>
+            <button class="btn" id="marketing-clear-btn" onclick="clearAdvisor('marketing')">[ NEW MATTER ]</button>
+            <a id="marketing-export-btn" class="action-link" style="display:none" download="marketing_advice.txt">[ EXPORT ]</a>
+          </div>
+          <div id="marketing-out" class="session-out"></div>
+        </div>
+      </div>
+    </div><!-- /panel-advisors -->
 
-    <!-- [5] SETTINGS -->
+    <!-- [7] SETTINGS -->
     <div class="panel" id="panel-settings">
       <div class="panel-scroll">
 
@@ -1120,7 +1280,9 @@ audio { width: 100%; margin-top: 4px; }
     <button class="nav-btn" onclick="switchTab('projects', this)"><span class="nav-num">[2]</span>PROJECTS</button>
     <button class="nav-btn" onclick="switchTab('lab', this)"><span class="nav-num">[3]</span>LABS</button>
     <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[4]</span>STUDIO</button>
-    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[5]</span>SETTINGS</button>
+    <button class="nav-btn" onclick="switchTab('board', this)"><span class="nav-num">[5]</span>BOARD</button>
+    <button class="nav-btn" onclick="switchTab('advisors', this)"><span class="nav-num">[6]</span>ADVISE</button>
+    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[7]</span>SETTINGS</button>
     <span class="nav-user">{{ session.get('username', '') | upper }}&nbsp;<a class="nav-logout" href="/logout">EXIT</a></span>
   </nav>
 
@@ -1669,29 +1831,328 @@ async function renderTTS(mode) {
    BUILDER
 ───────────────────────────────────────── */
 async function runBuilder() {
-  const task = document.getElementById('builder-input').value.trim();
-  if (!task) return;
-  const out = document.getElementById('builder-out');
+  const rawTask = document.getElementById('builder-input').value.trim();
+  if (!rawTask) return;
+  const out     = document.getElementById('builder-out');
   out.innerHTML = '';
+  document.getElementById('code-files-row').style.display = 'none';
   const labBtnBl = document.getElementById('builder-lab-btn');
   labBtnBl.style.display = 'none'; labBtnBl.disabled = false; labBtnBl.textContent = '[ SEND TO VIDEO LAB ]';
   const btn = document.getElementById('builder-go-btn');
-  btn.disabled = true; btn.textContent = '[ BUILDING... ]';
+  const isArch = codeMode === 'architect';
+  btn.disabled = true; btn.textContent = isArch ? '[ ARCHITECTING... ]' : '[ BUILDING... ]';
+
+  let task = rawTask;
+  if (isArch) {
+    const stack = document.getElementById('code-stack').value.trim();
+    task =
+      `ARCHITECT MODE — design and build a complete, production-ready application.\n\n` +
+      `APPLICATION: ${rawTask}\n` +
+      (stack ? `TECH STACK: ${stack}\n` : '') +
+      `\nDeliver in this order:\n` +
+      `1. PROJECT PLAN — purpose, users, key features (3-5 bullets)\n` +
+      `2. TECH STACK — chosen stack with brief rationale\n` +
+      `3. FILE STRUCTURE — complete directory tree with every file listed\n` +
+      `4. ARCHITECTURE NOTES — key design decisions, data flow, any non-obvious choices\n` +
+      `5. ALL FILES — generate every file completely, one after another, no placeholders, no TODOs.\n` +
+      `   Each file: ## filename.ext then the complete code block.\n\n` +
+      `Rules: No skeletons. No "coming soon". Complete, runnable, production-ready.`;
+  }
+
   let builderTurns = [];
   try {
     builderTurns = await streamSession('/api/builder', { task, system_prompt: S.get('p_builder', '') }, out);
   } catch(e) {
     out.innerHTML += '<p style="color:var(--red)">' + e + '</p>';
   }
-  btn.disabled = false; btn.textContent = '[ RUN BUILDER ]';
+  btn.disabled = false;
+  btn.textContent = isArch ? '[ ARCHITECT + BUILD ]' : '[ RUN BUILDER ]';
   if (builderTurns.length) {
     const txt = builderTurns.map(t => t.speaker + ': ' + t.text).join('\n\n');
-    _labConcepts.builder = { task, output: txt };
+    _labConcepts.builder = { task: rawTask, output: txt };
     document.getElementById('builder-lab-btn').style.display = '';
     const deployRow = document.getElementById('builder-deploy-row');
     deployRow.style.display = 'flex';
     document.getElementById('builder-deploy-btn').textContent = '[ DEPLOY ]';
+    if (isArch) _renderCodeFiles(txt);
   }
+}
+
+/* ─────────────────────────────────────────
+   PODCAST
+───────────────────────────────────────── */
+const POD = {
+  type:       'podcast',
+  format:     '1v1',
+  complexity: 'simple',
+  numSpeakers: 2,
+  rounds:     1,
+  turns:      [],
+  priorCtx:   '',
+};
+
+const _POD_DEFAULTS = [
+  { name: 'HOST',  role: 'Host',  personality: 'Curious, incisive, keeps things moving' },
+  { name: 'GUEST', role: 'Guest', personality: 'Expert, opinionated, not afraid to contradict' },
+];
+
+function _podSpeakers() {
+  return Array.from(document.querySelectorAll('.pod-speaker-card')).map(card => ({
+    name:        card.querySelector('.pod-sp-name').value.trim()  || 'SPEAKER',
+    role:        card.querySelector('.pod-sp-role').value.trim()  || 'Contributor',
+    personality: card.querySelector('.pod-sp-pers').value.trim()  || 'Direct and opinionated',
+  }));
+}
+
+function _podRebuildCast(count) {
+  const list = document.getElementById('pod-cast-list');
+  const existing = Array.from(list.querySelectorAll('.pod-speaker-card')).map(c => ({
+    name:        c.querySelector('.pod-sp-name').value,
+    role:        c.querySelector('.pod-sp-role').value,
+    personality: c.querySelector('.pod-sp-pers').value,
+  }));
+  list.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const def  = _POD_DEFAULTS[i] || { name: `VOICE${i+1}`, role: 'Contributor', personality: 'Sharp and direct' };
+    const prev = existing[i] || {};
+    const name = prev.name || def.name;
+    const role = prev.role || def.role;
+    const pers = prev.personality || def.personality;
+    const card = document.createElement('div');
+    card.className = 'pod-speaker-card';
+    card.style.cssText = 'border:1px solid var(--purple-dim);padding:8px;margin-bottom:6px';
+    card.innerHTML = `
+      <div style="display:flex;gap:6px;margin-bottom:4px">
+        <input class="fi pod-sp-name" type="text" value="${name}" placeholder="NAME" style="flex:0 0 90px">
+        <input class="fi pod-sp-role" type="text" value="${role}" placeholder="Role/title" style="flex:1">
+      </div>
+      <input class="fi pod-sp-pers" type="text" value="${pers}" placeholder="Personality / voice description" style="width:100%;box-sizing:border-box">
+    `;
+    list.appendChild(card);
+  }
+  document.getElementById('pod-cast-count').textContent = `(${count} speaker${count !== 1 ? 's' : ''})`;
+  POD.numSpeakers = count;
+}
+
+const _POD_TYPE_IDS = {
+  'podcast':   'pod-t-podcast',
+  'interview': 'pod-t-interview',
+  'debate':    'pod-t-debate',
+  'talk show': 'pod-t-talk',
+  'comedy':    'pod-t-comedy',
+  'improv':    'pod-t-improv',
+};
+function setPodType(t) {
+  POD.type = t;
+  Object.entries(_POD_TYPE_IDS).forEach(([type, id]) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('on', type === t);
+  });
+}
+
+function setPodFormat(fmt, complexity, count) {
+  POD.format     = fmt;
+  POD.complexity = complexity;
+  ['1v1','2v1','1v2','2v3','3v2','3v3','3v4','allin'].forEach(f => {
+    const el = document.getElementById('pod-f-' + f);
+    if (el) el.classList.toggle('on', f === fmt);
+  });
+  _podRebuildCast(count);
+}
+
+function podAddSpeaker() {
+  if (POD.numSpeakers >= 8) return;
+  _podRebuildCast(POD.numSpeakers + 1);
+}
+
+function podRemoveSpeaker() {
+  if (POD.numSpeakers <= 2) return;
+  _podRebuildCast(POD.numSpeakers - 1);
+}
+
+function setPodRounds(r) {
+  POD.rounds = r;
+  [1,2,3,4].forEach(n => {
+    const el = document.getElementById('pod-r' + n);
+    if (el) el.classList.toggle('on', n === r);
+  });
+}
+
+async function runPodcast() {
+  const topic = document.getElementById('pod-topic').value.trim();
+  if (!topic) return;
+  const speakers = _podSpeakers();
+  if (speakers.length < 2) { alert('Add at least 2 speakers.'); return; }
+
+  const out = document.getElementById('pod-out');
+  out.innerHTML = '';
+  document.getElementById('pod-extend-row').style.display = 'none';
+  document.getElementById('pod-audio').style.display = 'none';
+  document.getElementById('pod-audio-btn').style.display = 'none';
+  document.getElementById('pod-export-btn').style.display = 'none';
+  document.getElementById('pod-mp3-btn').style.display = 'none';
+
+  const btn = document.getElementById('pod-go-btn');
+  btn.disabled = true; btn.textContent = '[ RECORDING... ]';
+  POD.turns = [];
+  POD.priorCtx = '';
+
+  try {
+    POD.turns = await streamSession('/api/podcast', {
+      speakers,
+      topic,
+      show_type:     POD.type,
+      rounds:        POD.rounds,
+      complexity:    POD.complexity,
+      prior_context: '',
+    }, out);
+    POD.priorCtx = POD.turns.map(t => t.speaker + ': ' + t.text).join('\n\n');
+  } catch(e) {
+    out.innerHTML += '<p style="color:var(--red)">' + e + '</p>';
+  }
+
+  btn.disabled = false; btn.textContent = '[ RECORD ]';
+  if (POD.turns.length) {
+    document.getElementById('pod-audio-btn').style.display = '';
+    document.getElementById('pod-save-btn').style.display  = '';
+    const txt  = POD.turns.map(t => t.speaker + ': ' + t.text).join('\n\n');
+    const blob = new Blob([txt], { type: 'text/plain' });
+    document.getElementById('pod-export-btn').href = URL.createObjectURL(blob);
+    document.getElementById('pod-export-btn').style.display = '';
+    document.getElementById('pod-extend-row').style.display = 'flex';
+  }
+}
+
+async function extendPodcast() {
+  const topic = document.getElementById('pod-topic').value.trim();
+  if (!topic || !POD.turns.length) return;
+  const steer = document.getElementById('pod-extend-steer').value.trim();
+  document.getElementById('pod-extend-steer').value = '';
+  document.getElementById('pod-extend-row').style.display = 'none';
+
+  const btn = document.getElementById('pod-go-btn');
+  btn.disabled = true; btn.textContent = '[ CONTINUING... ]';
+  document.getElementById('pod-audio-btn').style.display = 'none';
+  document.getElementById('pod-save-btn').style.display  = 'none';
+  document.getElementById('pod-export-btn').style.display = 'none';
+
+  const out = document.getElementById('pod-out');
+  try {
+    const ext = await streamSession('/api/podcast', {
+      speakers:      _podSpeakers(),
+      topic,
+      show_type:     POD.type,
+      rounds:        1,
+      complexity:    POD.complexity,
+      prior_context: POD.priorCtx,
+      steer,
+    }, out);
+    POD.turns    = POD.turns.concat(ext);
+    POD.priorCtx = POD.turns.map(t => t.speaker + ': ' + t.text).join('\n\n');
+  } catch(e) {
+    out.innerHTML += '<p style="color:var(--red)">' + e + '</p>';
+  }
+
+  btn.disabled = false; btn.textContent = '[ RECORD ]';
+  if (POD.turns.length) {
+    document.getElementById('pod-audio-btn').style.display = '';
+    document.getElementById('pod-save-btn').style.display  = '';
+    const txt  = POD.turns.map(t => t.speaker + ': ' + t.text).join('\n\n');
+    const blob = new Blob([txt], { type: 'text/plain' });
+    document.getElementById('pod-export-btn').href = URL.createObjectURL(blob);
+    document.getElementById('pod-export-btn').style.display = '';
+    document.getElementById('pod-extend-row').style.display = 'flex';
+  }
+}
+
+async function renderPodcastTTS() {
+  if (!POD.turns.length) return;
+  const btn = document.getElementById('pod-audio-btn');
+  btn.textContent = '[ RENDERING... ]'; btn.disabled = true;
+  try {
+    const res  = await fetch('/api/tts', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ turns: POD.turns, voice_overrides: _getVoiceOverrides() }),
+    });
+    const data = await res.json();
+    if (data.url) {
+      const el = document.getElementById('pod-audio');
+      el.src = data.url; el.style.display = 'block'; el.play();
+      document.getElementById('pod-mp3-btn').href = data.url;
+      document.getElementById('pod-mp3-btn').style.display = '';
+    } else { alert('TTS failed: ' + (data.error || 'unknown')); }
+  } catch(e) { alert('TTS error: ' + e); }
+  btn.textContent = '[ PLAY AUDIO ]'; btn.disabled = false;
+}
+
+async function savePodcastTranscript() {
+  if (!POD.turns.length) return;
+  const topic = document.getElementById('pod-topic').value.trim() || 'podcast';
+  const txt   = POD.turns.map(t => t.speaker + ': ' + t.text).join('\n\n');
+  try {
+    const res  = await fetch('/api/transcript/save', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: topic, content: txt, session_type: 'podcast' }),
+    });
+    const data = await res.json();
+    const btn  = document.getElementById('pod-save-btn');
+    btn.textContent = data.ok ? '[ SAVED ]' : '[ SAVE FAILED ]';
+    setTimeout(() => { btn.textContent = '[ SAVE ]'; }, 2000);
+  } catch(e) {
+    alert('Save error: ' + e);
+  }
+}
+
+/* ─────────────────────────────────────────
+   ADVISORS
+───────────────────────────────────────── */
+const _advHistory = { legal: '', marketing: '' };
+
+async function runAdvisor(type) {
+  const inputEl = document.getElementById(type + '-input');
+  const msg     = inputEl.value.trim();
+  if (!msg) return;
+  const out     = document.getElementById(type + '-out');
+  const btn     = document.getElementById(type + '-go-btn');
+  btn.disabled  = true;
+  btn.textContent = '[ CONSULTING... ]';
+
+  const userLine = document.createElement('div');
+  userLine.className = 'session-line user';
+  userLine.textContent = '> ' + msg;
+  out.appendChild(userLine);
+  inputEl.value = '';
+
+  try {
+    const turns = await streamSession('/api/advisor', {
+      advisor: type,
+      message: msg,
+      prior:   _advHistory[type],
+    }, out);
+    if (turns.length) {
+      const label = type === 'legal' ? 'LEGAL' : 'MARKETING';
+      _advHistory[type] += (
+        (_advHistory[type] ? '\n\n' : '') +
+        `USER: ${msg}\n\nADVISOR: ${turns.map(t => t.text).join(' ')}`
+      );
+      const exp = document.getElementById(type + '-export-btn');
+      const blob = new Blob([_advHistory[type]], { type: 'text/plain' });
+      exp.href = URL.createObjectURL(blob);
+      exp.style.display = '';
+    }
+  } catch(e) {
+    out.innerHTML += '<p style="color:var(--red)">' + e + '</p>';
+  }
+
+  btn.disabled = false;
+  btn.textContent = type === 'legal' ? '[ ASK LEGAL ]' : '[ ASK MARKETING ]';
+  out.scrollTop = out.scrollHeight;
+}
+
+function clearAdvisor(type) {
+  _advHistory[type] = '';
+  document.getElementById(type + '-out').innerHTML = '';
+  document.getElementById(type + '-export-btn').style.display = 'none';
 }
 
 /* ─────────────────────────────────────────
@@ -1969,13 +2430,80 @@ const ST = {
 };
 
 function switchStudio(tab, btn) {
-  ['boardroom','brainstorm'].forEach(t => {
+  ['brainstorm','podcast'].forEach(t => {
     const el = document.getElementById('lab-' + t);
     if (el) el.classList.remove('active');
   });
   document.querySelectorAll('#panel-studio > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
   document.getElementById('lab-' + tab).classList.add('active');
   if (btn) btn.classList.add('active');
+}
+
+function switchBoard(tab, btn) {
+  document.querySelectorAll('#panel-board .lab-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('#panel-board > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('board-' + tab).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+function switchAdvisors(tab, btn) {
+  ['legal','marketing'].forEach(t => {
+    const el = document.getElementById('adv-' + t);
+    if (el) el.classList.remove('active');
+  });
+  document.querySelectorAll('#panel-advisors > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('adv-' + tab).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+/* ─────────────────────────────────────────
+   CODE LAB — ARCHITECT MODE
+───────────────────────────────────────── */
+let codeMode = 'build';
+
+function setCodeMode(m) {
+  codeMode = m;
+  document.getElementById('code-m-build').classList.toggle('on', m === 'build');
+  document.getElementById('code-m-architect').classList.toggle('on', m === 'architect');
+  document.getElementById('code-arch-note').style.display   = m === 'architect' ? 'block' : 'none';
+  document.getElementById('code-stack-row').style.display   = m === 'architect' ? 'flex'  : 'none';
+  document.getElementById('builder-input').placeholder      =
+    m === 'architect'
+      ? 'Describe the application you want to build (purpose, features, users)...'
+      : 'Describe what to build...';
+  document.getElementById('builder-go-btn').textContent     =
+    m === 'architect' ? '[ ARCHITECT + BUILD ]' : '[ RUN BUILDER ]';
+}
+
+function _extractFilesFromOutput(text) {
+  const patterns = [
+    /(?:^|\n)##?\s+([\w\/\-.]+\.\w+)/gm,
+    /```[\w]*\s*\n?(?:\/\/|#)\s*([\w\/\-.]+\.\w+)/gm,
+    /File:\s*([\w\/\-.]+\.\w+)/gim,
+    /`([\w\/\-.]+\.\w{1,6})`/g,
+  ];
+  const found = new Set();
+  patterns.forEach(p => {
+    let m;
+    const re = new RegExp(p.source, p.flags);
+    while ((m = re.exec(text)) !== null) {
+      const f = m[1].trim();
+      if (f.includes('.') && !f.startsWith('http')) found.add(f);
+    }
+  });
+  return [...found];
+}
+
+function _renderCodeFiles(text) {
+  const files = _extractFilesFromOutput(text);
+  const row = document.getElementById('code-files-row');
+  const list = document.getElementById('code-files-list');
+  if (files.length) {
+    list.innerHTML = files.map(f => `<div>📄 ${f}</div>`).join('');
+    row.style.display = 'block';
+  } else {
+    row.style.display = 'none';
+  }
 }
 
 /* ─────────────────────────────────────────
@@ -2370,15 +2898,21 @@ document.addEventListener('keydown', e => {
   const tag = document.activeElement?.tagName;
   if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT') return;
   const navBtns = document.querySelectorAll('.nav-btn');
-  const map = { '1': 'home', '2': 'projects', '3': 'lab', '4': 'settings', '5': 'studio' };
+  const _tabs   = ['home','projects','lab','studio','board','advisors','settings'];
+  const map = { '1':'home','2':'projects','3':'lab','4':'studio','5':'board','6':'advisors','7':'settings' };
   if (map[e.key]) {
     const name = map[e.key];
-    const idx  = ['home','projects','lab','settings','studio'].indexOf(name);
+    const idx  = _tabs.indexOf(name);
     switchTab(name, navBtns[idx] || null);
   }
   if (e.key === 'Enter' && document.activeElement === document.getElementById('txt')) {
     e.preventDefault(); send();
   }
+});
+
+/* init podcast cast on load */
+document.addEventListener('DOMContentLoaded', () => {
+  _podRebuildCast(2);
 });
 </script>
 </body>

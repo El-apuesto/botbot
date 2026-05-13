@@ -6,8 +6,8 @@ An esoteric/occult comedy content platform: Python Flask web server + Telegram b
 
 - **Flask web server** — port 5000, started by `part6_bot.py` at import time in a daemon thread
 - **Telegram bot** — runs concurrently via `python-telegram-bot` async loop; requires `TOKEN` env var
-- **Web UI** — `static/index.html` — DOS-style retro interface with press-start-2P font, desktop background image, chat panel overlaid on purple box
-- **Video Lab** — `static/lab.html` — `/lab` route; same DOS aesthetic; full short-form video pipeline
+- **Web UI** — `static/index.html` — IBM Plex Mono retro interface; 7-tab nav; chat panel, desktop background
+- **Video Lab** — `static/lab.html` — `/lab` route; same aesthetic; full short-form video pipeline
 - **AI streaming** — all API calls are async; Flask↔async bridge uses a Queue + daemon thread per request for real SSE streaming
 
 ## Authority Hierarchy (LOCKED)
@@ -42,6 +42,18 @@ All source files inside `twin shadow flat/`:
 | `uploads/` | Lab uploads (video, audio, image files) |
 | `renders/` | Final rendered MP4 output files |
 
+## Nav Structure (7 tabs)
+
+| Tab | Key | Content |
+|---|---|---|
+| HOME | 1 | Main chat (TWIN / SHADOW) |
+| PROJECTS | 2 | Pipeline job queue |
+| LABS | 3 | VIDEO / WRITE / CODE (BUILD + ARCHITECT mode) |
+| STUDIO | 4 | BRAINSTORM / PODCAST (full character + cast format system) |
+| BOARD | 5 | BOARDROOM (multi-agent board sessions) |
+| ADVISE | 6 | LEGAL + MARKETING advisor chat |
+| SETTINGS | 7 | User preferences, API settings |
+
 ## Flask API Routes
 
 ### Main App
@@ -55,8 +67,10 @@ All source files inside `twin shadow flat/`:
 | `/api/chat` | POST | SSE streaming chat (TWIN or SHADOW) |
 | `/api/boardroom` | POST | SSE multi-agent boardroom session |
 | `/api/brainstorm` | POST | SSE brainstorming/podcast session |
+| `/api/advisor` | POST | SSE advisor chat (legal or marketing) |
+| `/api/podcast` | POST | SSE multi-character podcast/show dialogue |
 | `/api/tts` | POST | Multi-voice TTS; returns audio URL |
-| `/api/builder` | POST | SSE builder bot (code generation) |
+| `/api/builder` | POST | SSE builder bot (build + architect mode) |
 | `/api/builder/deploy` | POST | Loopback-only: write script to disk + register pipeline job |
 | `/api/pipeline` | GET/POST | Pipeline job queue |
 | `/api/pipeline/<id>` | DELETE | Remove pipeline job |
