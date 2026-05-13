@@ -1476,7 +1476,7 @@ audio { width: 100%; margin-top: 4px; }
     <button class="nav-btn" onclick="switchTab('advisors', this)"><span class="nav-num">[5]</span>ADVISE</button>
     <button class="nav-btn" onclick="switchTab('social', this)"><span class="nav-num">[6]</span>SOCIAL</button>
     <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[7]</span>SETTINGS</button>
-    <span class="nav-user">{{ session.get('username', '') | upper }}&nbsp;<a class="nav-logout" href="/logout">EXIT</a></span>
+    <span class="nav-user" style="width:100%;order:99;text-align:right;padding:2px 8px;font-size:7px">{{ session.get('username', '') | upper }}&nbsp;<a class="nav-logout" href="/logout">[ EXIT ]</a></span>
   </nav>
 
 </div><!-- /app -->
