@@ -2768,33 +2768,37 @@ def api_bible_chat():
     data = request.get_json() or {}
     session_id = data.get("session_id") or f"sess_{int(time.time())}"
     message = data.get("message", "").strip()
+    writer  = data.get("writer", "twin")
     if not message:
         return jsonify({"error": "message required"}), 400
     if session_id not in _bible_sessions:
-        _bible_sessions[session_id] = {"history": [], "partial_bible": None, "original_idea": message}
+        _bible_sessions[session_id] = {"history": [], "partial_bible": None, "original_idea": message, "writer": writer}
     sess = _bible_sessions[session_id]
+    sess_writer = sess.get("writer", writer)
     async def _run():
-        return await bible_chat(message, sess["history"], sess["partial_bible"])
+        return await bible_chat(message, sess["history"], sess["partial_bible"], writer=sess_writer)
     response, bible_dict = _run_async(_run())
     sess["history"].append({"role": "user", "content": message})
     sess["history"].append({"role": "assistant", "content": response})
     if bible_dict:
         sess["partial_bible"] = bible_dict
-    return jsonify({"response": response, "bible": bible_dict, "session_id": session_id})
+    return jsonify({"response": response, "bible": bible_dict, "session_id": session_id, "writer": sess_writer})
 
 
 @_flask.route("/api/story/bible/complete", methods=["POST"])
 def api_bible_complete():
     data = request.get_json() or {}
     session_id = data.get("session_id")
+    writer = data.get("writer", "twin")
     if session_id and session_id in _bible_sessions:
         partial = _bible_sessions[session_id].get("partial_bible") or {}
         original_idea = _bible_sessions[session_id].get("original_idea", "")
+        writer = _bible_sessions[session_id].get("writer", writer)
     else:
         partial = data.get("partial_bible", {})
         original_idea = data.get("original_idea", "")
     async def _run():
-        return await complete_bible(partial, original_idea)
+        return await complete_bible(partial, original_idea, writer=writer)
     bible = _run_async(_run())
     return jsonify({"bible": bible.__dict__})
 
@@ -2803,7 +2807,8 @@ def api_bible_complete():
 def api_story_generate():
     data = request.get_json() or {}
     bible_d = data.get("bible", {})
-    length = data.get("length", "short")
+    length  = data.get("length", "short")
+    writer  = data.get("writer", "twin")
     chat_id = int(data.get("chat_id", 0))
     if not bible_d:
         return jsonify({"error": "bible required"}), 400
@@ -2813,12 +2818,12 @@ def api_story_generate():
         import asyncio as _a
         loop = _a.new_event_loop()
         result = loop.run_until_complete(
-            generate_full_story(bible=bible, length=length, vault_fn=vault_add, chat_id=chat_id)
+            generate_full_story(bible=bible, length=length, vault_fn=vault_add, chat_id=chat_id, writer=writer)
         )
         holder["id"] = result.story_id
     threading.Thread(target=_bg, daemon=True).start()
     time.sleep(0.15)
-    return jsonify({"story_id": holder.get("id", "pending"), "status": "generating"})
+    return jsonify({"story_id": holder.get("id", "pending"), "status": "generating", "writer": writer})
 
 
 @_flask.route("/api/story/list", methods=["GET"])

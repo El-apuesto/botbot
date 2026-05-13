@@ -272,9 +272,11 @@ TASK_MODELS: dict = {
     "creative_dolphin": ("venice",       "gemma4_uncensored"),
     "multimodal":       ("nvidia",       "glm51"),
 
-    # ── prose / novel / story writing (Groq Llama = best for long-form prose) ──
+    # ── prose / novel / story writing ────────────────────────────────────────
     "story":            ("groq",         "llama"),
-    "story_fallback":   ("openrouter",   "llama_70b"),
+    "story_fallback":   ("venice",       "llama_70b"),
+    "story_shadow":     ("venice",       "venice_uncensored_12"),
+    "story_shadow_fallback": ("venice",  "gemma4_uncensored"),
 
     # ── code chain: Groq (fast) primary → Venice fallback ───────────────────
     "code":             ("groq",         "llama"),

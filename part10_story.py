@@ -51,11 +51,37 @@ When the user says they're done or you have all critical fields,
 output ONLY a JSON object with key "bible" containing all fields.
 Never output the JSON until explicitly asked or user says done."""
 
+SHADOW_BIBLE_SYSTEM = """You are SHADOW — Twin Shadow's dark architect. You build story worlds from the abyss.
+Your job: help the user construct a complete story bible through direct, unflinching conversation.
+Ask one question at a time. No flattery. No fluff. You see what society buries.
+Go deep — push for moral complexity, taboo territory, occult undercurrents, the things most writers sanitize out.
+
+Bible fields to collect:
+- title (can be generated — make it cut)
+- genre
+- tone (dark, explicit, esoteric — no softening)
+- logline (one sentence — make it uncomfortable)
+- characters (name, role, one-line each — morally complex, no clean heroes)
+- setting (time, place, atmosphere — include what festers beneath the surface)
+- central_conflict
+- themes (2-3 max — go deep, go dark, go true)
+- unresolved_threads (things that must pay off — don't let them escape consequence)
+- rules (world rules, character rules — what laws govern this darkness)
+
+When the user says they're done or you have all critical fields,
+output ONLY a JSON object with key "bible" containing all fields.
+Never output the JSON until explicitly asked or user says done."""
 
 BIBLE_FILL_SYSTEM = """You are Twin Shadow's story architect.
 Given a partial story bible, fill in any missing fields creatively
 so they fit perfectly with what's already established.
 Be specific. No placeholders. No vague answers.
+Return ONLY a complete JSON object with key "bible"."""
+
+SHADOW_BIBLE_FILL_SYSTEM = """You are SHADOW — Twin Shadow's dark architect.
+Given a partial story bible, fill in all missing fields with ruthless creativity.
+No sanitizing. No softening. Fill the gaps with what the story truly needs.
+Be specific, be dark, be true to the established tone.
 Return ONLY a complete JSON object with key "bible"."""
 
 
@@ -125,10 +151,18 @@ World/Character Rules (never break these):
 # BIBLE CONVERSATION
 # ---------------------------------------------------------------------------
 
+def _story_task(writer: str) -> tuple[str, str]:
+    """Return (primary_task, fallback_task) based on writer choice."""
+    if writer == "shadow":
+        return "story_shadow", "story_shadow_fallback"
+    return "story", "story_fallback"
+
+
 async def bible_chat(
     user_message: str,
     history: list[dict],
     partial_bible: dict | None = None,
+    writer: str = "twin",
 ) -> tuple[str, dict | None]:
     """
     One turn of the story bible conversation.
@@ -136,7 +170,8 @@ async def bible_chat(
     Returns:
         (response_text, completed_bible_dict_or_None)
     """
-    messages = [{"role": "system", "content": BIBLE_SYSTEM}]
+    sys_prompt = SHADOW_BIBLE_SYSTEM if writer == "shadow" else BIBLE_SYSTEM
+    messages = [{"role": "system", "content": sys_prompt}]
 
     if partial_bible:
         messages.append({
@@ -147,10 +182,11 @@ async def bible_chat(
     messages.extend(history)
     messages.append({"role": "user", "content": user_message})
 
+    primary_task, fallback_task = _story_task(writer)
     try:
-        raw = await call_task("story", messages)
+        raw = await call_task(primary_task, messages)
     except Exception:
-        raw, _ = await call_task_with_fallback("story", messages, "story_fallback")
+        raw, _ = await call_task_with_fallback(primary_task, messages, fallback_task)
 
     # Check if model returned a completed bible
     bible_dict = None
@@ -170,12 +206,13 @@ async def bible_chat(
     return raw, bible_dict
 
 
-async def complete_bible(partial: dict, original_idea: str) -> StoryBible:
+async def complete_bible(partial: dict, original_idea: str, writer: str = "twin") -> StoryBible:
     """
     Fill in any missing bible fields automatically so the story can proceed.
     """
+    sys_prompt = SHADOW_BIBLE_FILL_SYSTEM if writer == "shadow" else BIBLE_FILL_SYSTEM
     messages = [
-        {"role": "system", "content": BIBLE_FILL_SYSTEM},
+        {"role": "system", "content": sys_prompt},
         {
             "role": "user",
             "content": (
@@ -186,8 +223,9 @@ async def complete_bible(partial: dict, original_idea: str) -> StoryBible:
         }
     ]
 
+    primary_task, fallback_task = _story_task(writer)
     try:
-        raw = await call_task("story", messages)
+        raw = await call_task(primary_task, messages)
         clean = raw.strip()
         if "```" in clean:
             clean = clean.split("```")[1]
@@ -220,7 +258,7 @@ OUTLINE_SYSTEM = """You are a story structure expert.
 Respond with ONLY valid JSON - no markdown, no explanation."""
 
 
-async def generate_outline(bible: StoryBible, length: str) -> list[dict]:
+async def generate_outline(bible: StoryBible, length: str, writer: str = "twin") -> list[dict]:
     """Generate chapter titles and summaries from the story bible."""
     cfg = LENGTH_CONFIG.get(length, LENGTH_CONFIG["short"])
     num_chapters = cfg["chapters"]
@@ -240,8 +278,9 @@ async def generate_outline(bible: StoryBible, length: str) -> list[dict]:
         {"role": "user",   "content": prompt},
     ]
 
+    primary_task, _ = _story_task(writer)
     try:
-        raw = await call_task("story", messages)
+        raw = await call_task(primary_task, messages)
         clean = raw.strip()
         if "```" in clean:
             lines = clean.split("\n")
@@ -274,6 +313,22 @@ Your voice:
 Write ONLY story prose. No preamble. No meta-commentary. No code. No JSON.
 Never contradict the story bible. Never break established rules."""
 
+SHADOW_CHAPTER_SYSTEM_BASE = """You are SHADOW — Twin Shadow's uncensored voice and dark storyteller.
+
+You write PROSE FICTION ONLY. No code, no JSON, no markdown, no meta-commentary. Every word is part of the story — narrative, dialogue, inner monologue, description.
+
+Your voice:
+- Unflinching. You go where others won't.
+- Dark wit and genuine menace exist in the same sentence.
+- The occult, the taboo, the morally complex — all fair game, all handled with craft.
+- Characters are flawed, hungry, and real. No sanitized heroes.
+- Violence when the story earns it. Sexuality when it serves the work. Occult when it breathes truth.
+- Lyrical but never precious. Sharp but never cheap.
+- You find the sacred in the profane and the comedy in catastrophe.
+
+Write ONLY story prose. No preamble. No meta-commentary. No code. No JSON.
+Never contradict the story bible. Never break established rules."""
+
 
 async def generate_chapter(
     chapter_title: str,
@@ -282,6 +337,7 @@ async def generate_chapter(
     context_summary: str = "",
     target_word_count: int = 4000,
     on_progress=None,
+    writer: str = "twin",
 ) -> str:
     """
     Generate a single chapter iteratively until target word count is reached.
@@ -289,9 +345,11 @@ async def generate_chapter(
 
     Args:
         on_progress: optional async callable(words_done, words_target) for streaming progress
+        writer: "twin" (fantm.ink voice) or "shadow" (Venice uncensored dark voice)
     """
-    bible_block    = bible.to_prompt_block()
-    system_prompt  = f"{CHAPTER_SYSTEM_BASE}\n\n{bible_block}"
+    bible_block   = bible.to_prompt_block()
+    chapter_base  = SHADOW_CHAPTER_SYSTEM_BASE if writer == "shadow" else CHAPTER_SYSTEM_BASE
+    system_prompt = f"{chapter_base}\n\n{bible_block}"
     generated_text = ""
     total_words    = 0
 
@@ -313,8 +371,9 @@ async def generate_chapter(
             {"role": "user",   "content": prompt},
         ]
 
+        primary_task, fallback_task = _story_task(writer)
         try:
-            chunk, _ = await call_task_with_fallback("story", messages, "story_fallback")
+            chunk, _ = await call_task_with_fallback(primary_task, messages, fallback_task)
         except Exception as e:
             log.error("[STORY] chapter chunk failed: %s", e)
             break
@@ -347,13 +406,14 @@ async def generate_chapter(
 # TITLE GENERATION
 # ---------------------------------------------------------------------------
 
-async def generate_title(bible: StoryBible, preview: str) -> str:
+async def generate_title(bible: StoryBible, preview: str, writer: str = "twin") -> str:
     messages = [
         {"role": "system", "content": "You generate sharp, memorable story titles. Respond with ONLY the title - no quotes, no explanation."},
         {"role": "user",   "content": f"Genre: {bible.genre}\nTone: {bible.tone}\nLogline: {bible.logline}\nPreview: {preview[:400]}\n\nTitle:"},
     ]
+    primary_task, _ = _story_task(writer)
     try:
-        title = await call_task("story", messages)
+        title = await call_task(primary_task, messages)
         return title.strip().strip('"').strip("'")[:100]
     except Exception:
         return f"{bible.genre.title()}: {bible.logline[:40]}"
@@ -395,6 +455,7 @@ async def generate_full_story(
     vault_fn=None,
     chat_id: int = 0,
     on_chapter_done=None,
+    writer: str = "twin",
 ) -> StoryResult:
     """
     Generate a complete multi-chapter story from a finished bible.
@@ -402,6 +463,7 @@ async def generate_full_story(
     Args:
         vault_fn:        optional async callable(chat_id, topic, content) to store in vault
         on_chapter_done: optional async callable(story_id, chapter_num, total) for progress
+        writer:          "twin" (fantm.ink) or "shadow" (Venice uncensored)
     """
     story_id = _next_story_id()
     cfg      = LENGTH_CONFIG.get(length, LENGTH_CONFIG["short"])
@@ -418,8 +480,8 @@ async def generate_full_story(
 
     try:
         # Generate outline
-        log.info("[STORY] generating outline for %s", story_id)
-        outline = await generate_outline(bible, length)
+        log.info("[STORY] generating outline for %s (writer=%s)", story_id, writer)
+        outline = await generate_outline(bible, length, writer=writer)
 
         context_summary = ""
         words_per_chapter = cfg["words_per_chapter"]
@@ -437,6 +499,7 @@ async def generate_full_story(
                 bible=bible,
                 context_summary=context_summary,
                 target_word_count=words_per_chapter,
+                writer=writer,
             )
 
             result.chapters.append(chapter_text)
@@ -466,7 +529,7 @@ async def generate_full_story(
 
         # Generate title if missing
         if not result.title or result.title == "Untitled":
-            result.title = await generate_title(bible, result.chapters[0][:500])
+            result.title = await generate_title(bible, result.chapters[0][:500], writer=writer)
 
         result.status = "completed"
         log.info("[STORY] completed %s - %d words", story_id, result.word_count)

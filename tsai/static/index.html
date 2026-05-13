@@ -748,6 +748,11 @@ audio { width: 100%; margin-top: 4px; }
           <div class="panel-scroll">
             <div class="fg">
               <span class="fl">STORY BIBLE BUILDER</span>
+              <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px">
+                <span style="font-size:11px;color:var(--purple);letter-spacing:1px">WRITER:</span>
+                <button class="opt on" id="sw-twin"   onclick="setStoryWriter('twin',this)"   style="padding:2px 8px;font-size:11px">TWIN</button>
+                <button class="opt"    id="sw-shadow" onclick="setStoryWriter('shadow',this)" style="padding:2px 8px;font-size:11px">SHADOW</button>
+              </div>
               <div id="bible-chat-out" class="session-out" style="min-height:100px;max-height:220px"></div>
             </div>
             <div style="display:flex;gap:5px;align-items:flex-end">
@@ -3097,6 +3102,19 @@ function bibleOut(cls, text) {
   out.scrollTop = out.scrollHeight;
 }
 
+function setStoryWriter(val, btn) {
+  ST.storyWriter = val;
+  document.querySelectorAll('[id^=sw-]').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  ST.sessionId = null;
+  document.getElementById('bible-chat-out').innerHTML = '';
+  ST.bible = null;
+  document.getElementById('bible-preview-box').style.display = 'none';
+  document.getElementById('bible-length-box').style.display = 'none';
+  document.getElementById('bible-generate-btn').style.display = 'none';
+  bibleOut('system', `> WRITER: ${val.toUpperCase()} — new session started`);
+}
+
 async function bibleChat() {
   const inp = document.getElementById('bible-input');
   const msg = inp.value.trim();
@@ -3107,7 +3125,7 @@ async function bibleChat() {
   try {
     const res  = await fetch('/api/story/bible/chat', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: msg, session_id: ST.sessionId }),
+      body: JSON.stringify({ message: msg, session_id: ST.sessionId, writer: ST.storyWriter || 'twin' }),
     });
     const data = await res.json();
     if (data.error) { bibleOut('err', '✗ ' + data.error); return; }
@@ -3129,7 +3147,7 @@ async function bibleComplete() {
   try {
     const res  = await fetch('/api/story/bible/complete', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: ST.sessionId }),
+      body: JSON.stringify({ session_id: ST.sessionId, writer: ST.storyWriter || 'twin' }),
     });
     const data = await res.json();
     if (data.error) { bibleOut('err', '✗ ' + data.error); return; }
@@ -3178,7 +3196,7 @@ async function studioGenerate() {
   try {
     const res  = await fetch('/api/story/generate', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bible: ST.bible, length: ST.storyLength }),
+      body: JSON.stringify({ bible: ST.bible, length: ST.storyLength, writer: ST.storyWriter || 'twin' }),
     });
     const data = await res.json();
     if (data.error) {
