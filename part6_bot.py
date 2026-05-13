@@ -34,6 +34,10 @@ from part5_orchestrator import (
     vault_add,
 )
 from runtime.events import subscribe, unsubscribe, iter_events
+from part12_social import (
+    run_social_pipeline, get_job as get_social_job,
+    list_jobs as list_social_jobs, UPLOAD_DIR, RENDERS_DIR,
+)
 from part10_story import (
     bible_chat, complete_bible, generate_full_story,
     get_story, list_stories, StoryBible,
@@ -136,7 +140,7 @@ def _check_web_auth():
         return redirect("/login")
 
 def _require_web_auth(fn):
-    return fn  # kept for decorator syntax — before_request covers all
+    return fn  # kept for decorator syntax - before_request covers all
 
 @_flask.route("/login", methods=["GET", "POST"])
 def _login():
@@ -1133,7 +1137,7 @@ def api_tts():
     except Exception as e:
         return jsonify({"error": f"TTS failed: {e}"}), 500
 
-# ── Self-edit proposal store ──────────────────────────────────────────────────
+# -- Self-edit proposal store --------------------------------------------------
 _pending_edits: dict = {}          # edit_id -> {file, description, content, ts}
 _EDIT_TTL = 900                    # 15 minutes
 
@@ -1161,7 +1165,7 @@ def _parse_self_edit(text: str) -> dict | None:
     return {"file": rel_path, "description": description, "content": content, "path": candidate}
 
 
-# ── Child-bot process manager ─────────────────────────────────────────────────
+# -- Child-bot process manager -------------------------------------------------
 _child_bots: dict = {}   # bot_id -> {name, path, proc, status, output, created_at}
 _BOTS_DIR = _PROJECT_ROOT / "bots"
 
@@ -1297,7 +1301,7 @@ def api_bot_spawn():
     if not code:
         code = _last_builder_code.get("web", "")
     if not code:
-        return jsonify({"error": "No code — run Builder first"}), 400
+        return jsonify({"error": "No code - run Builder first"}), 400
     if len(code.encode()) > _MAX_DEPLOY_BYTES:
         return jsonify({"error": "Code exceeds 64 KB limit"}), 400
     _BOTS_DIR.mkdir(exist_ok=True)
@@ -2897,6 +2901,97 @@ def api_story_download(story_id):
         return jsonify({"error": "formatter timed out"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+
+# ===========================================================================
+# SOCIAL LAB API ROUTES
+# ===========================================================================
+
+@_flask.route("/api/social/upload", methods=["POST"])
+def api_social_upload():
+    if "file" not in request.files:
+        return jsonify({"error": "no file"}), 400
+    f = request.files["file"]
+    if not f.filename:
+        return jsonify({"error": "empty filename"}), 400
+    safe = "".join(c for c in f.filename if c.isalnum() or c in ".-_")
+    path = os.path.join(UPLOAD_DIR, safe)
+    f.save(path)
+    return jsonify({"file_id": safe, "path": path, "size": os.path.getsize(path)})
+
+
+@_flask.route("/api/social/process", methods=["POST"])
+def api_social_process():
+    data            = request.get_json() or {}
+    file_id         = data.get("file_id", "")
+    platforms       = data.get("platforms", ["youtube"])
+    transcript_mode = data.get("transcript_mode", "raw")
+    max_clips       = int(data.get("max_clips", 5))
+    source_path     = os.path.join(UPLOAD_DIR, file_id)
+    if not os.path.exists(source_path):
+        return jsonify({"error": "file not found"}), 404
+    holder = {}
+    def _bg():
+        import asyncio as _a
+        loop = _a.new_event_loop()
+        result = loop.run_until_complete(run_social_pipeline(
+            source_path=source_path, platforms=platforms,
+            transcript_mode=transcript_mode, max_clips=max_clips,
+        ))
+        holder["job_id"] = result.job_id
+    threading.Thread(target=_bg, daemon=True).start()
+    time.sleep(0.15)
+    return jsonify({"job_id": holder.get("job_id", "pending"), "status": "processing"})
+
+
+@_flask.route("/api/social/job/<job_id>", methods=["GET"])
+def api_social_job(job_id):
+    job = get_social_job(job_id)
+    if not job:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({
+        "job_id":    job.job_id, "status": job.status, "error": job.error,
+        "raw_text":  job.raw_text[:500] if job.raw_text else "",
+        "clean_text":job.clean_text[:500] if job.clean_text else "",
+        "summary":   job.summary,
+        "clips":     [{"start": c.start, "end": c.end, "reason": c.reason,
+                       "hook": c.hook, "score": c.score, "clip_path": c.clip_path}
+                      for c in job.clips],
+        "platforms": [{"platform": p.platform, "title": p.title,
+                       "description": p.description, "hashtags": p.hashtags,
+                       "optimized": p.optimized}
+                      for p in job.platforms],
+        "thumbnails":[{"type": t.type, "timestamp": t.timestamp,
+                       "image_path": t.image_path, "text_overlay": t.text_overlay,
+                       "ai_prompt": t.ai_prompt}
+                      for t in job.thumbnails],
+    })
+
+
+@_flask.route("/api/social/jobs", methods=["GET"])
+def api_social_jobs():
+    return jsonify([{
+        "job_id": j.job_id, "status": j.status,
+        "source_file": os.path.basename(j.source_file),
+        "clips": len(j.clips), "platforms": len(j.platforms),
+    } for j in list_social_jobs()])
+
+
+@_flask.route("/api/social/download/<job_id>/<int:clip_index>", methods=["GET"])
+def api_social_download_clip(job_id, clip_index):
+    job = get_social_job(job_id)
+    if not job or clip_index >= len(job.clips) or not job.clips[clip_index].clip_path:
+        return jsonify({"error": "not found"}), 404
+    return send_file(job.clips[clip_index].clip_path, as_attachment=True)
+
+
+@_flask.route("/api/social/thumbnail/<job_id>/<int:thumb_index>", methods=["GET"])
+def api_social_thumbnail(job_id, thumb_index):
+    job = get_social_job(job_id)
+    if not job or thumb_index >= len(job.thumbnails) or not job.thumbnails[thumb_index].image_path:
+        return jsonify({"error": "not found"}), 404
+    return send_file(job.thumbnails[thumb_index].image_path, as_attachment=False)
 
 
 def main():
