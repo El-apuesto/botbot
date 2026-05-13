@@ -1146,6 +1146,23 @@ audio { width: 100%; margin-top: 4px; }
                 oninput="document.getElementById('char-speed-val').textContent=parseFloat(this.value).toFixed(2)">
             </div>
           </div>
+          <div style="margin-bottom:8px">
+            <label class="fl" style="font-size:11px;margin-bottom:2px">AI MODEL</label>
+            <select class="fi" id="char-model" style="width:100%">
+              <option value="twin">TWIN · Groq Llama 3.3 70B (default)</option>
+              <option value="shadow">SHADOW · Venice Uncensored 1.2</option>
+              <option value="creative_dolphin">GEMMA 4 Uncensored · Venice</option>
+              <option value="board_gptoss">HERMES 405B · Venice</option>
+              <option value="brainstorm_qwq">QwQ 32B · Groq (reasoning)</option>
+              <option value="board_strategy">KIMI K2 · NVIDIA</option>
+              <option value="board_finance">MISTRAL LARGE 3 · NVIDIA</option>
+              <option value="board_creative">PALMYRA 122B · NVIDIA</option>
+              <option value="board_ops">NEMOTRON 49B · NVIDIA</option>
+              <option value="board_distribution">GPT-OSS 120B · NVIDIA</option>
+              <option value="brainstorm_minimax">MINIMAX M2.5 · NVIDIA</option>
+              <option value="creative">GLM 5.1 · NVIDIA</option>
+            </select>
+          </div>
           <button class="btn" onclick="charSave()">[ + SAVE CHARACTER ]</button>
 
           <div class="fg" style="margin-top:12px">
@@ -2034,6 +2051,7 @@ function _podSpeakers() {
     voice:       card.querySelector('.pod-sp-voice') ? card.querySelector('.pod-sp-voice').value : 'Ava-PlayAI',
     pitch:       card.querySelector('.pod-sp-pitch') ? parseFloat(card.querySelector('.pod-sp-pitch').value) : 1.0,
     speed:       card.querySelector('.pod-sp-speed') ? parseFloat(card.querySelector('.pod-sp-speed').value) : 1.0,
+    model:       card.querySelector('.pod-sp-model') ? card.querySelector('.pod-sp-model').value : 'twin',
   }));
 }
 
@@ -2049,13 +2067,34 @@ function _getPodVoiceOverrides() {
   return out;
 }
 
-function _podMakeCard(name, role, pers, voice, pitch, speed) {
+const _POD_MODELS = [
+  { v:'twin',              l:'TWIN · Groq Llama 70B' },
+  { v:'shadow',            l:'SHADOW · Venice Uncensored' },
+  { v:'creative_dolphin',  l:'GEMMA 4 Uncensored · Venice' },
+  { v:'board_gptoss',      l:'HERMES 405B · Venice' },
+  { v:'brainstorm_qwq',    l:'QwQ 32B · Groq' },
+  { v:'board_strategy',    l:'KIMI K2 · NVIDIA' },
+  { v:'board_finance',     l:'MISTRAL LARGE 3 · NVIDIA' },
+  { v:'board_creative',    l:'PALMYRA 122B · NVIDIA' },
+  { v:'board_ops',         l:'NEMOTRON 49B · NVIDIA' },
+  { v:'board_distribution',l:'GPT-OSS 120B · NVIDIA' },
+  { v:'brainstorm_minimax',l:'MINIMAX M2.5 · NVIDIA' },
+  { v:'creative',          l:'GLM 5.1 · NVIDIA' },
+];
+function _podModelOpts(sel) {
+  return _POD_MODELS.map(m =>
+    `<option value="${m.v}"${m.v === sel ? ' selected' : ''}>${m.l}</option>`
+  ).join('');
+}
+
+function _podMakeCard(name, role, pers, voice, pitch, speed, model) {
   const card = document.createElement('div');
   card.className = 'pod-speaker-card';
   card.style.cssText = 'border:1px solid var(--purple-dim);padding:8px;margin-bottom:6px';
   const voiceOpts = _POD_VOICES.replace(`value="${voice}"`, `value="${voice}" selected`);
   const pitchFmt  = parseFloat(pitch || 1.0).toFixed(2);
   const speedFmt  = parseFloat(speed || 1.0).toFixed(2);
+  const modelKey  = model || 'twin';
   card.innerHTML = `
     <div style="display:flex;gap:6px;margin-bottom:4px">
       <input class="fi pod-sp-name" type="text" value="${name}" placeholder="NAME" style="flex:0 0 90px;text-transform:uppercase">
@@ -2065,6 +2104,10 @@ function _podMakeCard(name, role, pers, voice, pitch, speed) {
     <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
       <select class="fi pod-sp-voice" style="flex:1;font-size:11px">${voiceOpts}</select>
       <button class="btn" style="font-size:10px;padding:3px 7px;white-space:nowrap" onclick="charSaveFromCard(this)">[ SAVE CHAR ]</button>
+    </div>
+    <div style="margin-bottom:4px">
+      <label class="fl" style="font-size:10px;margin-bottom:1px">AI MODEL</label>
+      <select class="fi pod-sp-model" style="width:100%;font-size:11px">${_podModelOpts(modelKey)}</select>
     </div>
     <div style="display:flex;gap:8px">
       <div style="flex:1">
@@ -2091,10 +2134,11 @@ function _podRebuildCast(count) {
     voice:       c.querySelector('.pod-sp-voice') ? c.querySelector('.pod-sp-voice').value : 'Ava-PlayAI',
     pitch:       c.querySelector('.pod-sp-pitch') ? parseFloat(c.querySelector('.pod-sp-pitch').value) : 1.0,
     speed:       c.querySelector('.pod-sp-speed') ? parseFloat(c.querySelector('.pod-sp-speed').value) : 1.0,
+    model:       c.querySelector('.pod-sp-model') ? c.querySelector('.pod-sp-model').value : 'twin',
   }));
   list.innerHTML = '';
   for (let i = 0; i < count; i++) {
-    const def  = _POD_DEFAULTS[i] || { name: `VOICE${i+1}`, role: 'Contributor', personality: 'Sharp and direct', voice: 'Ava-PlayAI', pitch: 1.0, speed: 1.0 };
+    const def  = _POD_DEFAULTS[i] || { name: `VOICE${i+1}`, role: 'Contributor', personality: 'Sharp and direct', voice: 'Ava-PlayAI', pitch: 1.0, speed: 1.0, model: 'twin' };
     const prev = existing[i] || {};
     list.appendChild(_podMakeCard(
       prev.name  || def.name,
@@ -2103,6 +2147,7 @@ function _podRebuildCast(count) {
       prev.voice || def.voice,
       prev.pitch != null ? prev.pitch : def.pitch,
       prev.speed != null ? prev.speed : def.speed,
+      prev.model || def.model || 'twin',
     ));
   }
   document.getElementById('pod-cast-count').textContent = `(${count} speaker${count !== 1 ? 's' : ''})`;
@@ -3262,10 +3307,11 @@ function charSave() {
   const voice = document.getElementById('char-voice').value;
   const pitch = parseFloat(document.getElementById('char-pitch').value);
   const speed = parseFloat(document.getElementById('char-speed').value);
+  const model = document.getElementById('char-model').value || 'twin';
   if (!name) { alert('NAME required'); return; }
   const list = _charLoad();
   const idx  = list.findIndex(c => c.name === name);
-  const char = { name, role: role || 'Contributor', personality: pers || 'Direct and sharp', voice, pitch, speed };
+  const char = { name, role: role || 'Contributor', personality: pers || 'Direct and sharp', voice, pitch, speed, model };
   if (idx >= 0) list[idx] = char; else list.push(char);
   _charStore(list);
   document.getElementById('char-name').value        = '';
@@ -3275,6 +3321,7 @@ function charSave() {
   document.getElementById('char-speed').value       = 1.0;
   document.getElementById('char-pitch-val').textContent = '1.00';
   document.getElementById('char-speed-val').textContent = '1.00';
+  document.getElementById('char-model').value       = 'twin';
   charRenderRoster();
 }
 
@@ -3286,9 +3333,10 @@ function charSaveFromCard(btn) {
   const voice = card.querySelector('.pod-sp-voice') ? card.querySelector('.pod-sp-voice').value : 'Ava-PlayAI';
   const pitch = card.querySelector('.pod-sp-pitch') ? parseFloat(card.querySelector('.pod-sp-pitch').value) : 1.0;
   const speed = card.querySelector('.pod-sp-speed') ? parseFloat(card.querySelector('.pod-sp-speed').value) : 1.0;
+  const model = card.querySelector('.pod-sp-model') ? card.querySelector('.pod-sp-model').value : 'twin';
   const list  = _charLoad();
   const idx   = list.findIndex(c => c.name === name);
-  const char  = { name, role, personality: pers, voice, pitch, speed };
+  const char  = { name, role, personality: pers, voice, pitch, speed, model };
   if (idx >= 0) list[idx] = char; else list.push(char);
   _charStore(list);
   btn.textContent = '[ SAVED ]';
@@ -3305,7 +3353,7 @@ function charLoadToCast(name) {
   const char = _charLoad().find(c => c.name === name);
   if (!char) return;
   const list = document.getElementById('pod-cast-list');
-  list.appendChild(_podMakeCard(char.name, char.role, char.personality || '', char.voice, char.pitch, char.speed));
+  list.appendChild(_podMakeCard(char.name, char.role, char.personality || '', char.voice, char.pitch, char.speed, char.model || 'twin'));
   POD.numSpeakers = list.querySelectorAll('.pod-speaker-card').length;
   document.getElementById('pod-cast-count').textContent = `(${POD.numSpeakers} speaker${POD.numSpeakers !== 1 ? 's' : ''})`;
   switchStudio('podcast', document.querySelector('#panel-studio .lab-tab:nth-child(2)'));
@@ -3320,6 +3368,7 @@ function charEditPrefill(name) {
   document.getElementById('char-voice').value       = char.voice;
   document.getElementById('char-pitch').value       = char.pitch;
   document.getElementById('char-speed').value       = char.speed;
+  document.getElementById('char-model').value       = char.model || 'twin';
   document.getElementById('char-pitch-val').textContent = parseFloat(char.pitch).toFixed(2);
   document.getElementById('char-speed-val').textContent = parseFloat(char.speed).toFixed(2);
 }
@@ -3346,6 +3395,7 @@ function charRenderRoster() {
         </div>
       </div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:2px">${c.role} · ${(c.voice||'').replace('-PlayAI','')} · P:${parseFloat(c.pitch||1).toFixed(2)} S:${parseFloat(c.speed||1).toFixed(2)}</div>
+      <div style="font-size:10px;color:var(--cyan);opacity:.8;margin-bottom:2px">MODEL: ${(_POD_MODELS.find(m=>m.v===(c.model||'twin'))||{l:'TWIN · Groq Llama 70B'}).l}</div>
       <div style="font-size:11px;color:var(--text);opacity:.65;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.personality || ''}</div>
     </div>
   `).join('');

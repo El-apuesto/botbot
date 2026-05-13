@@ -662,10 +662,15 @@ def api_podcast():
                 elif complexity == "complex":
                     cap = 450
 
+                # Per-speaker model — default twin, validated against TASK_MODELS
+                sp_model = sp.get("model", "twin").strip() or "twin"
+                if sp_model not in TASK_MODELS:
+                    sp_model = "twin"
+
                 yield f"\x1eSPEAKER:{name}\x1f"
                 resp = ""
                 try:
-                    async for chunk in stream_task("twin", msgs, max_tokens=cap):
+                    async for chunk in stream_task(sp_model, msgs, max_tokens=cap):
                         resp += chunk
                         yield chunk
                 except Exception as e:
