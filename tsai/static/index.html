@@ -1161,62 +1161,12 @@ audio { width: 100%; margin-top: 4px; }
 
     </div><!-- /panel-studio -->
 
-    <!-- [5] BOARD — BOARDROOM -->
-    <div class="panel" id="panel-board">
-      <div class="lab-tab-row">
-        <button class="lab-tab active" onclick="switchBoard('boardroom', this)">BOARDROOM</button>
-      </div>
-
-      <div class="lab-section active" id="board-boardroom">
-        <div class="panel-scroll">
-          <div class="fg">
-            <label class="fl">TOPIC / IDEA</label>
-            <textarea class="fi" id="boardroom-topic" rows="2" placeholder="Pitch your idea to the board..."></textarea>
-          </div>
-          <div class="fg">
-            <span class="fl">MODE</span>
-            <div class="opt-row">
-              <button class="opt on" id="br-normal" onclick="setBoardMode('normal')">NORMAL BOARD</button>
-              <button class="opt"    id="br-shadow" onclick="setBoardMode('shadow')">SHADOW BOARD</button>
-            </div>
-          </div>
-          <div class="fg">
-            <span class="fl">ROUNDS</span>
-            <div class="opt-row">
-              <button class="opt on" id="br-r1" onclick="setBoardRounds(1)">1</button>
-              <button class="opt"    id="br-r2" onclick="setBoardRounds(2)">2</button>
-              <button class="opt"    id="br-r3" onclick="setBoardRounds(3)">3</button>
-            </div>
-          </div>
-          <div class="action-row">
-            <button class="btn" id="boardroom-go-btn" onclick="runBoardroom()">[ CONVENE BOARD ]</button>
-            <button class="btn" id="boardroom-audio-btn" style="display:none" onclick="renderTTS('boardroom')">[ PLAY AUDIO ]</button>
-            <button class="btn" id="boardroom-save-btn" style="display:none" onclick="saveTranscript('boardroom')">[ SAVE ]</button>
-            <a id="boardroom-export-btn" class="action-link" style="display:none" download="boardroom_transcript.txt">[ EXPORT ]</a>
-            <a id="boardroom-mp3-btn"   class="action-link" style="display:none" download="boardroom_audio.mp3">[ DL MP3 ]</a>
-            <button class="btn" id="boardroom-lab-btn" style="display:none" onclick="sendToVideoLab('boardroom')">[ SEND TO VIDEO LAB ]</button>
-          </div>
-          <div class="steer-box" id="boardroom-steer-row">
-            <span class="fl" id="boardroom-steer-label">ROUND COMPLETE — STEER NEXT ROUND (OPTIONAL)</span>
-            <textarea class="fi" id="boardroom-steer" rows="2" placeholder="Redirect, challenge, or add context..."></textarea>
-            <button class="btn" id="boardroom-next-btn" onclick="boardroomNextRound()">[ NEXT ROUND ]</button>
-          </div>
-          <div class="steer-box" id="boardroom-extend-row">
-            <span class="fl">EXTEND SESSION — NEW DIRECTION (OPTIONAL)</span>
-            <textarea class="fi" id="boardroom-extend-steer" rows="2" placeholder="Push further, challenge a position, add a new angle..."></textarea>
-            <button class="btn" onclick="extendBoardroom()">[ + EXTEND ]</button>
-          </div>
-          <audio id="boardroom-audio" controls></audio>
-          <div id="boardroom-out" class="session-out"></div>
-        </div>
-      </div>
-    </div><!-- /panel-board -->
-
-    <!-- [6] ADVISORS — LEGAL / MARKETING -->
+    <!-- [5] ADVISE — LEGAL / MARKETING / BOARDROOM -->
     <div class="panel" id="panel-advisors">
       <div class="lab-tab-row">
         <button class="lab-tab active" onclick="switchAdvisors('legal', this)">LEGAL</button>
         <button class="lab-tab"        onclick="switchAdvisors('marketing', this)">MARKETING</button>
+        <button class="lab-tab"        onclick="switchAdvisors('boardroom', this)">BOARD</button>
       </div>
 
       <!-- LEGAL -->
@@ -1260,6 +1210,52 @@ audio { width: 100%; margin-top: 4px; }
           <div id="marketing-out" class="session-out"></div>
         </div>
       </div>
+
+      <!-- BOARDROOM -->
+      <div class="lab-section" id="adv-boardroom">
+        <div class="panel-scroll">
+          <div class="fg">
+            <label class="fl">TOPIC / IDEA</label>
+            <textarea class="fi" id="boardroom-topic" rows="2" placeholder="Pitch your idea to the board..."></textarea>
+          </div>
+          <div class="fg">
+            <span class="fl">MODE</span>
+            <div class="opt-row">
+              <button class="opt on" id="br-normal" onclick="setBoardMode('normal')">NORMAL BOARD</button>
+              <button class="opt"    id="br-shadow" onclick="setBoardMode('shadow')">SHADOW BOARD</button>
+            </div>
+          </div>
+          <div class="fg">
+            <span class="fl">ROUNDS</span>
+            <div class="opt-row">
+              <button class="opt on" id="br-r1" onclick="setBoardRounds(1)">1</button>
+              <button class="opt"    id="br-r2" onclick="setBoardRounds(2)">2</button>
+              <button class="opt"    id="br-r3" onclick="setBoardRounds(3)">3</button>
+            </div>
+          </div>
+          <div class="action-row">
+            <button class="btn" id="boardroom-go-btn" onclick="runBoardroom()">[ CONVENE BOARD ]</button>
+            <button class="btn" id="boardroom-audio-btn" style="display:none" onclick="renderTTS('boardroom')">[ PLAY AUDIO ]</button>
+            <button class="btn" id="boardroom-save-btn" style="display:none" onclick="saveTranscript('boardroom')">[ SAVE ]</button>
+            <a id="boardroom-export-btn" class="action-link" style="display:none" download="boardroom_transcript.txt">[ EXPORT ]</a>
+            <a id="boardroom-mp3-btn"   class="action-link" style="display:none" download="boardroom_audio.mp3">[ DL MP3 ]</a>
+            <button class="btn" id="boardroom-lab-btn" style="display:none" onclick="sendToVideoLab('boardroom')">[ SEND TO VIDEO LAB ]</button>
+          </div>
+          <div class="steer-box" id="boardroom-steer-row">
+            <span class="fl" id="boardroom-steer-label">ROUND COMPLETE — STEER NEXT ROUND (OPTIONAL)</span>
+            <textarea class="fi" id="boardroom-steer" rows="2" placeholder="Redirect, challenge, or add context..."></textarea>
+            <button class="btn" id="boardroom-next-btn" onclick="boardroomNextRound()">[ NEXT ROUND ]</button>
+          </div>
+          <div class="steer-box" id="boardroom-extend-row">
+            <span class="fl">EXTEND SESSION — NEW DIRECTION (OPTIONAL)</span>
+            <textarea class="fi" id="boardroom-extend-steer" rows="2" placeholder="Push further, challenge a position, add a new angle..."></textarea>
+            <button class="btn" onclick="extendBoardroom()">[ + EXTEND ]</button>
+          </div>
+          <audio id="boardroom-audio" controls></audio>
+          <div id="boardroom-out" class="session-out"></div>
+        </div>
+      </div>
+
     </div><!-- /panel-advisors -->
 
     <!-- [7] SETTINGS -->
@@ -1395,9 +1391,8 @@ audio { width: 100%; margin-top: 4px; }
     <button class="nav-btn" onclick="switchTab('projects', this)"><span class="nav-num">[2]</span>PROJECTS</button>
     <button class="nav-btn" onclick="switchTab('lab', this)"><span class="nav-num">[3]</span>LABS</button>
     <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[4]</span>STUDIO</button>
-    <button class="nav-btn" onclick="switchTab('board', this)"><span class="nav-num">[5]</span>BOARD</button>
-    <button class="nav-btn" onclick="switchTab('advisors', this)"><span class="nav-num">[6]</span>ADVISE</button>
-    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[7]</span>SETTINGS</button>
+    <button class="nav-btn" onclick="switchTab('advisors', this)"><span class="nav-num">[5]</span>ADVISE</button>
+    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[6]</span>SETTINGS</button>
     <span class="nav-user">{{ session.get('username', '') | upper }}&nbsp;<a class="nav-logout" href="/logout">EXIT</a></span>
   </nav>
 
@@ -2786,12 +2781,13 @@ function switchBoard(tab, btn) {
 }
 
 function switchAdvisors(tab, btn) {
-  ['legal','marketing'].forEach(t => {
+  ['legal','marketing','boardroom'].forEach(t => {
     const el = document.getElementById('adv-' + t);
     if (el) el.classList.remove('active');
   });
   document.querySelectorAll('#panel-advisors > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
-  document.getElementById('adv-' + tab).classList.add('active');
+  const target = document.getElementById('adv-' + tab);
+  if (target) target.classList.add('active');
   if (btn) btn.classList.add('active');
 }
 
