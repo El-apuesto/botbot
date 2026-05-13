@@ -1133,6 +1133,55 @@ def api_tts():
     except Exception as e:
         return jsonify({"error": f"TTS failed: {e}"}), 500
 
+# ── Self-edit proposal store ──────────────────────────────────────────────────
+_pending_edits: dict = {}          # edit_id -> {file, description, content, ts}
+_EDIT_TTL = 900                    # 15 minutes
+
+_PROJECT_ROOT = Path(__file__).parent.resolve()
+
+def _parse_self_edit(text: str) -> dict | None:
+    """Extract SELF_EDIT_PROPOSAL block from builder output. Returns dict or None."""
+    m = re.search(
+        r'SELF_EDIT_PROPOSAL\s*\nfile:\s*(.+?)\ndescription:\s*(.+?)\n---CONTENT---\n(.*?)---END---',
+        text, re.DOTALL
+    )
+    if not m:
+        return None
+    rel_path    = m.group(1).strip().lstrip('/')
+    description = m.group(2).strip()
+    content     = m.group(3)
+    # Security: no path traversal, must resolve inside project
+    candidate = (_PROJECT_ROOT / rel_path).resolve()
+    if not str(candidate).startswith(str(_PROJECT_ROOT)):
+        return None
+    if not candidate.exists():
+        return None
+    if len(content.encode()) > 256_000:   # 256 KB cap for self-edits
+        return None
+    return {"file": rel_path, "description": description, "content": content, "path": candidate}
+
+
+# ── Child-bot process manager ─────────────────────────────────────────────────
+_child_bots: dict = {}   # bot_id -> {name, path, proc, status, output, created_at}
+_BOTS_DIR = _PROJECT_ROOT / "bots"
+
+
+def _bot_reader(bot_id: str) -> None:
+    """Background thread: drain subprocess stdout into rolling buffer."""
+    bot = _child_bots.get(bot_id)
+    if not bot:
+        return
+    try:
+        for raw in bot["proc"].stdout:
+            line = raw.rstrip("\n")
+            bot["output"].append(line)
+            if len(bot["output"]) > 500:
+                bot["output"] = bot["output"][-500:]
+    except Exception:
+        pass
+    bot["status"] = "stopped"
+
+
 # -- /api/builder --------------------------------------------------------------
 @_flask.route("/api/builder", methods=["POST"])
 def api_builder():
@@ -1160,6 +1209,20 @@ def api_builder():
         # Persist last builder output for /deploy command
         if code and len(code) > 20:
             _last_builder_code['web'] = code
+
+        # Detect self-edit proposal in output
+        edit = _parse_self_edit(code)
+        if edit:
+            eid = str(uuid.uuid4())[:8]
+            _pending_edits[eid] = {**edit, "ts": time.time()}
+            # Clean up old pending edits
+            expired = [k for k, v in _pending_edits.items() if time.time() - v["ts"] > _EDIT_TTL]
+            for k in expired:
+                _pending_edits.pop(k, None)
+            # Signal frontend
+            safe_desc = edit["description"].replace("\x1e","").replace("\x1f","")[:120]
+            safe_file = edit["file"].replace("\x1e","").replace("\x1f","")
+            yield f"\x1ePENDING_EDIT:{eid}:{safe_file}:{safe_desc}\x1f"
 
         # Pass 1 review: MiniMax M2.5
         if code and len(code) > 20:
@@ -1190,6 +1253,133 @@ def api_builder():
             yield "\x1eEND\x1f"
 
     return _sse_stream(_run)
+
+
+# -- Self-edit apply / reject --------------------------------------------------
+@_flask.route("/api/builder/apply_edit", methods=["POST"])
+def api_apply_edit():
+    data    = request.json or {}
+    eid     = data.get("edit_id", "").strip()
+    edit    = _pending_edits.get(eid)
+    if not edit:
+        return jsonify({"error": "Edit not found or expired"}), 404
+    candidate = edit["path"]
+    # Backup original
+    backup_dir = _PROJECT_ROOT / "backups"
+    backup_dir.mkdir(exist_ok=True)
+    ts  = time.strftime("%Y%m%d_%H%M%S")
+    bak = backup_dir / f"{Path(edit['file']).name}.{ts}.bak"
+    try:
+        shutil.copy2(str(candidate), str(bak))
+        candidate.write_text(edit["content"], encoding="utf-8")
+    except Exception as e:
+        return jsonify({"error": f"Write failed: {e}"}), 500
+    _pending_edits.pop(eid, None)
+    return jsonify({"ok": True, "file": edit["file"], "backup": str(bak)})
+
+
+@_flask.route("/api/builder/reject_edit", methods=["POST"])
+def api_reject_edit():
+    data = request.json or {}
+    eid  = data.get("edit_id", "").strip()
+    _pending_edits.pop(eid, None)
+    return jsonify({"ok": True})
+
+
+# -- Child bot routes ----------------------------------------------------------
+@_flask.route("/api/bots/spawn", methods=["POST"])
+def api_bot_spawn():
+    data = request.json or {}
+    name = data.get("name", "").strip()
+    code = data.get("code", "").strip()
+    if not _SAFE_SCRIPT_NAME.match(name):
+        return jsonify({"error": "name must be 1-64 chars: letters, digits, _ or -"}), 400
+    if not code:
+        code = _last_builder_code.get("web", "")
+    if not code:
+        return jsonify({"error": "No code — run Builder first"}), 400
+    if len(code.encode()) > _MAX_DEPLOY_BYTES:
+        return jsonify({"error": "Code exceeds 64 KB limit"}), 400
+    _BOTS_DIR.mkdir(exist_ok=True)
+    script_path = _BOTS_DIR / f"{name}.py"
+    try:
+        script_path.write_text(code, encoding="utf-8")
+    except Exception as e:
+        return jsonify({"error": f"Write failed: {e}"}), 500
+    bot_id = str(uuid.uuid4())[:8]
+    try:
+        proc = subprocess.Popen(
+            ["python3", str(script_path)],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, bufsize=1,
+            cwd=str(_PROJECT_ROOT),
+        )
+    except Exception as e:
+        return jsonify({"error": f"Spawn failed: {e}"}), 500
+    _child_bots[bot_id] = {
+        "name":       name,
+        "path":       str(script_path.relative_to(_PROJECT_ROOT)),
+        "proc":       proc,
+        "pid":        proc.pid,
+        "status":     "running",
+        "output":     [],
+        "created_at": time.strftime("%H:%M:%S"),
+    }
+    t = Thread(target=_bot_reader, args=(bot_id,), daemon=True)
+    t.start()
+    return jsonify({"ok": True, "bot_id": bot_id, "pid": proc.pid, "name": name})
+
+
+@_flask.route("/api/bots/list", methods=["GET"])
+def api_bots_list():
+    result = []
+    for bid, bot in _child_bots.items():
+        proc = bot.get("proc")
+        if proc and proc.poll() is not None and bot["status"] == "running":
+            bot["status"] = "stopped"
+        result.append({
+            "id":         bid,
+            "name":       bot["name"],
+            "path":       bot["path"],
+            "pid":        bot.get("pid"),
+            "status":     bot["status"],
+            "lines":      len(bot["output"]),
+            "created_at": bot["created_at"],
+            "tail":       bot["output"][-5:],
+        })
+    return jsonify(result)
+
+
+@_flask.route("/api/bots/stop/<bot_id>", methods=["POST"])
+def api_bot_stop(bot_id):
+    bot = _child_bots.get(bot_id)
+    if not bot:
+        return jsonify({"error": "Not found"}), 404
+    proc = bot.get("proc")
+    if proc and proc.poll() is None:
+        proc.terminate()
+        bot["status"] = "stopped"
+    return jsonify({"ok": True})
+
+
+@_flask.route("/api/bots/output/<bot_id>", methods=["GET"])
+def api_bot_output(bot_id):
+    bot = _child_bots.get(bot_id)
+    if not bot:
+        return jsonify({"error": "Not found"}), 404
+    lines = int(request.args.get("lines", 100))
+    return jsonify({"lines": bot["output"][-lines:], "total": len(bot["output"]), "status": bot["status"]})
+
+
+@_flask.route("/api/bots/<bot_id>", methods=["DELETE"])
+def api_bot_delete(bot_id):
+    bot = _child_bots.pop(bot_id, None)
+    if not bot:
+        return jsonify({"error": "Not found"}), 404
+    proc = bot.get("proc")
+    if proc and proc.poll() is None:
+        proc.terminate()
+    return jsonify({"ok": True})
 
 
 # -- Builder deploy - shared logic (called from Flask route AND Telegram command) -

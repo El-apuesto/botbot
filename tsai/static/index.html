@@ -928,6 +928,7 @@ audio { width: 100%; margin-top: 4px; }
           <div class="deploy-row" id="builder-deploy-row">
             <input class="fi" id="builder-deploy-name" type="text" placeholder="script name (a-z, _, -)">
             <button class="btn" id="builder-deploy-btn" onclick="deployBuilder()">[ DEPLOY ]</button>
+            <button class="btn" id="builder-spawn-btn" onclick="spawnBot()" title="Deploy + run as live subprocess">[ SPAWN BOT ]</button>
           </div>
           <!-- file structure sidebar -->
           <div id="code-files-row" style="display:none;margin-top:8px">
@@ -935,6 +936,40 @@ audio { width: 100%; margin-top: 4px; }
             <div id="code-files-list" style="font-size:var(--font-size-sm);color:var(--purple-dim);line-height:1.8;margin-top:4px"></div>
           </div>
           <div id="builder-out" class="session-out"></div>
+
+          <!-- Pending self-edit approval box -->
+          <div id="builder-edit-box" style="display:none;border:2px solid var(--cyan);padding:10px;margin-top:10px;background:rgba(0,255,220,.04)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+              <span class="fl" style="color:var(--cyan)">&#9888; PENDING SELF-EDIT — AWAITING APPROVAL</span>
+            </div>
+            <div id="builder-edit-file" style="font-size:11px;color:var(--purple-dim);margin-bottom:3px;font-family:monospace"></div>
+            <div id="builder-edit-desc" style="font-size:13px;color:var(--text);margin-bottom:8px"></div>
+            <div style="border:1px solid var(--purple-dim);padding:6px;max-height:180px;overflow-y:auto;font-size:11px;line-height:1.5;white-space:pre-wrap;color:var(--muted)" id="builder-edit-preview">Loading preview...</div>
+            <div class="action-row" style="margin-top:8px">
+              <button class="btn" id="builder-approve-btn" style="border-color:var(--cyan);color:var(--cyan)" onclick="approveEdit()">[ &#10003; APPROVE ]</button>
+              <button class="btn" style="opacity:.6" onclick="rejectEdit()">[ REJECT ]</button>
+            </div>
+            <div id="builder-edit-result" style="font-size:12px;color:var(--cyan);margin-top:5px"></div>
+          </div>
+
+          <!-- Child bot monitor -->
+          <div style="margin-top:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span class="fl">CHILD BOTS <span id="bot-count-badge" style="color:var(--purple-dim);font-size:11px"></span></span>
+              <button class="btn" style="font-size:10px;padding:3px 8px" onclick="botRefresh()">[ REFRESH ]</button>
+            </div>
+            <div id="bot-monitor-list"></div>
+            <p class="ph-text" id="bot-monitor-empty">NO BOTS RUNNING.</p>
+          </div>
+
+          <!-- Bot output viewer (inline) -->
+          <div id="bot-output-box" style="display:none;margin-top:8px;border:1px solid var(--purple-dim);padding:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span class="fl" id="bot-output-title">BOT OUTPUT</span>
+              <button class="btn" style="font-size:10px;padding:3px 8px" onclick="document.getElementById('bot-output-box').style.display='none'">[ CLOSE ]</button>
+            </div>
+            <div id="bot-output-lines" style="font-size:11px;line-height:1.7;max-height:220px;overflow-y:auto;white-space:pre-wrap;color:var(--muted);font-family:monospace"></div>
+          </div>
         </div>
       </div>
 
@@ -1625,6 +1660,12 @@ async function streamSession(url, body, outEl) {
           newTurn(marker.slice(8));
         } else if (marker === 'END') {
           if (curBody) curBody.classList.remove('typing');
+        } else if (marker.startsWith('PENDING_EDIT:')) {
+          const parts = marker.slice('PENDING_EDIT:'.length).split(':');
+          const editId = parts[0];
+          const file   = parts[1] || '';
+          const desc   = parts.slice(2).join(':');
+          if (typeof _showPendingEdit === 'function') _showPendingEdit(editId, file, desc);
         }
       } else {
         if (curBody) {
@@ -2549,6 +2590,164 @@ async function deployBuilder() {
     btn.textContent = '[ DEPLOY ]';
   }
   btn.disabled = false;
+}
+
+/* ─────────────────────────────────────────
+   SPAWN BOT
+───────────────────────────────────────── */
+async function spawnBot() {
+  const nameEl = document.getElementById('builder-deploy-name');
+  const btn    = document.getElementById('builder-spawn-btn');
+  const name   = nameEl.value.trim().replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
+  if (!name) { alert('Enter a bot name first.'); return; }
+  btn.disabled = true; btn.textContent = '[ SPAWNING... ]';
+  try {
+    const res  = await fetch('/api/bots/spawn', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      btn.textContent = '[ SPAWNED \u2713 ]';
+      addMsg('SYSTEM', `BOT SPAWNED: ${data.name} (pid ${data.pid}) — id: ${data.bot_id}`);
+      botRefresh();
+    } else {
+      alert('Spawn failed: ' + (data.error || 'unknown'));
+      btn.textContent = '[ SPAWN BOT ]';
+    }
+  } catch(e) {
+    alert('Spawn error: ' + e);
+    btn.textContent = '[ SPAWN BOT ]';
+  }
+  btn.disabled = false;
+}
+
+/* ─────────────────────────────────────────
+   BOT MONITOR
+───────────────────────────────────────── */
+async function botRefresh() {
+  try {
+    const res  = await fetch('/api/bots/list');
+    const bots = await res.json();
+    const el   = document.getElementById('bot-monitor-list');
+    const empty = document.getElementById('bot-monitor-empty');
+    const badge = document.getElementById('bot-count-badge');
+    const running = bots.filter(b => b.status === 'running').length;
+    badge.textContent = bots.length ? `(${running} running, ${bots.length} total)` : '';
+    if (!bots.length) {
+      el.innerHTML = '';
+      if (empty) empty.style.display = '';
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+    el.innerHTML = bots.map(b => `
+      <div style="border:1px solid var(--purple-dim);padding:7px 8px;margin-bottom:5px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+          <span style="color:${b.status==='running'?'var(--cyan)':'var(--muted)'};font-family:monospace;font-size:13px">${b.name}</span>
+          <div style="display:flex;gap:3px">
+            <button class="btn" style="font-size:10px;padding:2px 6px" onclick="botViewOutput('${b.id}','${b.name}')">[ OUTPUT ]</button>
+            ${b.status==='running'
+              ? `<button class="btn" style="font-size:10px;padding:2px 6px" onclick="botStop('${b.id}')">[ STOP ]</button>`
+              : `<button class="btn" style="font-size:10px;padding:2px 6px;opacity:.5" onclick="botStop('${b.id}')">[ STOPPED ]</button>`}
+            <button class="btn" style="font-size:10px;padding:2px 6px;opacity:.55" onclick="botDelete('${b.id}')">[ DEL ]</button>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--muted)">${b.path} · pid ${b.pid||'—'} · ${b.created_at} · ${b.lines} lines</div>
+        ${b.tail.length ? `<div style="font-size:10px;color:var(--text);opacity:.6;margin-top:3px;white-space:pre-wrap;font-family:monospace">${b.tail.slice(-2).map(l=>l.slice(0,80)).join('\n')}</div>` : ''}
+      </div>
+    `).join('');
+  } catch(e) { console.error('botRefresh:', e); }
+}
+
+async function botStop(id) {
+  await fetch(`/api/bots/stop/${id}`, { method: 'POST' });
+  botRefresh();
+}
+
+async function botDelete(id) {
+  if (!confirm('Remove this bot?')) return;
+  await fetch(`/api/bots/${id}`, { method: 'DELETE' });
+  botRefresh();
+}
+
+async function botViewOutput(id, name) {
+  const box   = document.getElementById('bot-output-box');
+  const title = document.getElementById('bot-output-title');
+  const lines = document.getElementById('bot-output-lines');
+  title.textContent = `OUTPUT — ${name.toUpperCase()}`;
+  box.style.display = 'block';
+  lines.textContent = 'Loading...';
+  try {
+    const res  = await fetch(`/api/bots/output/${id}?lines=200`);
+    const data = await res.json();
+    lines.textContent = data.lines.length ? data.lines.join('\n') : '(no output yet)';
+    lines.scrollTop = lines.scrollHeight;
+  } catch(e) {
+    lines.textContent = 'Error: ' + e;
+  }
+}
+
+/* ─────────────────────────────────────────
+   SELF-EDIT APPROVAL
+───────────────────────────────────────── */
+const _pendingEdit = { id: null, file: null };
+
+function _showPendingEdit(editId, file, desc) {
+  _pendingEdit.id   = editId;
+  _pendingEdit.file = file;
+  const box    = document.getElementById('builder-edit-box');
+  const fileEl = document.getElementById('builder-edit-file');
+  const descEl = document.getElementById('builder-edit-desc');
+  const prev   = document.getElementById('builder-edit-preview');
+  const resEl  = document.getElementById('builder-edit-result');
+  fileEl.textContent = '→ ' + file;
+  descEl.textContent = desc;
+  prev.textContent   = 'Loading file preview...';
+  resEl.textContent  = '';
+  box.style.display  = 'block';
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function approveEdit() {
+  if (!_pendingEdit.id) return;
+  const btn = document.getElementById('builder-approve-btn');
+  const res = document.getElementById('builder-edit-result');
+  btn.disabled = true; btn.textContent = '[ APPLYING... ]';
+  try {
+    const r    = await fetch('/api/builder/apply_edit', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ edit_id: _pendingEdit.id }),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      res.style.color = 'var(--cyan)';
+      res.textContent = `\u2713 APPLIED — ${data.file} (backup: ${data.backup.split('/').pop()})`;
+      btn.textContent = '[ APPLIED \u2713 ]';
+      addMsg('SYSTEM', `SELF-EDIT APPLIED: ${data.file}`);
+      _pendingEdit.id = null;
+    } else {
+      res.style.color = 'var(--red, #f55)';
+      res.textContent = 'FAILED: ' + (data.error || 'unknown');
+      btn.textContent = '[ APPROVE ]'; btn.disabled = false;
+    }
+  } catch(e) {
+    res.textContent = 'Error: ' + e;
+    btn.textContent = '[ APPROVE ]'; btn.disabled = false;
+  }
+}
+
+async function rejectEdit() {
+  if (!_pendingEdit.id) {
+    document.getElementById('builder-edit-box').style.display = 'none';
+    return;
+  }
+  await fetch('/api/builder/reject_edit', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ edit_id: _pendingEdit.id }),
+  });
+  _pendingEdit.id = null;
+  document.getElementById('builder-edit-box').style.display = 'none';
+  addMsg('SYSTEM', 'SELF-EDIT REJECTED.');
 }
 
 /* ─────────────────────────────────────────
