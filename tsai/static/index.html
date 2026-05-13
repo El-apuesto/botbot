@@ -1579,7 +1579,23 @@ async function send() {
     }
 
     body.classList.remove('typing');
-    if (full) history.push({ role: 'assistant', content: full });
+    if (full) {
+      history.push({ role: 'assistant', content: full });
+      if (/```[\s\S]*?```/.test(full)) {
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.style.cssText = 'font-size:10px;padding:2px 8px;margin-top:6px;display:block';
+        btn.textContent = '[ \u2192 CODE LAB ]';
+        const capturedMsg = msg;
+        btn.onclick = () => {
+          document.getElementById('builder-input').value = capturedMsg;
+          switchTab('lab', document.querySelectorAll('.nav-btn')[2]);
+          switchLab('code', document.querySelector('#panel-lab .lab-tab:nth-child(3)'));
+          document.getElementById('builder-input').focus();
+        };
+        body.parentElement.appendChild(btn);
+      }
+    }
 
   } catch (e) {
     body.classList.remove('typing');
@@ -1967,8 +1983,10 @@ async function runBuilder() {
   const rawTask = document.getElementById('builder-input').value.trim();
   if (!rawTask) return;
   const out     = document.getElementById('builder-out');
-  out.innerHTML = '';
+  out.innerHTML = '<div style="color:var(--purple-dim);font-size:12px;padding:6px 0;animation:blink 1s step-end infinite">&#9608; BUILDER ACTIVE — GROQ LLAMA 70B INITIALIZING...</div>';
   document.getElementById('code-files-row').style.display = 'none';
+  const dlRow = document.getElementById('builder-dl-row');
+  if (dlRow) dlRow.style.display = 'none';
   const labBtnBl = document.getElementById('builder-lab-btn');
   labBtnBl.style.display = 'none'; labBtnBl.disabled = false; labBtnBl.textContent = '[ SEND TO VIDEO LAB ]';
   const btn = document.getElementById('builder-go-btn');
@@ -2008,7 +2026,51 @@ async function runBuilder() {
     deployRow.style.display = 'flex';
     document.getElementById('builder-deploy-btn').textContent = '[ DEPLOY ]';
     if (isArch) _renderCodeFiles(txt);
+    _showBuilderDownload(txt, rawTask);
   }
+}
+
+function _showBuilderDownload(txt, task) {
+  let dlRow = document.getElementById('builder-dl-row');
+  if (!dlRow) {
+    dlRow = document.createElement('div');
+    dlRow.id = 'builder-dl-row';
+    dlRow.style.cssText = 'display:flex;gap:6px;margin-top:6px;flex-wrap:wrap';
+    document.getElementById('builder-out').before(dlRow);
+  }
+  dlRow.innerHTML = '';
+  dlRow.style.display = 'flex';
+
+  const codeBlocks = [];
+  const re = /```(?:(\w+)\n)?([\s\S]*?)```/g;
+  let m;
+  while ((m = re.exec(txt)) !== null) {
+    const lang = m[1] || 'txt';
+    const code = m[2].trim();
+    if (code.length > 20) codeBlocks.push({ lang, code });
+  }
+
+  if (codeBlocks.length) {
+    const dlAll = document.createElement('a');
+    dlAll.className = 'btn';
+    dlAll.style.cssText = 'font-size:10px;padding:3px 8px;cursor:pointer;text-decoration:none';
+    dlAll.textContent = `[ \u2193 DOWNLOAD CODE (${codeBlocks.length} block${codeBlocks.length > 1 ? 's' : ''}) ]`;
+    const allCode = codeBlocks.map((b, i) => `// --- Block ${i+1} (${b.lang}) ---\n${b.code}`).join('\n\n');
+    const blob = new Blob([allCode], { type: 'text/plain' });
+    dlAll.href = URL.createObjectURL(blob);
+    const safeName = (task.slice(0,40).replace(/[^a-zA-Z0-9_-]/g,'_') || 'builder_output') + '.txt';
+    dlAll.download = safeName;
+    dlRow.appendChild(dlAll);
+  }
+
+  const dlFull = document.createElement('a');
+  dlFull.className = 'btn';
+  dlFull.style.cssText = 'font-size:10px;padding:3px 8px;cursor:pointer;text-decoration:none;opacity:.7';
+  dlFull.textContent = '[ \u2193 FULL TRANSCRIPT ]';
+  const blob2 = new Blob([txt], { type: 'text/plain' });
+  dlFull.href = URL.createObjectURL(blob2);
+  dlFull.download = 'builder_session.txt';
+  dlRow.appendChild(dlFull);
 }
 
 /* ─────────────────────────────────────────

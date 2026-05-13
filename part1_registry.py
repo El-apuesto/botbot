@@ -276,14 +276,14 @@ TASK_MODELS: dict = {
     "story":            ("groq",         "llama"),
     "story_fallback":   ("openrouter",   "llama_70b"),
 
-    # ── code chain: CAPI (Ollama, free, uncensored) → NVIDIA free fallback ────
-    "code":             ("ollama_cloud", "qwen"),
-    "code_fallback":    ("nvidia",       "qwen_coder_480"),
-    "code_check":       ("ollama_cloud", "qwen"),
+    # ── code chain: Groq (fast) primary → Venice fallback ───────────────────
+    "code":             ("groq",         "llama"),
+    "code_fallback":    ("venice",       "qwen_coder_480_turbo"),
+    "code_check":       ("groq",         "llama"),
     "code_check_v2":    ("venice",       "gpt_codex_52"),
-    "code_reason":      ("nvidia",       "kimi_k2"),
-    "builder":          ("ollama_cloud", "qwen"),
-    "builder_review":   ("ollama_cloud", "qwen"),
+    "code_reason":      ("groq",         "qwq_32b"),
+    "builder":          ("groq",         "llama"),
+    "builder_review":   ("venice",       "hermes_405b"),
     "builder_check":    ("venice",       "gpt_codex_52"),
 
     # ── vision ────────────────────────────────────────────────────────────────
