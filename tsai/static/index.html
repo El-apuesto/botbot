@@ -15,7 +15,7 @@
 <meta name="twitter:title" content="Twin Shadow">
 <meta name="twitter:description" content="AI engine active.">
 <meta name="twitter:image" content="{{ og_url }}/static/send_btn.jpg">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -34,12 +34,12 @@
   --green:       #cc44ff;
   --cyan:        #cc88ff;
   --red:         #ff44aa;
-  --font:        'IBM Plex Mono', monospace;
-  --font-head:   'IBM Plex Mono', monospace;
-  --font-size-base: 17px;
-  --font-size-sm:   14px;
-  --font-size-lg:   20px;
-  --font-size-xl:   22px;
+  --font:        'VT323', monospace;
+  --font-head:   'Press Start 2P', monospace;
+  --font-size-base: 20px;
+  --font-size-sm:   15px;
+  --font-size-lg:   22px;
+  --font-size-xl:   24px;
 }
 
 html, body {
@@ -400,7 +400,7 @@ body::before {
 
 /* ── FORM ELEMENTS ── */
 .fg { display: flex; flex-direction: column; gap: 6px; }
-.fl { font-size: var(--font-size-sm); color: var(--muted); letter-spacing: 0.08em; font-weight: 700; text-transform: uppercase; }
+.fl { font-family: var(--font-head); font-size: 9px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
 .fi {
   background: rgba(0,0,0,0.5);
   border: 1px solid var(--border);
@@ -573,37 +573,44 @@ audio { width: 100%; margin-top: 4px; }
 /* ── NAV — BBS frame bottom ╚══[1]══╪══[2]══╝ ── */
 .nav {
   display: flex;
-  justify-content: space-around;
+  justify-content: center;
   align-items: center;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 0;
   flex-shrink: 0;
   background: #000;
-  border-top: 1px solid var(--purple-dim);
-  padding: 6px 0 5px;
-  font-family: var(--font);
+  border-top: 2px solid var(--purple-dim);
+  padding: 4px 0 4px;
+  font-family: var(--font-head);
 }
 .nav::before { content: none; }
 .nav::after  { content: none; }
 .nav-btn {
   background: none;
   border: none;
+  border-right: 1px solid var(--purple-dim);
   color: var(--muted);
-  font-family: var(--font);
-  font-size: clamp(10px, 2.8vw, 26px);
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-family: var(--font-head);
+  font-size: 8px;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  padding: 3px 4px;
-  transition: color .1s, text-shadow .1s;
+  padding: 5px 0;
+  width: 25%;
+  text-align: center;
+  transition: color .1s, text-shadow .1s, background .1s;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+.nav-btn:nth-child(4n) { border-right: none; }
 .nav-btn + .nav-btn::before { content: none; }
-.nav-btn .nav-num { color: var(--purple); margin-right: 2px; font-weight: 400; }
+.nav-btn .nav-num { color: var(--purple); margin-right: 2px; }
 .nav-btn:hover, .nav-btn.active {
   color: var(--neon-bright);
-  text-shadow: 0 0 10px var(--purple);
+  background: var(--purple-dark);
+  text-shadow: 0 0 8px var(--purple);
 }
+.nav-btn.active { border-bottom: 2px solid var(--purple); }
 .nav-btn.active .nav-num { color: var(--neon-bright); }
 .nav-user {
   font-size: 12px;
@@ -624,12 +631,11 @@ audio { width: 100%; margin-top: 4px; }
 
 /* ── MOBILE ── */
 @media (max-width: 600px) {
-  /* shrink font variables for the whole app */
   :root {
-    --font-size-base: 18px;
-    --font-size-sm:   13px;
-    --font-size-lg:   20px;
-    --font-size-xl:   22px;
+    --font-size-base: 20px;
+    --font-size-sm:   15px;
+    --font-size-lg:   22px;
+    --font-size-xl:   24px;
   }
 
   /* banner — portrait mobile image, fixed height, top-aligned */
@@ -640,9 +646,9 @@ audio { width: 100%; margin-top: 4px; }
   /* hide username/exit — no room with tabs */
   .nav-user { display: none; }
 
-  /* tighten nav */
+  /* two-row nav — 4 across each row, tighter on mobile */
   .nav { padding: 3px 0 env(safe-area-inset-bottom, 3px); }
-  .nav-btn { padding: 3px 1px; letter-spacing: 0; }
+  .nav-btn { font-size: 7px; padding: 6px 0; width: 25%; }
   .nav-btn .nav-num { display: none; }
 
   /* tighten app padding */
