@@ -590,11 +590,11 @@ audio { width: 100%; margin-top: 4px; }
   border: none;
   color: var(--muted);
   font-family: var(--font);
-  font-size: 26px;
+  font-size: clamp(10px, 2.8vw, 26px);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   cursor: pointer;
-  padding: 3px 6px;
+  padding: 3px 4px;
   transition: color .1s, text-shadow .1s;
   white-space: nowrap;
 }
@@ -633,27 +633,27 @@ audio { width: 100%; margin-top: 4px; }
   }
 
   /* banner — portrait mobile image, fixed height, top-aligned */
-  #app-banner { height: 200px; overflow: hidden; }
+  #app-banner { height: 110px; overflow: hidden; }
   #app-banner picture { display: block; width: 100%; height: 100%; }
   #app-banner img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
 
-  /* hide username/exit — no room with 7 tabs */
+  /* hide username/exit — no room with tabs */
   .nav-user { display: none; }
 
   /* tighten nav */
-  .nav { padding: 4px 0 3px; }
-  .nav-btn { font-size: 24px; padding: 4px 2px; letter-spacing: 0; white-space: nowrap; }
+  .nav { padding: 3px 0 env(safe-area-inset-bottom, 3px); }
+  .nav-btn { padding: 3px 1px; letter-spacing: 0; }
   .nav-btn .nav-num { display: none; }
 
   /* tighten app padding */
   .app { padding: 0 2px; }
 
   /* tighten panel scroll */
-  .panel-scroll { padding: 10px 10px; gap: 8px; }
+  .panel-scroll { padding: 8px 8px; gap: 6px; }
 
   /* tighten lab sub-tab row */
-  .lab-tab-row { padding: 6px 8px 0; gap: 4px; }
-  .lab-tab { font-size: 12px; padding: 4px 10px; }
+  .lab-tab-row { padding: 4px 6px 0; gap: 3px; }
+  .lab-tab { font-size: 11px; padding: 3px 8px; }
 }
 
 /* ── CURSOR ── */
