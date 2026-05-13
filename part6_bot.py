@@ -53,6 +53,8 @@ from part1_registry import (
 )
 import part8_hardening as _hardening
 from part8_personas import (
+    LEGAL_ADVISOR_SYSTEM, MARKETING_ADVISOR_SYSTEM,
+    podcast_character_system,
     TWIN_SYSTEM, SHADOW_SYSTEM, CAPI_SYSTEM,
     board_member_system, brainstorm_system, BUILDER_SYSTEM,
     MODERATOR_SYSTEM, SHADOW_MODERATOR_SYSTEM, SHADOW_BRIEF_SYSTEM,
