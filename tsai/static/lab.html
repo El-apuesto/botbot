@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Twin Shadow — Video Lab</title>
-  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -16,7 +16,7 @@
       --green-dim:   #7700aa;
       --glow:        0 0 8px #cc44ff, 0 0 20px rgba(180,60,255,0.5);
       --glow-g:      0 0 8px #cc44ff, 0 0 20px rgba(180,60,255,0.5);
-      --font:        'Share Tech Mono', monospace;
+      --font:        'IBM Plex Mono', monospace;
       --white:       #f2eaff;
     }
 
@@ -47,11 +47,11 @@
       padding: 3px 8px; border-bottom: 1px solid var(--purple-dim);
       background: rgba(6,0,18,.75); flex-shrink: 0; min-height: 22px; gap: 6px;
     }
-    #lab-title { font-size: 6px; color: var(--green); text-shadow: var(--glow-g); letter-spacing: 1px; }
-    #lab-status { font-size: 5px; color: var(--purple-dim); flex: 1; text-align: center; overflow: hidden;
+    #lab-title { font-size: 13px; color: var(--green); text-shadow: var(--glow-g); letter-spacing: 1px; font-weight: 700; }
+    #lab-status { font-size: 12px; color: var(--purple-dim); flex: 1; text-align: center; overflow: hidden;
       white-space: nowrap; text-overflow: ellipsis; }
-    #lab-back { font-size: 5px; color: var(--purple); text-decoration: none;
-      border: 1px solid var(--purple-dim); padding: 2px 5px; flex-shrink: 0; }
+    #lab-back { font-size: 12px; color: var(--purple); text-decoration: none;
+      border: 1px solid var(--purple-dim); padding: 3px 8px; flex-shrink: 0; font-weight: 700; }
     #lab-back:hover { box-shadow: var(--glow); }
 
     /* ── OUTPUT AREA ── */
@@ -63,27 +63,27 @@
     #lab-output::-webkit-scrollbar-thumb { background: var(--purple-dim); }
 
     /* log lines */
-    .log-line { font-size: 6px; color: var(--white); line-height: 2; white-space: pre-wrap; word-break: break-word; }
+    .log-line { font-size: 14px; color: var(--white); line-height: 1.8; white-space: pre-wrap; word-break: break-word; }
     .log-line.ok  { color: var(--green); }
     .log-line.err { color: #ff4466; }
     .log-line.dim { color: var(--purple-dim); }
-    .log-line.hdr { color: var(--purple); text-shadow: var(--glow); }
+    .log-line.hdr { color: var(--purple); text-shadow: var(--glow); font-weight: 700; }
 
     /* scene cards */
     .scene-card {
-      border: 1px solid var(--purple-dim); padding: 5px 7px;
-      display: flex; flex-direction: column; gap: 3px; }
-    .scene-num { font-size: 5px; color: var(--purple); }
-    .scene-desc { font-size: 6px; color: var(--white); line-height: 1.8; }
-    .scene-vo { font-size: 5px; color: var(--purple-dim); font-style: italic; }
-    .scene-img { max-width: 100%; max-height: 80px; object-fit: cover;
+      border: 1px solid var(--purple-dim); padding: 8px 10px;
+      display: flex; flex-direction: column; gap: 4px; }
+    .scene-num { font-size: 12px; color: var(--purple); font-weight: 700; }
+    .scene-desc { font-size: 14px; color: var(--white); line-height: 1.7; }
+    .scene-vo { font-size: 12px; color: var(--purple-dim); font-style: italic; }
+    .scene-img { max-width: 100%; max-height: 100px; object-fit: cover;
       border: 1px solid var(--purple-dim); margin-top: 3px; cursor: pointer; }
     .scene-img:hover { border-color: var(--purple); }
 
     /* step tracker */
-    .step-row { display: flex; align-items: center; gap: 6px; }
-    .step-icon { font-size: 8px; width: 14px; flex-shrink: 0; }
-    .step-lbl  { font-size: 6px; color: var(--white); }
+    .step-row { display: flex; align-items: center; gap: 8px; }
+    .step-icon { font-size: 14px; width: 18px; flex-shrink: 0; }
+    .step-lbl  { font-size: 13px; color: var(--white); }
     .step-row.pending .step-icon { color: var(--purple-dim); }
     .step-row.active  .step-icon { color: var(--green); }
     .step-row.done    .step-icon { color: var(--green); }
@@ -97,8 +97,8 @@
     #lab-actions::-webkit-scrollbar { display: none; }
     .act-btn {
       flex-shrink: 0; background: var(--purple-dark); border: 1px solid var(--purple-dim);
-      color: var(--purple-dim); font-family: var(--font); font-size: 5px;
-      padding: 4px 7px; cursor: pointer; white-space: nowrap; transition: all .12s; }
+      color: var(--purple-dim); font-family: var(--font); font-size: 13px; font-weight: 700;
+      padding: 6px 10px; cursor: pointer; white-space: nowrap; transition: all .12s; }
     .act-btn:hover { border-color: var(--purple); color: var(--purple); box-shadow: var(--glow); }
     .act-btn.active { border-color: var(--green); color: var(--green); box-shadow: var(--glow-g); }
     .act-btn:disabled { opacity: .35; cursor: not-allowed; }
@@ -115,13 +115,13 @@
     #lab-upload-btn:hover { box-shadow: var(--glow); }
     #lab-file-input { display: none; }
     #lab-file-hint {
-      display: none; font-size: 5px; color: var(--purple);
-      padding: 2px 8px; background: rgba(6,0,18,.85);
+      display: none; font-size: 12px; color: var(--purple);
+      padding: 3px 10px; background: rgba(6,0,18,.85);
       border-top: 1px solid var(--purple-dim); flex-shrink: 0; }
     #lab-concept {
       flex: 1; background: transparent; border: none; outline: none;
-      color: var(--white); font-family: var(--font); font-size: 7px; line-height: 1.8;
-      resize: none; min-height: 26px; max-height: 80px; overflow-y: auto;
+      color: var(--white); font-family: var(--font); font-size: 15px; line-height: 1.6;
+      resize: none; min-height: 28px; max-height: 100px; overflow-y: auto;
       caret-color: var(--purple); caret-shape: block;
       padding: 2px 0; scrollbar-width: none; }
     #lab-concept::-webkit-scrollbar { display: none; }
@@ -142,67 +142,67 @@
     .ph { width: 100%; max-width: 700px; display: flex;
       justify-content: space-between; align-items: center;
       border-bottom: 2px solid var(--purple); padding-bottom: 8px; margin-bottom: 14px; }
-    .pt { font-size: 9px; color: var(--purple); text-shadow: var(--glow); letter-spacing: 2px; }
+    .pt { font-size: 15px; color: var(--purple); text-shadow: var(--glow); letter-spacing: 2px; font-weight: 700; }
     .pc { background: transparent; border: 1px solid var(--purple);
-      color: var(--purple); font-family: var(--font); font-size: 7px;
-      padding: 5px 9px; cursor: pointer; }
+      color: var(--purple); font-family: var(--font); font-size: 13px; font-weight: 700;
+      padding: 6px 12px; cursor: pointer; }
     .pc:hover { box-shadow: var(--glow); }
     .pb { width: 100%; max-width: 700px; display: flex; flex-direction: column; gap: 14px; }
     .fg { display: flex; flex-direction: column; gap: 6px; }
-    .fl { font-size: 6px; color: var(--purple); letter-spacing: 1px; }
+    .fl { font-size: 12px; color: var(--purple); letter-spacing: 1px; font-weight: 700; text-transform: uppercase; }
     .fi { background: #060012; border: 1px solid var(--purple-dim);
-      color: var(--white); font-family: var(--font); font-size: 7px;
-      padding: 7px; outline: none; width: 100%; }
+      color: var(--white); font-family: var(--font); font-size: 15px;
+      padding: 8px 10px; outline: none; width: 100%; }
     .fi:focus { border-color: var(--purple); box-shadow: var(--glow); }
     .btn { align-self: flex-start; background: var(--purple-dark); border: 2px solid var(--purple);
-      color: var(--purple); font-family: var(--font); font-size: 7px;
-      padding: 8px 14px; cursor: pointer; letter-spacing: 1px; text-shadow: var(--glow); }
+      color: var(--purple); font-family: var(--font); font-size: 13px; font-weight: 700;
+      padding: 9px 16px; cursor: pointer; letter-spacing: 1px; text-shadow: var(--glow); }
     .btn:hover { box-shadow: var(--glow); }
     .btn:disabled { opacity: .4; cursor: not-allowed; }
 
     /* music track rows */
     .track-row { display: flex; justify-content: space-between; align-items: center;
       border: 1px solid var(--purple-dim); padding: 6px 10px; gap: 8px; }
-    .track-name { font-size: 6px; color: var(--white); flex: 1; }
-    .track-tags { font-size: 5px; color: var(--purple-dim); }
+    .track-name { font-size: 14px; color: var(--white); flex: 1; }
+    .track-tags { font-size: 12px; color: var(--purple-dim); }
     .track-use  { background: transparent; border: 1px solid var(--purple-dim);
-      color: var(--purple-dim); font-family: var(--font); font-size: 5px;
-      padding: 3px 6px; cursor: pointer; }
+      color: var(--purple-dim); font-family: var(--font); font-size: 12px; font-weight: 700;
+      padding: 4px 8px; cursor: pointer; }
     .track-use:hover { border-color: var(--purple); color: var(--purple); }
     .track-use.on { border-color: var(--green); color: var(--green); }
 
     /* uploaded files list */
     .upl-row { display: flex; justify-content: space-between; align-items: center;
-      border: 1px solid var(--purple-dim); padding: 4px 8px; gap: 6px; }
-    .upl-name  { font-size: 6px; color: var(--white); flex: 1; overflow: hidden;
+      border: 1px solid var(--purple-dim); padding: 6px 10px; gap: 6px; }
+    .upl-name  { font-size: 14px; color: var(--white); flex: 1; overflow: hidden;
       text-overflow: ellipsis; white-space: nowrap; }
-    .upl-type  { font-size: 5px; color: var(--purple-dim); flex-shrink: 0; }
+    .upl-type  { font-size: 12px; color: var(--purple-dim); flex-shrink: 0; }
 
     /* video player */
     video { width: 100%; max-height: 360px; background: #000;
       border: 1px solid var(--purple); margin-top: 8px; }
-    .dl-link { font-family: var(--font); font-size: 7px; color: var(--purple);
-      text-decoration: none; border: 1px solid var(--purple); padding: 8px 14px;
+    .dl-link { font-family: var(--font); font-size: 13px; font-weight: 700; color: var(--purple);
+      text-decoration: none; border: 1px solid var(--purple); padding: 9px 16px;
       align-self: flex-start; }
     .dl-link:hover { box-shadow: var(--glow); }
 
     /* Smart Editor option buttons */
     .se-opt {
       background: var(--purple-dark); border: 1px solid var(--purple-dim);
-      color: var(--purple-dim); font-family: var(--font); font-size: 5px;
-      padding: 4px 8px; cursor: pointer; white-space: nowrap; transition: all .12s; }
+      color: var(--purple-dim); font-family: var(--font); font-size: 13px; font-weight: 700;
+      padding: 5px 10px; cursor: pointer; white-space: nowrap; transition: all .12s; }
     .se-opt:hover  { border-color: var(--purple); color: var(--purple); }
     .se-opt.active { border-color: var(--green); color: var(--green); box-shadow: var(--glow-g); }
 
     /* highlight clip cards inside smart editor */
     .se-clip {
       display: flex; align-items: flex-start; gap: 7px;
-      border: 1px solid var(--purple-dim); padding: 5px 7px; }
+      border: 1px solid var(--purple-dim); padding: 7px 10px; }
     .se-clip input[type=checkbox] { margin-top: 2px; accent-color: var(--green); flex-shrink: 0; }
-    .se-clip-body { display: flex; flex-direction: column; gap: 2px; flex: 1; }
-    .se-clip-title { font-size: 6px; color: var(--green); }
-    .se-clip-time  { font-size: 5px; color: var(--purple); }
-    .se-clip-why   { font-size: 5px; color: var(--purple-dim); font-style: italic; }
+    .se-clip-body { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+    .se-clip-title { font-size: 14px; color: var(--green); font-weight: 700; }
+    .se-clip-time  { font-size: 12px; color: var(--purple); }
+    .se-clip-why   { font-size: 12px; color: var(--purple-dim); font-style: italic; }
 
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
     .blink { animation: blink .7s step-end infinite; }
@@ -248,7 +248,7 @@
     <div id="lab-input-row">
       <button id="lab-upload-btn" onclick="document.getElementById('lab-file-input').click()" title="Upload file">&#128206;</button>
       <input id="lab-file-input" type="file" accept="video/*,audio/*,image/*" multiple onchange="onLabFile(this)">
-      <textarea id="lab-concept" rows="1" placeholder="Describe your video concept..." oninput="labResize(this)" onkeydown="labKey(event)"></textarea>
+      <textarea id="lab-concept" rows="1" placeholder="Describe your video concept..." oninput="labResize(this);sessionSave();" onkeydown="labKey(event)"></textarea>
       <button id="lab-go-btn" onclick="doStoryboard()" title="Generate storyboard">&#9654;</button>
     </div>
   </div>
@@ -269,7 +269,7 @@
       <div class="fg">
         <span class="fl">LIBRARY</span>
         <div id="music-list" style="display:flex;flex-direction:column;gap:5px;"></div>
-        <p id="music-empty" style="font-size:6px;color:var(--purple-dim);">NO TRACKS. UPLOAD ONE ABOVE.</p>
+        <p id="music-empty" style="font-size:12px;color:var(--purple-dim);">NO TRACKS. UPLOAD ONE ABOVE.</p>
       </div>
     </div>
   </div>
@@ -291,7 +291,7 @@
         <button class="se-opt"        id="px-port" onclick="pexelsOrient('portrait',this)">PORTRAIT</button>
         <button class="se-opt"        id="px-sq"   onclick="pexelsOrient('square',this)">SQUARE</button>
       </div>
-      <div id="pexels-status" style="font-size:6px;color:var(--purple-dim);margin-top:4px;min-height:12px;"></div>
+      <div id="pexels-status" style="font-size:12px;color:var(--purple-dim);margin-top:4px;min-height:16px;"></div>
       <div id="pexels-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;"></div>
     </div>
   </div>
@@ -315,7 +315,7 @@
         </div>
         <div id="mv-player-wrap" style="display:none;margin-top:4px">
           <audio id="mv-audio-preview" controls style="width:100%;height:32px;accent-color:#cc44ff"></audio>
-          <div id="mv-track-dur" style="font-size:5px;color:var(--purple-dim);margin-top:2px"></div>
+          <div id="mv-track-dur" style="font-size:12px;color:var(--purple-dim);margin-top:4px"></div>
         </div>
       </div>
 
@@ -326,7 +326,7 @@
           <button class="btn" onclick="mvLoadFiles()">[ LOAD MY UPLOADS ]</button>
         </div>
         <div id="mv-file-list" style="display:flex;flex-direction:column;gap:4px;max-height:140px;overflow-y:auto;border:1px solid var(--purple-dim);padding:4px"></div>
-        <div id="mv-file-count" style="font-size:5px;color:var(--purple-dim);margin-top:2px">0 FILES SELECTED</div>
+        <div id="mv-file-count" style="font-size:12px;color:var(--purple-dim);margin-top:4px">0 FILES SELECTED</div>
       </div>
 
       <!-- STEP 3: Options -->
@@ -334,7 +334,7 @@
         <span class="fl">3. OPTIONS</span>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:3px">
           <div style="display:flex;flex-direction:column;gap:3px">
-            <span style="font-size:5px;color:var(--purple-dim)">SLIDE DURATION (IMAGES)</span>
+            <span style="font-size:12px;color:var(--purple-dim);font-weight:700">SLIDE DURATION (IMAGES)</span>
             <div style="display:flex;gap:4px">
               <button class="se-opt active" id="mv-dur-auto" onclick="mvDur(0,this)">AUTO</button>
               <button class="se-opt" id="mv-dur-3" onclick="mvDur(3,this)">3s</button>
@@ -343,7 +343,7 @@
             </div>
           </div>
           <div style="display:flex;flex-direction:column;gap:3px">
-            <span style="font-size:5px;color:var(--purple-dim)">TRANSITION</span>
+            <span style="font-size:12px;color:var(--purple-dim);font-weight:700">TRANSITION</span>
             <div style="display:flex;gap:4px">
               <button class="se-opt active" id="mv-tr-fade" onclick="mvTrans('fade',this)">FADE</button>
               <button class="se-opt" id="mv-tr-cut" onclick="mvTrans('cut',this)">CUT</button>
@@ -378,7 +378,7 @@
     </div>
     <div class="pb">
       <div id="uploads-list" style="display:flex;flex-direction:column;gap:5px;"></div>
-      <p id="uploads-empty" style="font-size:6px;color:var(--purple-dim);">NO FILES UPLOADED YET.</p>
+      <p id="uploads-empty" style="font-size:12px;color:var(--purple-dim);">NO FILES UPLOADED YET.</p>
     </div>
   </div>
 
@@ -396,7 +396,7 @@
         <select class="fi" id="se-source-select" onchange="seSelectSource(this)">
           <option value="">-- SELECT UPLOADED FILE --</option>
         </select>
-        <span style="font-size:5px;color:var(--purple-dim);margin-top:2px">AUDIO OR VIDEO · MAX 25MB FOR TRANSCRIPTION</span>
+        <span style="font-size:12px;color:var(--purple-dim);margin-top:4px">AUDIO OR VIDEO · MAX 25MB FOR TRANSCRIPTION</span>
       </div>
 
       <div class="fg">
@@ -407,7 +407,7 @@
           <button class="se-opt"        id="se-ig"  onclick="sePlatform('instagram',this)">◈ INSTAGRAM</button>
           <button class="se-opt"        id="se-fb"  onclick="sePlatform('facebook',this)">◉ FACEBOOK</button>
         </div>
-        <span id="se-platform-spec" style="font-size:5px;color:var(--purple-dim);margin-top:3px">16:9 · 1920×1080 · Long description · 15 hashtags</span>
+        <span id="se-platform-spec" style="font-size:12px;color:var(--purple-dim);margin-top:4px">16:9 · 1920×1080 · Long description · 15 hashtags</span>
       </div>
 
       <!-- STEP 1: TRANSCRIBE -->
@@ -416,7 +416,7 @@
       </div>
       <div id="se-transcript-box" style="display:none;flex-direction:column;gap:4px">
         <span class="fl">TRANSCRIPT</span>
-        <div id="se-transcript-text" style="max-height:90px;overflow-y:auto;font-size:5px;color:var(--white);line-height:2;background:#060012;border:1px solid var(--purple-dim);padding:6px;white-space:pre-wrap;word-break:break-word"></div>
+        <div id="se-transcript-text" style="max-height:110px;overflow-y:auto;font-size:13px;color:var(--white);line-height:1.8;background:#060012;border:1px solid var(--purple-dim);padding:8px;white-space:pre-wrap;word-break:break-word"></div>
       </div>
 
       <!-- STEP 2: HIGHLIGHTS -->
@@ -465,9 +465,9 @@
             <textarea class="fi" id="se-meta-tags" rows="2" style="resize:none"></textarea>
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn" style="font-size:6px;padding:6px 10px" onclick="seCopy('se-meta-title','TITLE')">[ COPY TITLE ]</button>
-            <button class="btn" style="font-size:6px;padding:6px 10px" onclick="seCopy('se-meta-desc','DESC')">[ COPY DESC ]</button>
-            <button class="btn" style="font-size:6px;padding:6px 10px" onclick="seCopy('se-meta-tags','TAGS')">[ COPY TAGS ]</button>
+            <button class="btn" onclick="seCopy('se-meta-title','TITLE')">[ COPY TITLE ]</button>
+            <button class="btn" onclick="seCopy('se-meta-desc','DESC')">[ COPY DESC ]</button>
+            <button class="btn" onclick="seCopy('se-meta-tags','TAGS')">[ COPY TAGS ]</button>
           </div>
         </div>
       </div>
@@ -512,7 +512,7 @@
         <div class="fg">
           <span class="fl">FONT</span>
           <div id="se-font-btns" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">
-            <span style="font-size:5px;color:var(--purple-dim)">LOADING FONTS...</span>
+            <span style="font-size:12px;color:var(--purple-dim)">LOADING FONTS...</span>
           </div>
         </div>
 
@@ -536,7 +536,7 @@
             <span class="fl">BLACK BOX</span>
             <div style="display:flex;align-items:center;gap:5px;margin-top:6px">
               <input type="checkbox" id="se-thumb-outline" checked style="accent-color:var(--green);width:14px;height:14px">
-              <span style="font-size:5px;color:var(--purple-dim)">OUTLINE</span>
+              <span style="font-size:12px;color:var(--purple-dim)">OUTLINE</span>
             </div>
           </div>
         </div>
@@ -591,11 +591,59 @@ let labState = {
 let _pollTimer = null;
 
 /* ─────────────────────────────────────────
+   SESSION PERSISTENCE
+───────────────────────────────────────── */
+let _sessionSaveTimer = null;
+function sessionSave() {
+  clearTimeout(_sessionSaveTimer);
+  _sessionSaveTimer = setTimeout(async () => {
+    try {
+      await fetch('/api/lab/session', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          concept:    document.getElementById('lab-concept').value,
+          storyboard: labState.storyboard,
+          images:     labState.images,
+          musicPath:  labState.musicPath,
+        })
+      });
+    } catch {}
+  }, 800);
+}
+
+async function sessionRestore() {
+  try {
+    const res = await fetch('/api/lab/session');
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (!data || (!data.concept && !data.storyboard)) return false;
+    if (data.concept) {
+      const el = document.getElementById('lab-concept');
+      el.value = data.concept;
+      labResize(el);
+      labState.concept = data.concept;
+    }
+    if (data.storyboard && Array.isArray(data.storyboard) && data.storyboard.length) {
+      labState.storyboard = data.storyboard;
+      labState.images = data.images || {};
+      if (data.musicPath) labState.musicPath = data.musicPath;
+      renderStoryboard(labState.storyboard);
+      setStatus('SESSION RESTORED — ' + labState.storyboard.length + ' SCENES');
+      log('ok', '▸ SESSION RESTORED FROM SERVER (' + labState.storyboard.length + ' scenes)');
+      return true;
+    }
+    return false;
+  } catch { return false; }
+}
+
+/* ─────────────────────────────────────────
    BOOT
 ───────────────────────────────────────── */
 (async function boot() {
   labResize(document.getElementById('lab-concept'));
-  await checkConcept();
+  const restored = await sessionRestore();
+  if (!restored) await checkConcept();
 })();
 
 /* ─────────────────────────────────────────
@@ -660,7 +708,31 @@ function clearOutput() {
 
 function labResize(el) {
   el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 80) + 'px';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+
+function renderStoryboard(scenes) {
+  const out = document.getElementById('lab-output');
+  scenes.forEach((sc, i) => {
+    if (document.getElementById('scene-card-' + sc.id)) return;
+    const card = document.createElement('div');
+    card.className = 'scene-card';
+    card.id = 'scene-card-' + sc.id;
+    card.innerHTML =
+      `<div class="scene-num">SCENE ${i + 1} · ${sc.duration || 5}s · ${sc.style || 'cinematic'}</div>` +
+      `<div class="scene-desc">${esc(sc.description)}</div>` +
+      (sc.voiceover ? `<div class="scene-vo">"${esc(sc.voiceover)}"</div>` : '');
+    const imgUrl = labState.images && labState.images[sc.id] && labState.images[sc.id].url;
+    if (imgUrl) {
+      const img = document.createElement('img');
+      img.className = 'scene-img';
+      img.src = imgUrl;
+      img.onclick = () => window.open(imgUrl, '_blank');
+      card.appendChild(img);
+    }
+    out.appendChild(card);
+  });
+  out.scrollTop = out.scrollHeight;
 }
 
 function labKey(e) {
@@ -734,22 +806,12 @@ async function doStoryboard() {
     log('ok', `✓ STORYBOARD: ${data.scenes.length} SCENES`);
     log('', '');
 
-    const out = document.getElementById('lab-output');
-    data.scenes.forEach((sc, i) => {
-      const card = document.createElement('div');
-      card.className = 'scene-card';
-      card.id = 'scene-card-' + sc.id;
-      card.innerHTML =
-        `<div class="scene-num">SCENE ${i + 1} · ${sc.duration || 5}s · ${sc.style || 'cinematic'}</div>` +
-        `<div class="scene-desc">${esc(sc.description)}</div>` +
-        (sc.voiceover ? `<div class="scene-vo">"${esc(sc.voiceover)}"</div>` : '');
-      out.appendChild(card);
-    });
-    out.scrollTop = out.scrollHeight;
+    renderStoryboard(data.scenes);
 
     log('', '');
     log('dim', '> NEXT: [ IMAGES ] to generate visuals, [ VOICEOVER ] for audio');
     setStatus(`STORYBOARD READY — ${data.scenes.length} SCENES`);
+    sessionSave();
   } catch(e) {
     log('err', '✗ STORYBOARD ERROR: ' + e);
   } finally {
@@ -791,6 +853,7 @@ async function doImages() {
       }
       labState.images[sc.id] = data;
       logStep('img-' + sc.id, '✓', `SCENE ${i+1} — DONE`, 'done');
+      sessionSave();
 
       const card = document.getElementById('scene-card-' + sc.id);
       if (card && data.url) {
@@ -921,7 +984,7 @@ async function doVoice() {
     const dl = document.createElement('a');
     dl.href = data.url; dl.download = 'voiceover.mp3';
     dl.textContent = '[ DL MP3 ]';
-    dl.style.cssText = 'font-family:var(--font);font-size:5px;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:5px 8px;white-space:nowrap';
+    dl.style.cssText = 'font-family:var(--font);font-size:13px;font-weight:700;color:var(--purple);text-decoration:none;border:1px solid var(--purple);padding:7px 12px;white-space:nowrap';
     row.appendChild(aud); row.appendChild(dl);
     out.appendChild(row);
     out.scrollTop = out.scrollHeight;
@@ -1056,6 +1119,7 @@ function selectMusic(path, name, btn) {
   document.querySelectorAll('.track-use').forEach(b => { b.textContent = 'USE'; b.classList.remove('on'); });
   btn.textContent = '✓ SELECTED'; btn.classList.add('on');
   log('ok', `> MUSIC SELECTED: ${name}`);
+  sessionSave();
 }
 
 async function uploadMusicTrack() {
@@ -1189,12 +1253,12 @@ async function pexelsSearch() {
       thumb.loading = 'lazy';
 
       const info = document.createElement('div');
-      info.style.cssText = 'font-size:5px;color:var(--purple-dim);line-height:1.6;';
+      info.style.cssText = 'font-size:12px;color:var(--purple-dim);line-height:1.6;';
       info.textContent = `${v.duration}s · ${v.width}×${v.height} · ${v.photographer}`;
 
       const useBtn = document.createElement('button');
       useBtn.className = 'btn';
-      useBtn.style.cssText = 'font-size:5px;padding:3px 6px;align-self:flex-start;margin-top:2px;';
+      useBtn.style.cssText = 'font-size:13px;font-weight:700;padding:5px 10px;align-self:flex-start;margin-top:4px;';
       useBtn.textContent = '[ USE ]';
       useBtn.onclick = () => pexelsUseClip(v);
 
@@ -1327,7 +1391,7 @@ async function seLoadFonts() {
       }
     });
   } catch(e) {
-    box.innerHTML = '<span style="font-size:5px;color:#ff4466">FONT LOAD ERROR</span>';
+    box.innerHTML = '<span style="font-size:12px;color:#ff4466">FONT LOAD ERROR</span>';
   }
 }
 

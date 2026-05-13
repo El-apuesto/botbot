@@ -1171,6 +1171,7 @@ _lab_renders_dir = Path(__file__).parent / "renders"
 _lab_music_dir   = Path(__file__).parent / "static" / "music"
 _lab_music_meta  = Path(__file__).parent / "static" / "music" / "_meta.json"
 _lab_concept_store: dict = {}   # latest concept pushed from bots; cleared on GET
+_lab_session_store: dict = {}   # persisted storyboard + concept across refreshes
 _lab_jobs: dict = {}            # job_id - {status, url, error, provider, local_path}
 
 for _d in (_lab_uploads_dir, _lab_renders_dir, _lab_music_dir):
@@ -1771,6 +1772,22 @@ def api_lab_render():
             yield f"- RENDER ERROR: {str(e)[:200]}"
 
     return _sse_stream(_run)
+
+
+# -- /api/lab/session ---------------------------------------------------------
+@_flask.route("/api/lab/session", methods=["GET"])
+def api_lab_session_get():
+    """Return the last-saved lab session (concept + storyboard)."""
+    return jsonify(_lab_session_store.copy())
+
+
+@_flask.route("/api/lab/session", methods=["POST"])
+def api_lab_session_save():
+    """Save the current lab session (concept + storyboard + settings)."""
+    data = request.json or {}
+    _lab_session_store.clear()
+    _lab_session_store.update(data)
+    return jsonify({"ok": True})
 
 
 # -- /api/lab/concept ---------------------------------------------------------
