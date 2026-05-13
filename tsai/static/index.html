@@ -1397,6 +1397,60 @@ audio { width: 100%; margin-top: 4px; }
       </div>
     </div>
 
+    <!-- [7] SOCIAL -->
+    <div class="panel" id="panel-social">
+      <div class="panel-scroll">
+
+        <div class="fg">
+          <span class="fl">SOCIAL CLIP FACTORY</span>
+          <p style="font-size:12px;color:var(--muted);margin:0 0 4px">Upload a video → AI transcribes, finds best clips, writes captions + hashtags per platform.</p>
+          <input type="file" id="soc-file" accept="video/*,audio/*" style="display:none" onchange="socialFileChosen(this)">
+          <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+            <button class="btn" onclick="document.getElementById('soc-file').click()">[ UPLOAD VIDEO ]</button>
+            <span id="soc-filename" style="font-size:12px;color:var(--cyan)"></span>
+          </div>
+        </div>
+
+        <div class="fg">
+          <span class="fl">PLATFORMS</span>
+          <div class="opt-row" style="flex-wrap:wrap">
+            <button class="opt on" id="sp-youtube"   onclick="togglePlatform('youtube',this)">YOUTUBE</button>
+            <button class="opt on" id="sp-tiktok"    onclick="togglePlatform('tiktok',this)">TIKTOK</button>
+            <button class="opt on" id="sp-instagram" onclick="togglePlatform('instagram',this)">INSTAGRAM</button>
+            <button class="opt"    id="sp-twitter"   onclick="togglePlatform('twitter',this)">X/TWITTER</button>
+          </div>
+        </div>
+
+        <div class="fg">
+          <span class="fl">MAX CLIPS</span>
+          <div class="opt-row">
+            <button class="opt" id="sc-1" onclick="setSocClips(1,this)">1</button>
+            <button class="opt" id="sc-2" onclick="setSocClips(2,this)">2</button>
+            <button class="opt on" id="sc-3" onclick="setSocClips(3,this)">3</button>
+            <button class="opt" id="sc-5" onclick="setSocClips(5,this)">5</button>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button class="btn" id="soc-process-btn" onclick="socialProcess()" disabled>[ PROCESS VIDEO ]</button>
+          <button class="btn" onclick="loadSocialJobs()">[ REFRESH JOBS ]</button>
+        </div>
+
+        <div class="fg" id="soc-status-box" style="display:none">
+          <span class="fl">STATUS</span>
+          <div id="soc-status-msg" style="font-size:13px;color:var(--cyan);padding:2px 0"></div>
+        </div>
+
+        <div id="soc-results"></div>
+
+        <div class="fg">
+          <span class="fl">PREVIOUS JOBS</span>
+          <div id="soc-jobs-list" style="display:flex;flex-direction:column;gap:4px"></div>
+          <p class="ph-text" id="soc-jobs-empty" style="display:none">NO JOBS YET.</p>
+        </div>
+
+      </div>
+    </div><!-- /panel-social -->
 
   </div><!-- /terminal -->
 
@@ -1414,7 +1468,8 @@ audio { width: 100%; margin-top: 4px; }
     <button class="nav-btn" onclick="switchTab('lab', this)"><span class="nav-num">[3]</span>LABS</button>
     <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[4]</span>STUDIO</button>
     <button class="nav-btn" onclick="switchTab('advisors', this)"><span class="nav-num">[5]</span>ADVISE</button>
-    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[6]</span>SETTINGS</button>
+    <button class="nav-btn" onclick="switchTab('social', this)"><span class="nav-num">[6]</span>SOCIAL</button>
+    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[7]</span>SETTINGS</button>
     <span class="nav-user">{{ session.get('username', '') | upper }}&nbsp;<a class="nav-logout" href="/logout">EXIT</a></span>
   </nav>
 
