@@ -1514,20 +1514,34 @@ const _labConcepts = {};
 (function init() {
   applyBot(bot);
   const _ul = document.getElementById('user-label'); if (_ul) _ul.textContent = uname;
-  document.getElementById('s-name').value      = uname;
-  document.getElementById('p-twin').value      = S.get('p_twin', '');
-  document.getElementById('p-shadow').value    = S.get('p_shadow', '');
-  document.getElementById('p-builder').value   = S.get('p_builder', '');
-  document.getElementById('p-boardroom').value = S.get('p_boardroom', '');
-  document.getElementById('p-brainstorm').value= S.get('p_brainstorm', '');
-  ['twin','shadow','capi','builder','narrator'].forEach(k => {
-    const el = document.getElementById('v-' + k); if (!el) return;
-    const saved = S.get('voice_' + k, '');
-    if (saved) el.value = saved;
-  });
+  document.getElementById('s-name').value = uname;
   setDef(defBot, true);
   setMode(teamMode, true);
   addMsg('SYSTEM', 'TWIN SHADOW v2.0 — AI ENGINE ACTIVE. TYPE YOUR COMMAND.');
+  fetch('/api/user/settings').then(r => r.json()).then(sv => {
+    const fields = ['p_twin','p_shadow','p_builder','p_boardroom','p_brainstorm'];
+    fields.forEach(k => {
+      const el = document.getElementById(k.replace('_','-'));
+      if (el) el.value = sv[k] || S.get(k, '');
+    });
+    ['twin','shadow','capi','builder','narrator'].forEach(k => {
+      const el = document.getElementById('v-' + k); if (!el) return;
+      const val = sv['voice_' + k] || S.get('voice_' + k, '');
+      if (val) el.value = val;
+    });
+    if (sv.defBot)   { defBot = sv.defBot;   setDef(defBot, true); }
+    if (sv.teamMode) { teamMode = sv.teamMode; setMode(teamMode, true); }
+  }).catch(() => {
+    ['p_twin','p_shadow','p_builder','p_boardroom','p_brainstorm'].forEach(k => {
+      const el = document.getElementById(k.replace('_','-'));
+      if (el) el.value = S.get(k, '');
+    });
+    ['twin','shadow','capi','builder','narrator'].forEach(k => {
+      const el = document.getElementById('v-' + k); if (!el) return;
+      const saved = S.get('voice_' + k, '');
+      if (saved) el.value = saved;
+    });
+  });
 })();
 
 /* ─────────────────────────────────────────
@@ -2625,15 +2639,25 @@ function setMode(v, silent) {
 function saveSettings() {
   const n = (document.getElementById('s-name').value.trim().toUpperCase() || 'USER').slice(0, 20);
   uname = n; S.set('uname', n);
-  S.set('p_twin',      document.getElementById('p-twin').value);
-  S.set('p_shadow',    document.getElementById('p-shadow').value);
-  S.set('p_builder',   document.getElementById('p-builder').value);
-  S.set('p_boardroom', document.getElementById('p-boardroom').value);
-  S.set('p_brainstorm',document.getElementById('p-brainstorm').value);
+  const payload = {
+    p_twin:      document.getElementById('p-twin').value,
+    p_shadow:    document.getElementById('p-shadow').value,
+    p_builder:   document.getElementById('p-builder').value,
+    p_boardroom: document.getElementById('p-boardroom').value,
+    p_brainstorm:document.getElementById('p-brainstorm').value,
+    defBot, teamMode,
+  };
   ['twin','shadow','capi','builder','narrator'].forEach(k => {
     const el = document.getElementById('v-' + k); if (!el) return;
+    payload['voice_' + k] = el.value;
     S.set('voice_' + k, el.value);
   });
+  Object.entries(payload).forEach(([k,v]) => S.set(k, v));
+  fetch('/api/user/settings', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  }).catch(() => {});
   bot = defBot; S.set('bot', bot); applyBot(bot);
   const _ul2 = document.getElementById('user-label'); if (_ul2) _ul2.textContent = uname;
   addMsg('SYSTEM', 'SETTINGS SAVED. WELCOME, ' + uname + '.');

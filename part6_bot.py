@@ -210,6 +210,28 @@ def _logout():
 def _api_me():
     return jsonify({"username": session.get("username", ""), "authed": _is_web_authed()})
 
+@_flask.route("/api/user/settings", methods=["GET"])
+@_require_web_auth
+def _api_settings_get():
+    uname = session.get("username", "")
+    user  = _find_user(uname)
+    if not user:
+        return jsonify({})
+    return jsonify(user.get("settings", {}))
+
+@_flask.route("/api/user/settings", methods=["POST"])
+@_require_web_auth
+def _api_settings_save():
+    uname = session.get("username", "")
+    data  = request.json or {}
+    users = _users_load()
+    for u in users:
+        if u["username"].lower() == uname.lower():
+            u.setdefault("settings", {}).update(data)
+            break
+    _users_save(users)
+    return jsonify({"ok": True})
+
 @_flask.route("/")
 @_require_web_auth
 def _home():
