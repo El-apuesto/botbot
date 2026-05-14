@@ -18,8 +18,8 @@ from part1_registry import get_task_routing, get_provider_cfg
 # When ALL keys for a provider are exhausted due to server errors, fall back here.
 _PROVIDER_FALLBACK: dict[str, tuple[str, str]] = {
     "groq":    ("cerebras", "llama_small"),   # Groq 500/509 → Cerebras
-    "venice":  ("cerebras", "llama_small"),   # Venice 502 → Cerebras
     "nvidia":  ("cerebras", "llama_small"),   # NVIDIA 410/503 → Cerebras
+    # Venice has no uncensored fallback — if down, fail cleanly; Groq Llama runs in parallel
 }
 
 
