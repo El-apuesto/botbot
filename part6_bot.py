@@ -11,7 +11,7 @@ from pathlib import Path
 from threading import Thread
 
 from flask import Flask
-from pytz import timezone
+from zoneinfo import ZoneInfo
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackContext
 
@@ -37,7 +37,7 @@ MAX_MEMORY = int(os.environ.get("MAX_MEMORY", "10"))
 _raw_ids = os.environ.get("ALLOWED_IDS", "")
 ALLOWED_IDS: set[int] = {int(x) for x in _raw_ids.split(",") if x.strip()} if _raw_ids else set()
 
-CT = timezone("America/Chicago")
+CT = ZoneInfo("America/Chicago")
 
 orch = Orchestrator()
 
