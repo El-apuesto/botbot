@@ -12,6 +12,7 @@ from threading import Thread
 
 from flask import Flask
 from zoneinfo import ZoneInfo
+from part9_web import register_routes
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackContext
 
@@ -41,10 +42,8 @@ CT = ZoneInfo("America/Chicago")
 
 orch = Orchestrator()
 
-_flask = Flask("TwinShadow")
-@_flask.route("/")
-def _home():
-    return "Twin Shadow AWAKE"
+_flask = Flask("TwinShadow", template_folder="static", static_folder="static")
+register_routes(_flask)
 
 Thread(target=lambda: _flask.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000))), daemon=True).start()
 

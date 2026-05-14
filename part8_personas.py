@@ -343,10 +343,35 @@ _TURN_LENGTH = {
 }
 
 
+def get_system_prompt(task_key: str) -> str:
+    """Return the system prompt for a given task routing key."""
+    _MAP = {
+        "twin":                TWIN_SYSTEM,
+        "relay":               TWIN_SYSTEM,
+        "shadow":              SHADOW_SYSTEM,
+        "shadow_chat":         SHADOW_SYSTEM,
+        "capi":                CAPI_SYSTEM,
+        "builder":             BUILDER_SYSTEM,
+        "legal_finance":       (
+            "You are a sharp, no-nonsense legal and financial advisor on the Twin Shadow platform. "
+            "Give clear, practical advice. Flag risks plainly. Keep it tight."
+        ),
+        "fast_reasoning":      (
+            "You are a razor-sharp marketing strategist on the Twin Shadow platform. "
+            "Think virality, audience psychology, and platform mechanics. Be bold and specific."
+        ),
+        "business":            (
+            "You are a senior business strategist. Deliver structured, actionable analysis. "
+            "Numbers, risk, opportunity — no fluff."
+        ),
+    }
+    return _MAP.get(task_key, TWIN_SYSTEM)
+
+
 def podcast_character_system(
     name: str,
     role: str,
-    personality: str,
+    personality: str = "",
     show_type: str = "podcast",
     complexity: str = "simple",
 ) -> str:
