@@ -155,7 +155,7 @@ PROVIDERS: dict = {
         "desc": "TWIN. Groq Llama 70B + Whisper transcription + PlayAI TTS + QwQ 32B.",
         "base_url":       "https://api.groq.com/openai/v1",
         "api_key_env":    "GROQ_API_KEY",
-        "key_rotation":   ["GROQ_API_KEY", "GROQ_API_KEY_1", "GROQ_API_KEY_2", "GROQ_API_KEY_3"],
+        "key_rotation":   ["GROQ_API_KEY", "GROQ_API_KEY_1", "GROQ_API_KEY_2", "GROQ_API_KEY_3", "GROQ_API_KEY_4", "GROQ_API_KEY_5", "GROQ_API_KEY_6"],
         "openai_compat":  True,
         "models": {
             # Chat
