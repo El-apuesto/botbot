@@ -7,11 +7,19 @@ Task #13: ASCII-safe key filtering (GROQ_API_KEY_2 unicode bug fixed);
 
 from __future__ import annotations
 import os
+import asyncio
 from typing import AsyncGenerator
 from datetime import datetime, timezone
 from openai import AsyncOpenAI
 
 from part1_registry import get_task_routing, get_provider_cfg
+
+# ── Provider-level fallbacks for server errors (502/503/504/overloaded) ────────
+# When ALL keys for a provider are exhausted due to server errors, fall back here.
+_PROVIDER_FALLBACK: dict[str, tuple[str, str]] = {
+    "venice":  ("cerebras", "llama_small"),   # Venice 502 → Cerebras
+    "nvidia":  ("cerebras", "llama_small"),   # NVIDIA 410/503 → Cerebras
+}
 
 
 def _is_ascii_safe(s: str) -> bool:
@@ -80,13 +88,34 @@ def _get_rotation_keys(provider_key: str) -> list[str]:
     return keys
 
 
+def _is_rate_error(err_str: str) -> bool:
+    return any(x in err_str for x in (
+        "429", "rate", "quota", "401",
+        "509", "bandwidth",           # Groq bandwidth-exceeded
+        "too many",
+    ))
+
+def _is_server_error(err_str: str) -> bool:
+    return any(x in err_str for x in (
+        "502", "503", "504", "500",
+        "bad gateway", "service unavailable",
+        "overloaded", "upstream",
+    ))
+
+
 async def _rotate_stream(
     provider_key: str,
     model_name: str,
     messages: list[dict],
     max_tokens: int = 4000,
 ) -> AsyncGenerator[str, None]:
-    """Try each rotation key in order; skip to next on 429/401/rate errors."""
+    """
+    Try each rotation key in order.
+    - Rate/auth errors (429, 401, 509 bandwidth): rotate immediately to next key.
+    - Server errors (502, 503, 504, overloaded): retry same key once after 1.5 s,
+      then rotate to next key.
+    - Other errors: raise immediately.
+    """
     keys = _get_rotation_keys(provider_key)
     cfg = get_provider_cfg(provider_key)
     if "base_url_env" in cfg:
@@ -96,27 +125,38 @@ async def _rotate_stream(
 
     last_err = None
     for key in keys:
-        try:
-            client = AsyncOpenAI(base_url=base_url, api_key=key)
-            stream = await client.chat.completions.create(
-                model=model_name,
-                messages=messages,
-                max_tokens=max_tokens,
-                stream=True,
-            )
-            async for chunk in stream:
-                if not chunk.choices:
-                    continue
-                delta = chunk.choices[0].delta.content or ""
-                if delta:
-                    yield delta
-            return
-        except Exception as e:
-            err_str = str(e).lower()
-            if "429" in err_str or "rate" in err_str or "quota" in err_str or "401" in err_str:
+        for attempt in range(2):          # up to 2 attempts per key for server errors
+            try:
+                client = AsyncOpenAI(base_url=base_url, api_key=key)
+                stream = await client.chat.completions.create(
+                    model=model_name,
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    stream=True,
+                )
+                async for chunk in stream:
+                    if not chunk.choices:
+                        continue
+                    delta = chunk.choices[0].delta.content or ""
+                    if delta:
+                        yield delta
+                return                    # success
+            except Exception as e:
+                err_str = str(e).lower()
                 last_err = e
-                continue
-            raise
+                if _is_rate_error(err_str):
+                    break                 # rate-limited: skip to next key
+                elif _is_server_error(err_str):
+                    if attempt == 0:
+                        print(f"[ROUTER] {provider_key} server error (attempt 1) — retrying in 1.5 s")
+                        await asyncio.sleep(1.5)
+                        continue          # retry same key once
+                    else:
+                        print(f"[ROUTER] {provider_key} server error (attempt 2) — rotating key")
+                        break             # still failing: rotate to next key
+                else:
+                    raise                 # unexpected error — propagate immediately
+
     raise RuntimeError(f"All rotation keys exhausted for {provider_key}: {last_err}")
 
 
@@ -132,37 +172,69 @@ async def _rotate_call(
     return full
 
 
+async def _provider_stream(
+    provider_key: str,
+    model_name: str,
+    messages: list[dict],
+    max_tokens: int,
+) -> AsyncGenerator[str, None]:
+    """
+    Internal: stream from a provider, using key rotation if configured.
+    On exhaustion/server failure, raises RuntimeError — callers handle fallback.
+    """
+    cfg = get_provider_cfg(provider_key)
+    if cfg.get("key_rotation"):
+        async for chunk in _rotate_stream(provider_key, model_name, messages, max_tokens):
+            yield chunk
+    else:
+        # Single-key provider — still apply server-error retry via _rotate_stream
+        # (it will use the one key but retry on transient 502/503)
+        async for chunk in _rotate_stream(provider_key, model_name, messages, max_tokens):
+            yield chunk
+
+
+async def _with_provider_fallback(
+    provider_key: str,
+    model_name: str,
+    messages: list[dict],
+    max_tokens: int,
+) -> AsyncGenerator[str, None]:
+    """Stream with automatic provider-level fallback on server errors."""
+    chunks_sent = False
+    try:
+        async for chunk in _provider_stream(provider_key, model_name, messages, max_tokens):
+            chunks_sent = True
+            yield chunk
+        return
+    except Exception as e:
+        if chunks_sent:
+            raise  # partial response already sent — can't fall back cleanly
+        err_str = str(e).lower()
+        fallback = _PROVIDER_FALLBACK.get(provider_key)
+        if not fallback or not (_is_server_error(err_str) or "exhausted" in err_str):
+            raise
+        fb_provider, fb_model_key = fallback
+        fb_cfg = get_provider_cfg(fb_provider)
+        fb_model = fb_cfg["models"][fb_model_key]
+        print(f"[ROUTER] {provider_key} unavailable — falling back to {fb_provider}/{fb_model_key}")
+        async for chunk in _rotate_stream(fb_provider, fb_model, messages, max_tokens):
+            yield chunk
+
+
 async def stream_task(
     task_type: str,
     messages: list[dict],
     model_key_override: str | None = None,
     max_tokens: int = 4000,
 ) -> AsyncGenerator[str, None]:
-    """Stream response chunks for a task type. Uses key rotation where available."""
+    """Stream response chunks for a task type. Uses key rotation + provider fallback."""
     provider_key, model_key = get_task_routing(task_type)
     if model_key_override:
         model_key = model_key_override
-
     cfg = get_provider_cfg(provider_key)
     model_name = cfg["models"][model_key]
-
-    if cfg.get("key_rotation"):
-        async for chunk in _rotate_stream(provider_key, model_name, messages, max_tokens):
-            yield chunk
-    else:
-        client = _build_client(provider_key)
-        stream = await client.chat.completions.create(
-            model=model_name,
-            messages=messages,
-            max_tokens=max_tokens,
-            stream=True,
-        )
-        async for chunk in stream:
-            if not chunk.choices:
-                continue
-            delta = chunk.choices[0].delta.content or ""
-            if delta:
-                yield delta
+    async for chunk in _with_provider_fallback(provider_key, model_name, messages, max_tokens):
+        yield chunk
 
 
 async def direct_stream(
@@ -174,24 +246,8 @@ async def direct_stream(
     """Stream directly from a provider+model pair. Used for boardroom/brainstorm/committee."""
     cfg = get_provider_cfg(provider_key)
     model_name = cfg["models"][model_key]
-
-    if cfg.get("key_rotation"):
-        async for chunk in _rotate_stream(provider_key, model_name, messages, max_tokens):
-            yield chunk
-    else:
-        client = _build_client(provider_key)
-        stream = await client.chat.completions.create(
-            model=model_name,
-            messages=messages,
-            max_tokens=max_tokens,
-            stream=True,
-        )
-        async for chunk in stream:
-            if not chunk.choices:
-                continue
-            delta = chunk.choices[0].delta.content or ""
-            if delta:
-                yield delta
+    async for chunk in _with_provider_fallback(provider_key, model_name, messages, max_tokens):
+        yield chunk
 
 
 async def call_task(
