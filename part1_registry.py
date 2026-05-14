@@ -221,6 +221,7 @@ PROVIDERS: dict = {
         "desc": "Venice.ai uncensored. SHADOW (1.2), GEMMA (Gemma 4), Hermes 405B, Llama 70B.",
         "base_url":      "https://api.venice.ai/api/v1",
         "api_key_env":   "VENICE_ADMIN_KEY",
+        "key_rotation":  ["VENICE_ADMIN_KEY", "VENICE_API_KEY_1", "VENICE_API_KEY_2"],
         "openai_compat": True,
         "models": {
             "gemma4_uncensored":      "gemma-4-uncensored",
