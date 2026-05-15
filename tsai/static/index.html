@@ -744,13 +744,13 @@ audio { width: 100%; margin-top: 4px; }
 
         <!-- ASK TWIN consult panel -->
         <div style="border:1px solid var(--purple);padding:10px 12px;margin-bottom:12px;background:rgba(60,0,80,.15)">
-          <div style="color:var(--cyan);font-size:10px;letter-spacing:.1em;margin-bottom:6px">── ASK TWIN WHAT TO DO ──</div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Describe your goal in plain language. TWIN recommends the right approach and pre-fills the form.</div>
+          <div id="guide-header" style="color:var(--cyan);font-size:10px;letter-spacing:.1em;margin-bottom:6px">── ASK TWIN WHAT TO DO ──</div>
+          <div id="guide-subtext" style="font-size:11px;color:var(--muted);margin-bottom:8px">Describe your goal. TWIN recommends the right approach and pre-fills the form.</div>
           <textarea class="fi" id="guide-goal" rows="2" placeholder="e.g. I want to launch a podcast with no budget and build an audience of weird internet people fast&#10;e.g. I need to understand where my content fits in the market before I invest more&#10;e.g. I want a creative direction for an occult comedy brand"></textarea>
           <button class="btn" id="guide-btn" onclick="askTwinGuide()" style="width:100%;text-align:center;margin-top:6px">[ ASK TWIN ]</button>
           <!-- recommendation result -->
           <div id="guide-result" style="display:none;margin-top:10px">
-            <div style="color:var(--cyan);font-size:10px;letter-spacing:.08em;margin-bottom:5px">── TWIN RECOMMENDS ──</div>
+            <div id="guide-result-header" style="color:var(--cyan);font-size:10px;letter-spacing:.08em;margin-bottom:5px">── TWIN RECOMMENDS ──</div>
             <div id="guide-explanation" style="font-size:12px;color:var(--text);line-height:1.6;margin-bottom:8px;white-space:pre-wrap"></div>
             <button class="btn" id="guide-apply-btn" onclick="applyGuideRecommendation()" style="padding:3px 12px;font-size:11px">[ USE THIS APPROACH ]</button>
           </div>
@@ -1785,6 +1785,7 @@ function toggleBot() {
 function applyBot(b) {
   document.getElementById('sw').classList.toggle('on', b === 'shadow');
   document.getElementById('toggle-name').textContent = b.toUpperCase();
+  _updateGuidePanelVoice();
 }
 
 /* ─────────────────────────────────────────
@@ -2958,12 +2959,26 @@ const _GUIDE_TOOL_MAP = {
 
 let _guideRec = null;   // last recommendation from TWIN
 
+function _updateGuidePanelVoice() {
+  const v = (typeof bot !== 'undefined' ? bot : 'twin').toUpperCase();
+  const hdr   = document.getElementById('guide-header');
+  const sub   = document.getElementById('guide-subtext');
+  const btn   = document.getElementById('guide-btn');
+  const rhdr  = document.getElementById('guide-result-header');
+  if (hdr)  hdr.textContent  = `── ASK ${v} WHAT TO DO ──`;
+  if (sub)  sub.textContent  = `Describe your goal. ${v} recommends the right approach and pre-fills the form.`;
+  if (btn && !btn.disabled) btn.textContent = `[ ASK ${v} ]`;
+  if (rhdr) rhdr.textContent = `── ${v} RECOMMENDS ──`;
+}
+
 async function askTwinGuide() {
-  const goal = document.getElementById('guide-goal').value.trim();
+  const goal  = document.getElementById('guide-goal').value.trim();
   if (!goal) { alert('Describe your goal first.'); return; }
 
-  const btn = document.getElementById('guide-btn');
-  btn.textContent = '[ TWIN IS THINKING... ]';
+  const voice = (typeof bot !== 'undefined' ? bot : 'twin');
+  const vName = voice.toUpperCase();
+  const btn   = document.getElementById('guide-btn');
+  btn.textContent = `[ ${vName} IS THINKING... ]`;
   btn.disabled = true;
   document.getElementById('guide-result').style.display = 'none';
 
@@ -2971,7 +2986,7 @@ async function askTwinGuide() {
     const res = await fetch('/api/guide', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ goal }),
+      body: JSON.stringify({ goal, voice }),
     });
     if (!res.ok) { alert('Guide request failed: ' + res.status); return; }
     const rec = await res.json();
@@ -2989,7 +3004,6 @@ async function askTwinGuide() {
     }
     expl.textContent = text;
 
-    // Only show "Use this approach" if it's a missions tool (can pre-fill form)
     const applyBtn = document.getElementById('guide-apply-btn');
     if (mapping && mapping.tab === 'missions') {
       applyBtn.style.display = '';
@@ -3001,11 +3015,12 @@ async function askTwinGuide() {
       applyBtn.style.display = 'none';
     }
 
+    document.getElementById('guide-result-header').textContent = `── ${vName} RECOMMENDS ──`;
     document.getElementById('guide-result').style.display = '';
   } catch(e) {
     alert('Guide failed: ' + e.message);
   } finally {
-    btn.textContent = '[ ASK TWIN ]';
+    btn.textContent = `[ ASK ${vName} ]`;
     btn.disabled = false;
   }
 }

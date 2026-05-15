@@ -1255,19 +1255,24 @@ def register_routes(app: Flask):
     @app.route("/api/guide", methods=["POST"])
     @_login_required
     def api_guide():
-        """User describes a goal → TWIN recommends the best tool + pre-fills the brief."""
-        d    = request.get_json(force=True) or {}
-        goal = d.get("goal", "").strip()
+        """User describes a goal → TWIN or SHADOW recommends the best tool + pre-fills brief."""
+        from part8_personas import SHADOW_GUIDE_SYSTEM
+        d     = request.get_json(force=True) or {}
+        goal  = d.get("goal", "").strip()
+        voice = d.get("voice", "twin").lower()   # "twin" or "shadow"
         if not goal:
             return jsonify({"error": "goal required"}), 400
+
+        sys_prompt = TWIN_GUIDE_SYSTEM if voice != "shadow" else SHADOW_GUIDE_SYSTEM
+        task_key   = "twin"  if voice != "shadow" else "shadow_chat"
 
         async def _call():
             from part2_router import call_task
             msgs = [
-                {"role": "system", "content": TWIN_GUIDE_SYSTEM},
+                {"role": "system", "content": sys_prompt},
                 {"role": "user",   "content": f"USER GOAL:\n{goal}"},
             ]
-            return await call_task("twin", msgs)
+            return await call_task(task_key, msgs)
 
         import asyncio as _aio
         loop = _aio.new_event_loop()
@@ -1276,7 +1281,6 @@ def register_routes(app: Flask):
         finally:
             loop.close()
 
-        # Strip any accidental markdown fences
         cleaned = raw.strip()
         if cleaned.startswith("```"):
             cleaned = "\n".join(
@@ -1287,7 +1291,6 @@ def register_routes(app: Flask):
             rec = json.loads(cleaned)
             return jsonify(rec)
         except Exception:
-            # TWIN didn't return clean JSON — return raw explanation as text
             return jsonify({"explanation": raw, "tool": None, "title": "", "brief": "", "committee_request": ""})
 
     @app.route("/api/committees/<cid>/launch", methods=["POST"])
