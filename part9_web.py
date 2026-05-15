@@ -343,15 +343,63 @@ def register_routes(app: Flask):
     @_login_required
     def api_chat():
         from part8_personas import get_system_prompt
-        d        = request.get_json(force=True) or {}
-        bot      = d.get("bot", "twin")
-        message  = d.get("message", "")
-        history  = d.get("history", [])[-30:]
-        sys_over = d.get("system_prompt", "")
-        key      = "shadow_chat" if bot == "shadow" else "twin"
-        sys_p    = sys_over or get_system_prompt(key)
-        msgs     = [{"role": "system", "content": sys_p}] + history + [{"role": "user", "content": message}]
+        d             = request.get_json(force=True) or {}
+        bot           = d.get("bot", "twin")
+        message       = d.get("message", "")
+        history       = d.get("history", [])[-30:]
+        sys_over      = d.get("system_prompt", "")
+        continue_mode = d.get("continue_mode", False)
+        key           = "shadow_chat" if bot == "shadow" else "twin"
+        sys_p         = sys_over or get_system_prompt(key)
+        if continue_mode:
+            user_msg = ("Continue your response from exactly where you stopped. "
+                        "Do not repeat anything already written. "
+                        "Pick up mid-sentence if that is where you left off.")
+        else:
+            user_msg = message
+        msgs = [{"role": "system", "content": sys_p}] + history + [{"role": "user", "content": user_msg}]
         return _sse_single(key, msgs)
+
+    # ── single-text TTS (ElevenLabs → gTTS) ──────────────────────────────────
+    @app.route("/api/tts/chat", methods=["POST"])
+    @_login_required
+    def api_tts_chat():
+        import os as _os, requests as _req
+        d     = request.get_json(force=True) or {}
+        text  = (d.get("text") or "")[:3000]
+        voice = d.get("voice", "twin").lower()
+        if not text:
+            return jsonify({"error": "no text"}), 400
+        _EL_VOICES = {
+            "twin":   "ErXwobaYiN019PkySvjV",
+            "shadow": "VR6AewLTigWG4xSOukaG",
+        }
+        voice_id = _EL_VOICES.get(voice, _EL_VOICES["twin"])
+        fname = f"tts_{uuid.uuid4().hex[:8]}.mp3"
+        out   = _AUDIO_DIR / fname
+        for key_env in ("ELEVENLABS_API_KEY_1", "ELEVENLABS_API_KEY_2"):
+            api_key = _os.environ.get(key_env, "")
+            if not api_key:
+                continue
+            try:
+                r = _req.post(
+                    f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
+                    headers={"xi-api-key": api_key, "Content-Type": "application/json"},
+                    json={"text": text, "model_id": "eleven_monolingual_v1",
+                          "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}},
+                    timeout=20,
+                )
+                if r.status_code == 200:
+                    out.write_bytes(r.content)
+                    return jsonify({"url": f"/audio/{fname}", "engine": "elevenlabs"})
+            except Exception:
+                continue
+        try:
+            from gtts import gTTS
+            gTTS(text=text, lang="en").save(str(out))
+            return jsonify({"url": f"/audio/{fname}", "engine": "gtts"})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
     # ── boardroom ─────────────────────────────────────────────────────────────
     @app.route("/api/boardroom", methods=["POST"])

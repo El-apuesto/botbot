@@ -714,6 +714,7 @@ audio { width: 100%; margin-top: 4px; }
         <div class="bot-strip-left">
           <button id="upload-btn" onclick="document.getElementById('file-input').click()" title="Attach file">&#128206;</button>
           <input id="file-input" type="file" accept="image/*,audio/*,video/*" onchange="onFile(this)">
+          <button id="speak-toggle" onclick="toggleAutoSpeak()" title="Auto-speak responses" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 4px;line-height:1">&#128266;</button>
         </div>
         <div id="bot-toggle" onclick="toggleBot()">
           <span id="toggle-name">TWIN</span>
@@ -1697,6 +1698,99 @@ let boardTurns = [];
 let bsTurns    = [];
 let pendingFile = null;
 let chatBusy    = false;
+let autoSpeak   = S.get('autoSpeak', false);
+let _lastMsgBody  = null;
+let _lastFullText = '';
+
+function toggleAutoSpeak() {
+  autoSpeak = !autoSpeak;
+  S.set('autoSpeak', autoSpeak);
+  const btn = document.getElementById('speak-toggle');
+  if (btn) btn.style.color = autoSpeak ? 'var(--cyan)' : 'var(--muted)';
+}
+
+function _looksComplete(text) {
+  const t = text.trimEnd();
+  if (!t) return true;
+  return /[.!?'"…)\]>:;`]$/.test(t);
+}
+
+async function speakText(text, voice) {
+  try {
+    const res = await fetch('/api/tts/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text.slice(0, 3000), voice: voice || 'twin' }),
+    });
+    if (!res.ok) return;
+    const { url } = await res.json();
+    if (!url) return;
+    const audio = new Audio(url);
+    audio.play();
+  } catch(e) { console.warn('TTS failed:', e); }
+}
+
+function _showContinueBtn() {
+  const existing = document.getElementById('continue-btn');
+  if (existing) existing.remove();
+  const btn = document.createElement('button');
+  btn.id = 'continue-btn';
+  btn.className = 'btn';
+  btn.style.cssText = 'font-size:10px;padding:2px 10px;margin-top:6px;margin-right:6px;display:inline-block;letter-spacing:.08em';
+  btn.textContent = '[ CONTINUE ]';
+  btn.onclick = continueChat;
+  if (_lastMsgBody && _lastMsgBody.parentElement) {
+    _lastMsgBody.parentElement.appendChild(btn);
+  }
+}
+
+async function continueChat() {
+  if (chatBusy) return;
+  const contBtn = document.getElementById('continue-btn');
+  if (contBtn) contBtn.remove();
+  chatBusy = true;
+  const body = _lastMsgBody;
+  const sysOverride = bot === 'shadow' ? S.get('p_shadow', '') : S.get('p_twin', '');
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: '', bot, history: history.slice(-30),
+        username: uname, system_prompt: sysOverride,
+        continue_mode: true,
+      }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '', added = '';
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n\n'); buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        try {
+          const d = JSON.parse(line.slice(5).trim());
+          if (d.done) break;
+          if (d.text) { added += d.text; _lastFullText += d.text; body.textContent = _lastFullText; }
+        } catch {}
+      }
+    }
+    if (history.length && history[history.length-1].role === 'assistant') {
+      history[history.length-1].content = _lastFullText;
+    }
+    if (!_looksComplete(_lastFullText)) _showContinueBtn();
+    if (autoSpeak && added) speakText(added, bot);
+  } catch(e) {
+    console.error('Continue failed:', e);
+  } finally {
+    chatBusy = false;
+    document.getElementById('msgs').scrollTop = 99999;
+  }
+}
 const _labConcepts = {};
 
 /* ─────────────────────────────────────────
@@ -1786,6 +1880,8 @@ function applyBot(b) {
   document.getElementById('sw').classList.toggle('on', b === 'shadow');
   document.getElementById('toggle-name').textContent = b.toUpperCase();
   _updateGuidePanelVoice();
+  const spkBtn = document.getElementById('speak-toggle');
+  if (spkBtn) spkBtn.style.color = autoSpeak ? 'var(--cyan)' : 'var(--muted)';
 }
 
 /* ─────────────────────────────────────────
@@ -1859,11 +1955,14 @@ async function send() {
 
     body.classList.remove('typing');
     if (full) {
+      _lastMsgBody  = body;
+      _lastFullText = full;
       history.push({ role: 'assistant', content: full });
+
       if (/```[\s\S]*?```/.test(full)) {
         const btn = document.createElement('button');
         btn.className = 'btn';
-        btn.style.cssText = 'font-size:10px;padding:2px 8px;margin-top:6px;display:block';
+        btn.style.cssText = 'font-size:10px;padding:2px 8px;margin-top:6px;display:inline-block;margin-right:6px';
         btn.textContent = '[ \u2192 CODE LAB ]';
         const capturedMsg = msg;
         btn.onclick = () => {
@@ -1874,6 +1973,18 @@ async function send() {
         };
         body.parentElement.appendChild(btn);
       }
+
+      if (!_looksComplete(full)) _showContinueBtn();
+
+      const spk = document.createElement('button');
+      spk.className = 'btn';
+      spk.style.cssText = 'font-size:10px;padding:2px 8px;margin-top:6px;display:inline-block';
+      spk.textContent = '[ \u266a SPEAK ]';
+      const capturedText = full, capturedVoice = bot;
+      spk.onclick = () => speakText(capturedText, capturedVoice);
+      body.parentElement.appendChild(spk);
+
+      if (autoSpeak) speakText(full, bot);
     }
 
   } catch (e) {
