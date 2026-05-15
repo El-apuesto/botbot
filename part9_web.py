@@ -377,7 +377,7 @@ def register_routes(app: Flask):
         voice_id = _EL_VOICES.get(voice, _EL_VOICES["twin"])
         fname = f"tts_{uuid.uuid4().hex[:8]}.mp3"
         out   = _AUDIO_DIR / fname
-        for key_env in ("ELEVENLABS_API_KEY_1", "ELEVENLABS_API_KEY_2"):
+        for key_env in ("ELEVENLABS_API_KEY", "ELEVENLABS_API_KEY_1", "ELEVENLABS_API_KEY_2"):
             api_key = _os.environ.get(key_env, "")
             if not api_key:
                 continue
