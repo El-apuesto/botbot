@@ -550,6 +550,27 @@ audio { width: 100%; margin-top: 4px; }
 .job-del:hover { border-color: var(--red); color: var(--red); }
 .ph-text { font-size: var(--font-size-sm); color: var(--muted); text-align: center; padding: 24px 0; letter-spacing: 0.05em; }
 
+/* ── MISSION ROWS ── */
+.mission-row {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  gap: 5px;
+  margin-bottom: 6px;
+  transition: border-color .15s;
+  background: rgba(30,0,40,.3);
+}
+.mission-row:hover { border-color: var(--purple-dim); }
+.mission-top { display: flex; align-items: flex-start; gap: 8px; }
+.mission-name { font-size: var(--font-size-base); color: var(--neon-bright); flex: 1; font-weight: 700; line-height: 1.3; }
+.mission-status { font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0; letter-spacing: .06em; }
+.mission-meta { font-size: 10px; color: var(--purple); letter-spacing: .07em; }
+.mission-brief { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.mission-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+@keyframes mission-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+.mission-dots { animation: mission-blink 1.2s infinite; }
+
 /* ── SETTINGS VOICE GRID ── */
 .voice-grid {
   display: grid;
@@ -705,7 +726,61 @@ audio { width: 100%; margin-top: 4px; }
 
     <!-- [2] PROJECTS — PIPELINE -->
     <div class="panel" id="panel-projects">
-      <div class="panel-scroll">
+      <!-- sub-tabs -->
+      <div class="lab-tab-row">
+        <button class="lab-tab active" id="ptab-missions-btn" onclick="switchProjectsTab('missions',this)">MISSIONS</button>
+        <button class="lab-tab" id="ptab-pipeline-btn" onclick="switchProjectsTab('pipeline',this)">PIPELINE</button>
+      </div>
+
+      <!-- MISSIONS tab -->
+      <div id="ptab-missions" class="panel-scroll" style="padding:10px 12px">
+        <div class="fg" style="margin-bottom:4px">
+          <span class="fl" style="color:var(--neon)">AUTONOMOUS RESEARCH MISSIONS</span>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin:0 0 10px">
+          Create a mission. The app runs it in the background. Come back to finished work.
+        </p>
+
+        <!-- new mission form -->
+        <div id="mission-form" style="background:var(--purple-dim);border:1px solid var(--border);padding:10px 12px;margin-bottom:12px">
+          <div class="fg">
+            <label class="fl">MISSION NAME</label>
+            <input class="fi" id="mission-title" type="text" placeholder="e.g. Twin Shadow Podcast Launch Strategy" autocomplete="off">
+          </div>
+          <div class="fg">
+            <label class="fl">RESEARCH GOAL</label>
+            <textarea class="fi" id="mission-brief" rows="4"
+              placeholder="Describe what you want researched. Be specific — who is the audience, what decisions does this inform, what angles matter most..."></textarea>
+          </div>
+          <div class="fg">
+            <label class="fl">MISSION TYPE</label>
+            <select class="fi" id="mission-type">
+              <option value="gorilla_marketing">⚡ Gorilla Marketing Blueprint — 6-specialist committee + TWIN</option>
+              <option value="boardroom_analysis">🏛 Full Boardroom Analysis — Complete board session</option>
+              <option value="strategy_deep">🎯 Strategy Deep Dive — 3-model consensus + TWIN</option>
+              <option value="creative_brief">✦ Creative Brief — Concepts, copy, visual direction</option>
+              <option value="competitive_intel">🔍 Competitive Intelligence — Threats, gaps, opportunities</option>
+            </select>
+          </div>
+          <button class="btn" onclick="submitMission()" style="width:100%;text-align:center">[ LAUNCH MISSION ]</button>
+        </div>
+
+        <!-- missions list -->
+        <div id="mission-list"></div>
+        <p class="ph-text" id="mission-empty" style="display:none">NO MISSIONS YET.</p>
+
+        <!-- result viewer -->
+        <div id="mission-viewer" style="display:none;margin-top:12px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <button class="btn" onclick="closeMissionViewer()" style="padding:3px 10px;font-size:11px">[ ← BACK ]</button>
+            <span id="viewer-title" style="color:var(--neon);font-size:13px;font-weight:600"></span>
+          </div>
+          <div id="viewer-phases"></div>
+        </div>
+      </div>
+
+      <!-- PIPELINE tab (kept for builder output) -->
+      <div id="ptab-pipeline" class="panel-scroll" style="padding:10px 12px;display:none">
         <div class="fg">
           <span class="fl">PROJECT PIPELINE</span>
         </div>
@@ -718,7 +793,7 @@ audio { width: 100%; margin-top: 4px; }
           <textarea class="fi" id="pipeline-desc" rows="3" placeholder="Describe exactly what you want built..."></textarea>
         </div>
         <button class="btn" onclick="addPipelineJob()">[ ADD JOB ]</button>
-        <div id="pipeline-list" style="display:flex;flex-direction:column;gap:5px;"></div>
+        <div id="pipeline-list" style="display:flex;flex-direction:column;gap:5px;margin-top:8px"></div>
         <p class="ph-text" id="pipeline-empty">NO JOBS IN QUEUE.</p>
       </div>
     </div>
@@ -1460,6 +1535,46 @@ audio { width: 100%; margin-top: 4px; }
       </div>
     </div><!-- /panel-social -->
 
+    <!-- ═══ GORILLA WAR ROOM ═══ -->
+    <div class="panel" id="panel-gorilla">
+      <div class="panel-scroll">
+
+        <div class="fg">
+          <span class="fl">GORILLA MARKETING WAR ROOM</span>
+          <p style="font-size:12px;color:var(--muted);margin:0 0 6px">Moneyball philosophy. Six specialist committees. One blueprint. Find the undervalued play.</p>
+        </div>
+
+        <div class="fg">
+          <span class="fl">THE BRIEF</span>
+          <p style="font-size:11px;color:var(--muted);margin:0 0 4px">Describe your product/project, target audience, budget range, and goal. Be specific — vague briefs get vague blueprints.</p>
+          <textarea id="gorilla-brief" rows="5" style="width:100%;background:#0a000f;border:1px solid var(--purple);color:var(--neon);font-family:var(--font);font-size:13px;padding:8px;resize:vertical;box-sizing:border-box" placeholder="e.g. — Launching a new occult comedy podcast. Zero budget. Target: 18-34 weird internet people, true crime adjacent, open to dark humor. Goal: 500 subscribers in 30 days through organic growth only. No ads. No label. Just us."></textarea>
+        </div>
+
+        <div class="action-row">
+          <button class="btn" id="gorilla-run-btn" onclick="gorillaRun()">[ DEPLOY COMMITTEE ]</button>
+          <button class="btn" onclick="gorillaClear()">[ CLEAR ]</button>
+          <button class="btn" id="gorilla-pipeline-btn" style="display:none" onclick="gorillaPushPipeline()">[ PUSH BLUEPRINT TO PIPELINE ]</button>
+        </div>
+
+        <div class="fg" id="gorilla-progress" style="display:none">
+          <span class="fl">WAR ROOM IN SESSION</span>
+          <div id="gorilla-member-bar" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px"></div>
+        </div>
+
+        <div id="gorilla-output" style="display:none">
+          <div class="fg" id="gorilla-transcript-box">
+            <span class="fl">COMMITTEE TRANSCRIPT</span>
+            <div id="gorilla-transcript" style="font-size:12px;color:var(--dim);line-height:1.6;max-height:320px;overflow-y:auto;padding:4px 0"></div>
+          </div>
+          <div class="fg" id="gorilla-blueprint-box">
+            <span class="fl" style="color:var(--neon-bright)">BLUEPRINT</span>
+            <div id="gorilla-blueprint" style="font-size:13px;color:var(--neon);line-height:1.7;white-space:pre-wrap;word-wrap:break-word"></div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /panel-gorilla -->
+
   </div><!-- /terminal -->
 
   <!-- ═══ INPUT ROW — below the box ═══ -->
@@ -1478,6 +1593,7 @@ audio { width: 100%; margin-top: 4px; }
     <button class="nav-btn" onclick="switchTab('advisors', this)"><span class="nav-num">[5]</span>ADVISE</button>
     <button class="nav-btn" onclick="switchTab('social', this)"><span class="nav-num">[6]</span>SOCIAL</button>
     <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[7]</span>SETTINGS</button>
+    <button class="nav-btn" onclick="switchTab('gorilla', this)"><span class="nav-num">[8]</span>GORILLA</button>
     <span class="nav-user" style="width:100%;order:99;text-align:right;padding:2px 8px;font-size:7px">{{ session.get('username', '') | upper }}&nbsp;<a class="nav-logout" href="/logout">[ EXIT ]</a></span>
   </nav>
 
@@ -1561,7 +1677,7 @@ function switchTab(name, btn) {
   document.getElementById('panel-' + name).classList.add('active');
   if (btn) btn.classList.add('active');
   if (name === 'settings') { loadAudioGallery(); loadTranscripts(); }
-  if (name === 'projects') { loadPipeline(); }
+  if (name === 'projects') { loadMissions(); loadPipeline(); }
   if (name === 'social')   { loadSocialJobs(); }
 }
 
@@ -2554,6 +2670,197 @@ async function sendToVideoLab(source) {
     btn.textContent = '[ SEND FAILED ]';
     btn.disabled = false;
   }
+}
+
+/* ─────────────────────────────────────────
+   PROJECTS SUB-TABS
+───────────────────────────────────────── */
+function switchProjectsTab(name, btn) {
+  ['missions','pipeline'].forEach(t => {
+    const el = document.getElementById('ptab-' + t);
+    if (el) el.style.display = (t === name) ? '' : 'none';
+  });
+  document.querySelectorAll('#panel-projects .lab-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+
+/* ─────────────────────────────────────────
+   AUTONOMOUS MISSIONS
+───────────────────────────────────────── */
+let _missionPollTimer = null;
+
+function _missionStatusColor(s) {
+  return {pending:'var(--muted)',running:'var(--cyan)',done:'var(--neon)',error:'#ff5555'}[s] || 'var(--muted)';
+}
+
+function _missionAge(iso) {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  return Math.floor(h / 24) + 'd ago';
+}
+
+async function loadMissions() {
+  if (document.getElementById('mission-viewer').style.display !== 'none') return;
+  try {
+    const missions = await fetch('/api/missions').then(r => r.json());
+    const list  = document.getElementById('mission-list');
+    const empty = document.getElementById('mission-empty');
+    const hasRunning = missions.some(m => m.status === 'pending' || m.status === 'running');
+
+    // auto-poll while something is running
+    clearTimeout(_missionPollTimer);
+    if (hasRunning) _missionPollTimer = setTimeout(loadMissions, 4000);
+
+    list.innerHTML = '';
+    empty.style.display = missions.length ? 'none' : '';
+
+    missions.forEach(m => {
+      const age   = _missionAge(m.created);
+      const sc    = _missionStatusColor(m.status);
+      const hasResults = m.results && Object.keys(m.results).length > 0;
+      const typeLabel = {
+        gorilla_marketing:  'GORILLA MARKETING',
+        boardroom_analysis: 'BOARDROOM ANALYSIS',
+        strategy_deep:      'STRATEGY DEEP DIVE',
+        creative_brief:     'CREATIVE BRIEF',
+        competitive_intel:  'COMPETITIVE INTEL',
+      }[m.type] || m.type.toUpperCase();
+
+      const runningDots = (m.status === 'running') ? ' <span class="mission-dots">···</span>' : '';
+      const errorNote   = (m.status === 'error' && m.error) ? `<div style="color:#ff5555;font-size:10px;margin-top:4px">ERR: ${_esc(m.error.slice(0,120))}</div>` : '';
+
+      const row = document.createElement('div');
+      row.className = 'mission-row';
+      row.innerHTML = `
+        <div class="mission-top">
+          <span class="mission-name" title="${_esc(m.title)}">${_esc(m.title)}</span>
+          <span class="mission-status" style="color:${sc}">[${m.status.toUpperCase()}${runningDots}]</span>
+        </div>
+        <div class="mission-meta">${typeLabel} · ${age}</div>
+        <div class="mission-brief">${_esc((m.brief||'').slice(0,120))}${m.brief&&m.brief.length>120?'…':''}</div>
+        ${errorNote}
+        <div class="mission-actions">
+          ${hasResults ? `<button class="btn" onclick="viewMission('${m.id}')" style="padding:2px 8px;font-size:10px">[ VIEW RESULTS ]</button>` : ''}
+          ${m.status === 'error' ? `<button class="btn" onclick="retryMission('${m.id}')" style="padding:2px 8px;font-size:10px">[ RETRY ]</button>` : ''}
+          ${m.status === 'running' ? `<span style="font-size:10px;color:var(--cyan)">Working in background…</span>` : ''}
+          <button class="btn" onclick="deleteMission('${m.id}')" style="padding:2px 8px;font-size:10px;margin-left:auto">[ DEL ]</button>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+  } catch(e) {
+    console.error('loadMissions error', e);
+  }
+}
+
+async function submitMission() {
+  const title = document.getElementById('mission-title').value.trim();
+  const brief = document.getElementById('mission-brief').value.trim();
+  const type  = document.getElementById('mission-type').value;
+  if (!title) { alert('Give the mission a name.'); return; }
+  if (!brief) { alert('Describe the research goal.'); return; }
+
+  const btn = document.querySelector('#mission-form .btn');
+  btn.textContent = '[ QUEUING... ]';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/missions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, brief, type }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      alert('Error: ' + (err.error || res.status));
+      return;
+    }
+    document.getElementById('mission-title').value = '';
+    document.getElementById('mission-brief').value = '';
+    loadMissions();
+  } catch(e) {
+    alert('Submit failed: ' + e.message);
+  } finally {
+    btn.textContent = '[ LAUNCH MISSION ]';
+    btn.disabled = false;
+  }
+}
+
+async function viewMission(mid) {
+  const m = await fetch('/api/missions/' + mid).then(r => r.json());
+
+  document.getElementById('mission-list').style.display = 'none';
+  document.getElementById('mission-form').style.display = 'none';
+  document.getElementById('mission-empty').style.display = 'none';
+  document.getElementById('mission-viewer').style.display = '';
+  document.getElementById('viewer-title').textContent = m.title;
+
+  const phaseLabels = {
+    committee:       'COMMITTEE TRANSCRIPT',
+    blueprint:       'TWIN BLUEPRINT',
+    boardroom:       'BOARDROOM SESSION',
+    summary:         'EXECUTIVE SUMMARY',
+    analysis:        'ANALYST REPORTS',
+    consensus:       'TWIN CONSENSUS',
+    creative_input:  'CREATIVE COMMITTEE',
+    brief_document:  'CREATIVE BRIEF',
+    intel:           'INTELLIGENCE FINDINGS',
+    report:          'INTELLIGENCE REPORT',
+  };
+
+  const phasesEl = document.getElementById('viewer-phases');
+  phasesEl.innerHTML = '';
+
+  const phases = Object.entries(m.results || {});
+  if (!phases.length) {
+    phasesEl.innerHTML = '<p style="color:var(--muted);font-size:12px">No results yet.</p>';
+    return;
+  }
+
+  phases.forEach(([key, text]) => {
+    const label = phaseLabels[key] || key.toUpperCase().replace(/_/g,' ');
+    const block = document.createElement('div');
+    block.style.cssText = 'margin-bottom:16px';
+    block.innerHTML = `
+      <div style="color:var(--cyan);font-size:11px;font-weight:600;letter-spacing:.1em;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px">
+        ── ${label}
+      </div>
+      <pre style="white-space:pre-wrap;word-break:break-word;font-size:11px;line-height:1.6;color:var(--text);background:var(--bg-panel);padding:10px;border:1px solid var(--border);max-height:400px;overflow-y:auto">${_esc(text)}</pre>
+      <button class="btn" onclick="copyPhase(this)" data-text="${_esc(text)}" style="padding:2px 8px;font-size:10px;margin-top:4px">[ COPY ]</button>
+    `;
+    phasesEl.appendChild(block);
+  });
+}
+
+function closeMissionViewer() {
+  document.getElementById('mission-viewer').style.display = 'none';
+  document.getElementById('mission-list').style.display = '';
+  document.getElementById('mission-form').style.display = '';
+  loadMissions();
+}
+
+function copyPhase(btn) {
+  const text = btn.dataset.text;
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '[ COPIED ✓ ]';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+
+async function deleteMission(mid) {
+  if (!confirm('Delete this mission and its results?')) return;
+  await fetch('/api/missions/' + mid, { method: 'DELETE' });
+  loadMissions();
+}
+
+async function retryMission(mid) {
+  await fetch('/api/missions/' + mid + '/retry', { method: 'POST' });
+  loadMissions();
 }
 
 /* ─────────────────────────────────────────
@@ -3724,6 +4031,156 @@ function charRenderRoster() {
 document.addEventListener('DOMContentLoaded', () => {
   _podRebuildCast(2);
 });
+
+/* ─────────────────────────────────────────
+   GORILLA MARKETING WAR ROOM
+───────────────────────────────────────── */
+const _GORILLA_MEMBERS = ['SCOUT','STREET','CULTURE','ARBITRAGE','NARRATIVE','CLOSER','TWIN'];
+let _gorillaBusy = false;
+let _gorillaBlueprintText = '';
+let _gorillaTranscriptText = '';
+
+function _gorillaMemberBadge(name, state) {
+  const el = document.getElementById('gmb-' + name);
+  if (!el) return;
+  el.className = 'gorilla-badge gorilla-badge-' + state;
+}
+
+function gorillaClear() {
+  document.getElementById('gorilla-brief').value = '';
+  document.getElementById('gorilla-transcript').textContent = '';
+  document.getElementById('gorilla-blueprint').textContent = '';
+  document.getElementById('gorilla-output').style.display = 'none';
+  document.getElementById('gorilla-progress').style.display = 'none';
+  document.getElementById('gorilla-pipeline-btn').style.display = 'none';
+  document.getElementById('gorilla-member-bar').innerHTML = '';
+  _gorillaBlueprintText = '';
+  _gorillaTranscriptText = '';
+}
+
+async function gorillaRun() {
+  if (_gorillaBusy) return;
+  const brief = document.getElementById('gorilla-brief').value.trim();
+  if (!brief) { alert('Enter a brief first.'); return; }
+
+  _gorillaBusy = true;
+  gorillaClear();
+  document.getElementById('gorilla-brief').value = brief;
+  document.getElementById('gorilla-run-btn').textContent = '[ IN SESSION... ]';
+  document.getElementById('gorilla-pipeline-btn').style.display = 'none';
+
+  // Build member badges
+  const bar = document.getElementById('gorilla-member-bar');
+  bar.innerHTML = _GORILLA_MEMBERS.map(n =>
+    `<span id="gmb-${n}" class="gorilla-badge gorilla-badge-idle">${n}</span>`
+  ).join('');
+  document.getElementById('gorilla-progress').style.display = '';
+  document.getElementById('gorilla-output').style.display = '';
+
+  const transcriptEl  = document.getElementById('gorilla-transcript');
+  const blueprintEl   = document.getElementById('gorilla-blueprint');
+  let currentSpeaker  = '';
+  let isTwin          = false;
+  let buf             = '';
+  let transcriptFull  = '';
+  let blueprintFull   = '';
+
+  try {
+    const res = await fetch('/api/gorilla/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brief }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+
+    const reader = res.body.getReader();
+    const dec    = new TextDecoder();
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        try {
+          const d = JSON.parse(line.slice(5).trim());
+          if (d.done) break;
+          if (d.error) {
+            transcriptEl.textContent += '\n[ERROR] ' + d.error;
+            continue;
+          }
+          if (!d.text) continue;
+
+          const txt = d.text;
+
+          // speaker marker: \x1eSPEAKER:NAME\x1f
+          if (txt.startsWith('\x1e') && txt.includes('SPEAKER:')) {
+            const name = txt.replace('\x1eSPEAKER:', '').replace('\x1f', '').trim();
+            if (currentSpeaker) _gorillaMemberBadge(currentSpeaker, 'done');
+            currentSpeaker = name;
+            isTwin = (name === 'TWIN');
+            _gorillaMemberBadge(name, 'active');
+            if (!isTwin) {
+              transcriptFull += '\n\n── ' + name + ' ──\n';
+              transcriptEl.textContent = transcriptFull;
+              transcriptEl.scrollTop = transcriptEl.scrollHeight;
+            } else {
+              blueprintEl.textContent = '';
+            }
+            continue;
+          }
+          // end marker
+          if (txt.startsWith('\x1eEND\x1f')) {
+            _gorillaMemberBadge(currentSpeaker, 'done');
+            continue;
+          }
+
+          if (isTwin) {
+            blueprintFull += txt;
+            blueprintEl.textContent = blueprintFull;
+            blueprintEl.scrollTop = blueprintEl.scrollHeight;
+          } else {
+            transcriptFull += txt;
+            transcriptEl.textContent = transcriptFull;
+            transcriptEl.scrollTop = transcriptEl.scrollHeight;
+          }
+        } catch {}
+      }
+    }
+
+    _gorillaBlueprintText = blueprintFull;
+    _gorillaTranscriptText = transcriptFull;
+    if (blueprintFull) {
+      document.getElementById('gorilla-pipeline-btn').style.display = '';
+    }
+    _GORILLA_MEMBERS.forEach(n => _gorillaMemberBadge(n, 'done'));
+
+  } catch (e) {
+    document.getElementById('gorilla-transcript').textContent += '\n[CONNECTION ERROR] ' + e.message;
+  } finally {
+    _gorillaBusy = false;
+    document.getElementById('gorilla-run-btn').textContent = '[ DEPLOY COMMITTEE ]';
+  }
+}
+
+async function gorillaPushPipeline() {
+  if (!_gorillaBlueprintText) return;
+  const title = prompt('Name this blueprint tactic:', 'Gorilla Blueprint');
+  if (!title) return;
+  const res = await fetch('/api/gorilla/push_pipeline', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, detail: _gorillaBlueprintText, phase: '1' }),
+  });
+  if (res.ok) {
+    document.getElementById('gorilla-pipeline-btn').textContent = '[ PUSHED TO PIPELINE ✓ ]';
+    setTimeout(() => {
+      document.getElementById('gorilla-pipeline-btn').textContent = '[ PUSH BLUEPRINT TO PIPELINE ]';
+    }, 3000);
+  }
+}
 </script>
 </body>
 </html>

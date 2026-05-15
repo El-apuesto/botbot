@@ -1066,3 +1066,123 @@ def register_routes(app: Flask):
     @_login_required
     def api_deploy_web():
         return jsonify({"ok": True, "message": "Use the Replit Publish button to deploy."})
+
+    # ── gorilla marketing war room ─────────────────────────────────────────────
+    @app.route("/api/gorilla/run", methods=["POST"])
+    @_login_required
+    def api_gorilla_run():
+        from part14_gorilla import (
+            GORILLA_COMMITTEE, GORILLA_SYNTHESIZER,
+            gorilla_member_prompt, gorilla_synthesizer_prompt,
+        )
+        from part2_router import direct_stream as _ds, stream_task as _st
+        from part1_registry import get_task_routing
+
+        d     = request.get_json(force=True) or {}
+        brief = d.get("brief", "").strip()
+        if not brief:
+            return jsonify({"error": "brief required"}), 400
+
+        q: Q.Queue = Q.Queue()
+
+        async def _run():
+            transcript = ""
+            for member in GORILLA_COMMITTEE:
+                name = member["name"]
+                key  = member["key"]
+                try:
+                    provider, model = get_task_routing(key)
+                    msgs = gorilla_member_prompt(member, brief, transcript)
+                    q.put(("speaker", name))
+                    full = ""
+                    async for chunk in _ds(provider, model, msgs):
+                        q.put(("ok", chunk))
+                        full += chunk
+                    q.put(("end", name))
+                    transcript += f"\n\n[{name} — {member['role']}]\n{full}"
+                except Exception as e:
+                    q.put(("err", f"[{name}] {e}"))
+
+            # Synthesizer: TWIN compiles the blueprint
+            try:
+                q.put(("speaker", "TWIN"))
+                msgs = gorilla_synthesizer_prompt(brief, transcript)
+                async for chunk in _st("twin", msgs):
+                    q.put(("ok", chunk))
+                q.put(("end", "TWIN"))
+            except Exception as e:
+                q.put(("err", f"[TWIN] {e}"))
+
+            q.put(None)
+
+        Thread(target=lambda: _run_async(_run()), daemon=True).start()
+        return _multi_agent_sse(q)
+
+    @app.route("/api/gorilla/push_pipeline", methods=["POST"])
+    @_login_required
+    def api_gorilla_push_pipeline():
+        d   = request.get_json(force=True) or {}
+        job = {
+            "id":     uuid.uuid4().hex[:8],
+            "status": "pending",
+            "type":   "gorilla_tactic",
+            "title":  d.get("title", "Gorilla Tactic"),
+            "detail": d.get("detail", ""),
+            "phase":  d.get("phase", "1"),
+        }
+        _pipeline.append(job)
+        return jsonify(job)
+
+    # ── autonomous missions ────────────────────────────────────────────────────
+    from part15_missions import (
+        create_mission, get_mission, list_missions,
+        delete_mission, retry_mission, MISSION_TYPES,
+    )
+    from part15_missions import MissionEngine as _ME
+    _ME.get()   # start the background worker at import time
+
+    @app.route("/api/missions", methods=["GET"])
+    @_login_required
+    def api_missions_list():
+        return jsonify([m.to_dict() for m in list_missions()])
+
+    @app.route("/api/missions", methods=["POST"])
+    @_login_required
+    def api_missions_create():
+        d     = request.get_json(force=True) or {}
+        title = d.get("title", "").strip()
+        brief = d.get("brief", "").strip()
+        mtype = d.get("type", "gorilla_marketing")
+        if not title or not brief:
+            return jsonify({"error": "title and brief required"}), 400
+        if mtype not in MISSION_TYPES:
+            return jsonify({"error": f"unknown type: {mtype}"}), 400
+        m = create_mission(title, brief, mtype)
+        return jsonify(m.to_dict()), 201
+
+    @app.route("/api/missions/<mid>", methods=["GET"])
+    @_login_required
+    def api_missions_get(mid):
+        m = get_mission(mid)
+        if not m:
+            return jsonify({"error": "not found"}), 404
+        return jsonify(m.to_dict())
+
+    @app.route("/api/missions/<mid>", methods=["DELETE"])
+    @_login_required
+    def api_missions_delete(mid):
+        delete_mission(mid)
+        return jsonify({"ok": True})
+
+    @app.route("/api/missions/<mid>/retry", methods=["POST"])
+    @_login_required
+    def api_missions_retry(mid):
+        m = retry_mission(mid)
+        if not m:
+            return jsonify({"error": "not found"}), 404
+        return jsonify(m.to_dict())
+
+    @app.route("/api/missions/types", methods=["GET"])
+    @_login_required
+    def api_missions_types():
+        return jsonify(MISSION_TYPES)
