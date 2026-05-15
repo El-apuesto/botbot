@@ -742,6 +742,20 @@ audio { width: 100%; margin-top: 4px; }
           Create a mission. The app runs it in the background. Come back to finished work.
         </p>
 
+        <!-- ASK TWIN consult panel -->
+        <div style="border:1px solid var(--purple);padding:10px 12px;margin-bottom:12px;background:rgba(60,0,80,.15)">
+          <div style="color:var(--cyan);font-size:10px;letter-spacing:.1em;margin-bottom:6px">── ASK TWIN WHAT TO DO ──</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Describe your goal in plain language. TWIN recommends the right approach and pre-fills the form.</div>
+          <textarea class="fi" id="guide-goal" rows="2" placeholder="e.g. I want to launch a podcast with no budget and build an audience of weird internet people fast&#10;e.g. I need to understand where my content fits in the market before I invest more&#10;e.g. I want a creative direction for an occult comedy brand"></textarea>
+          <button class="btn" id="guide-btn" onclick="askTwinGuide()" style="width:100%;text-align:center;margin-top:6px">[ ASK TWIN ]</button>
+          <!-- recommendation result -->
+          <div id="guide-result" style="display:none;margin-top:10px">
+            <div style="color:var(--cyan);font-size:10px;letter-spacing:.08em;margin-bottom:5px">── TWIN RECOMMENDS ──</div>
+            <div id="guide-explanation" style="font-size:12px;color:var(--text);line-height:1.6;margin-bottom:8px;white-space:pre-wrap"></div>
+            <button class="btn" id="guide-apply-btn" onclick="applyGuideRecommendation()" style="padding:3px 12px;font-size:11px">[ USE THIS APPROACH ]</button>
+          </div>
+        </div>
+
         <!-- new mission form -->
         <div id="mission-form" style="background:var(--purple-dim);border:1px solid var(--border);padding:10px 12px;margin-bottom:12px">
           <div class="fg">
@@ -761,6 +775,7 @@ audio { width: 100%; margin-top: 4px; }
               <option value="strategy_deep">🎯 Strategy Deep Dive — 3-model consensus + TWIN</option>
               <option value="creative_brief">✦ Creative Brief — Concepts, copy, visual direction</option>
               <option value="competitive_intel">🔍 Competitive Intelligence — Threats, gaps, opportunities</option>
+              <option value="custom_committee">⚙ Custom Committee — TWIN picks the right models for your need</option>
             </select>
           </div>
           <button class="btn" onclick="submitMission()" style="width:100%;text-align:center">[ LAUNCH MISSION ]</button>
@@ -2916,6 +2931,120 @@ async function committeeLaunchConfirm() {
   } catch(e) {
     alert('Launch failed: ' + e.message);
   }
+}
+
+/* ─────────────────────────────────────────
+   TWIN GUIDE / RECOMMENDER
+───────────────────────────────────────── */
+// Tool key → mission type or action
+const _GUIDE_TOOL_MAP = {
+  missions_gorilla:     { tab: 'missions',   type: 'gorilla_marketing' },
+  missions_boardroom:   { tab: 'missions',   type: 'boardroom_analysis' },
+  missions_strategy:    { tab: 'missions',   type: 'strategy_deep' },
+  missions_creative:    { tab: 'missions',   type: 'creative_brief' },
+  missions_competitive: { tab: 'missions',   type: 'competitive_intel' },
+  missions_custom:      { tab: 'missions',   type: 'custom_committee' },
+  gorilla_warroom:      { tab: 'gorilla',    type: null },
+  board_session:        { tab: 'board',      type: null },
+  brainstorm:           { tab: 'studio',     type: null },
+  advisor_legal:        { tab: 'advisors',   type: null },
+  advisor_marketing:    { tab: 'advisors',   type: null },
+  lab_video:            { tab: 'lab',        type: null },
+  lab_write:            { tab: 'lab',        type: null },
+  lab_code:             { tab: 'lab',        type: null },
+  home_twin:            { tab: 'home',       type: null },
+  home_shadow:          { tab: 'home',       type: null },
+};
+
+let _guideRec = null;   // last recommendation from TWIN
+
+async function askTwinGuide() {
+  const goal = document.getElementById('guide-goal').value.trim();
+  if (!goal) { alert('Describe your goal first.'); return; }
+
+  const btn = document.getElementById('guide-btn');
+  btn.textContent = '[ TWIN IS THINKING... ]';
+  btn.disabled = true;
+  document.getElementById('guide-result').style.display = 'none';
+
+  try {
+    const res = await fetch('/api/guide', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ goal }),
+    });
+    if (!res.ok) { alert('Guide request failed: ' + res.status); return; }
+    const rec = await res.json();
+    _guideRec = rec;
+
+    const expl = document.getElementById('guide-explanation');
+    const mapping = _GUIDE_TOOL_MAP[rec.tool];
+
+    let text = rec.explanation || '';
+    if (rec.tool && mapping) {
+      const dest = mapping.tab === 'missions'
+        ? `→ Mission type: ${rec.tool.replace('missions_','').replace('_',' ').toUpperCase()}`
+        : `→ Navigate to: ${mapping.tab.toUpperCase()} tab`;
+      text += '\n\n' + dest;
+    }
+    expl.textContent = text;
+
+    // Only show "Use this approach" if it's a missions tool (can pre-fill form)
+    const applyBtn = document.getElementById('guide-apply-btn');
+    if (mapping && mapping.tab === 'missions') {
+      applyBtn.style.display = '';
+      applyBtn.textContent = '[ USE THIS APPROACH — PRE-FILL FORM ]';
+    } else if (mapping) {
+      applyBtn.style.display = '';
+      applyBtn.textContent = `[ GO TO ${mapping.tab.toUpperCase()} TAB ]`;
+    } else {
+      applyBtn.style.display = 'none';
+    }
+
+    document.getElementById('guide-result').style.display = '';
+  } catch(e) {
+    alert('Guide failed: ' + e.message);
+  } finally {
+    btn.textContent = '[ ASK TWIN ]';
+    btn.disabled = false;
+  }
+}
+
+async function applyGuideRecommendation() {
+  if (!_guideRec) return;
+  const mapping = _GUIDE_TOOL_MAP[_guideRec.tool];
+  if (!mapping) return;
+
+  if (mapping.tab !== 'missions') {
+    // Navigate to the recommended tab
+    const tabBtn = document.querySelector(`.nav-btn[onclick*="switchTab('${mapping.tab}'"]`);
+    switchTab(mapping.tab, tabBtn);
+    return;
+  }
+
+  // Pre-fill the mission form
+  if (_guideRec.title)  document.getElementById('mission-title').value = _guideRec.title;
+  if (_guideRec.brief)  document.getElementById('mission-brief').value = _guideRec.brief;
+
+  const sel = document.getElementById('mission-type');
+  if (mapping.type) {
+    for (let opt of sel.options) {
+      if (opt.value === mapping.type) { opt.selected = true; break; }
+    }
+  }
+
+  // If custom committee, also pre-fill the committee request on committees tab
+  if (mapping.type === 'custom_committee' && _guideRec.committee_request) {
+    document.getElementById('committee-request').value = _guideRec.committee_request;
+  }
+
+  // Scroll to form
+  document.getElementById('mission-form').scrollIntoView({ behavior: 'smooth' });
+
+  // Update button to confirm
+  const btn = document.getElementById('guide-apply-btn');
+  btn.textContent = '[ FORM PRE-FILLED ✓ ]';
+  setTimeout(() => { btn.textContent = '[ USE THIS APPROACH — PRE-FILL FORM ]'; }, 3000);
 }
 
 /* ─────────────────────────────────────────

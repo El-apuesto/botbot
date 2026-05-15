@@ -1249,6 +1249,47 @@ def register_routes(app: Flask):
         _del_committee(cid)
         return jsonify({"ok": True})
 
+    # ── smart guide / recommender ──────────────────────────────────────────────
+    from part8_personas import TWIN_GUIDE_SYSTEM
+
+    @app.route("/api/guide", methods=["POST"])
+    @_login_required
+    def api_guide():
+        """User describes a goal → TWIN recommends the best tool + pre-fills the brief."""
+        d    = request.get_json(force=True) or {}
+        goal = d.get("goal", "").strip()
+        if not goal:
+            return jsonify({"error": "goal required"}), 400
+
+        async def _call():
+            from part2_router import call_task
+            msgs = [
+                {"role": "system", "content": TWIN_GUIDE_SYSTEM},
+                {"role": "user",   "content": f"USER GOAL:\n{goal}"},
+            ]
+            return await call_task("twin", msgs)
+
+        import asyncio as _aio
+        loop = _aio.new_event_loop()
+        try:
+            raw = loop.run_until_complete(_call())
+        finally:
+            loop.close()
+
+        # Strip any accidental markdown fences
+        cleaned = raw.strip()
+        if cleaned.startswith("```"):
+            cleaned = "\n".join(
+                l for l in cleaned.split("\n") if not l.startswith("```")
+            ).strip()
+
+        try:
+            rec = json.loads(cleaned)
+            return jsonify(rec)
+        except Exception:
+            # TWIN didn't return clean JSON — return raw explanation as text
+            return jsonify({"explanation": raw, "tool": None, "title": "", "brief": "", "committee_request": ""})
+
     @app.route("/api/committees/<cid>/launch", methods=["POST"])
     @_login_required
     def api_committees_launch(cid):
