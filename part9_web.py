@@ -1186,3 +1186,87 @@ def register_routes(app: Flask):
     @_login_required
     def api_missions_types():
         return jsonify(MISSION_TYPES)
+
+    # ── dynamic committees ─────────────────────────────────────────────────────
+    from part16_committees import (
+        design_committee, list_committees, get_committee,
+        delete_committee as _del_committee, COMMITTEE_ROSTER,
+    )
+    import asyncio as _asyncio
+
+    def _run_async_c(coro):
+        loop = _asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
+
+    @app.route("/api/committees/roster", methods=["GET"])
+    @_login_required
+    def api_committees_roster():
+        return jsonify(COMMITTEE_ROSTER)
+
+    @app.route("/api/committees/design", methods=["POST"])
+    @_login_required
+    def api_committees_design():
+        d       = request.get_json(force=True) or {}
+        request_text = d.get("request", "").strip()
+        if not request_text:
+            return jsonify({"error": "request required"}), 400
+        try:
+            cfg = _run_async_c(design_committee(request_text))
+            return jsonify(cfg.to_dict())
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/committees", methods=["GET"])
+    @_login_required
+    def api_committees_list():
+        return jsonify([c.to_dict() for c in list_committees()])
+
+    @app.route("/api/committees", methods=["POST"])
+    @_login_required
+    def api_committees_save():
+        d = request.get_json(force=True) or {}
+        if not d.get("id") or not d.get("members"):
+            return jsonify({"error": "id and members required"}), 400
+        from part16_committees import CommitteeConfig
+        cfg = CommitteeConfig.from_dict(d)
+        cfg.save()
+        return jsonify(cfg.to_dict()), 201
+
+    @app.route("/api/committees/<cid>", methods=["GET"])
+    @_login_required
+    def api_committees_get(cid):
+        c = get_committee(cid)
+        if not c:
+            return jsonify({"error": "not found"}), 404
+        return jsonify(c.to_dict())
+
+    @app.route("/api/committees/<cid>", methods=["DELETE"])
+    @_login_required
+    def api_committees_delete(cid):
+        _del_committee(cid)
+        return jsonify({"ok": True})
+
+    @app.route("/api/committees/<cid>/launch", methods=["POST"])
+    @_login_required
+    def api_committees_launch(cid):
+        """Launch a saved committee as a new mission."""
+        d     = request.get_json(force=True) or {}
+        brief = d.get("brief", "").strip()
+        if not brief:
+            return jsonify({"error": "brief required"}), 400
+        cfg = get_committee(cid)
+        if not cfg:
+            return jsonify({"error": "committee not found"}), 404
+        m = create_mission(
+            title       = d.get("title", cfg.name),
+            brief       = brief,
+            mission_type= "custom_committee",
+        )
+        # Embed the committee config into the mission results so the executor can read it
+        import json as _json
+        m.results["committee_config"] = _json.dumps(cfg.to_dict())
+        m.save()
+        return jsonify(m.to_dict()), 201

@@ -49,6 +49,11 @@ MISSION_TYPES = {
         "desc":    "Multi-model analysis of market position, threats, and opportunities.",
         "icon":    "🔍",
     },
+    "custom_committee": {
+        "label":   "Custom Committee",
+        "desc":    "User-defined or engine-designed committee assembled from the full model roster.",
+        "icon":    "⚙",
+    },
 }
 
 # ── Mission data model ─────────────────────────────────────────────────────────
@@ -397,12 +402,17 @@ async def _exec_competitive_intel(mission: Mission):
 
 
 # ── Executor dispatch ──────────────────────────────────────────────────────────
+async def _exec_custom_committee(mission: Mission):
+    from part16_committees import run_custom_committee
+    await run_custom_committee(mission)
+
 _EXECUTORS = {
     "gorilla_marketing":  _exec_gorilla,
     "boardroom_analysis": _exec_boardroom,
     "strategy_deep":      _exec_strategy_deep,
     "creative_brief":     _exec_creative_brief,
     "competitive_intel":  _exec_competitive_intel,
+    "custom_committee":   _exec_custom_committee,
 }
 
 
