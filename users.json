@@ -1,0 +1,10 @@
+{
+  "capicapi": {
+    "password": "47b9866d29278201d7e3db4c44c2e95f126fc0fc86c32976a60222ee406a6ff2",
+    "is_admin": true
+  },
+  "naviseeonethree": {
+    "password": "9fcc936a8b06649649a6fea0003e0b53c18f0b3c851375c40f393f9caf6b9b2c",
+    "is_admin": false
+  }
+}
