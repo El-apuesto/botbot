@@ -27,6 +27,7 @@ _AUDIO_DIR       = _ROOT / "audio"
 _RENDERS_DIR     = _ROOT / "renders"
 _UPLOADS_DIR     = _ROOT / "uploads"
 _USERS_FILE      = _ROOT / "users.json"
+_INVITES_FILE    = _ROOT / "invites.json"
 _SETTINGS_DIR    = _ROOT / "settings"
 _TRANSCRIPTS_DIR = _ROOT / "transcripts"
 _LAB_CONCEPT     = _ROOT / "lab_concept.json"
@@ -42,6 +43,29 @@ def _load_users() -> dict:
 
 def _save_users(u: dict):
     _USERS_FILE.write_text(json.dumps(u, indent=2))
+
+def _load_invites() -> dict:
+    if _INVITES_FILE.exists():
+        return json.loads(_INVITES_FILE.read_text())
+    return {}
+
+def _save_invites(inv: dict):
+    _INVITES_FILE.write_text(json.dumps(inv, indent=2))
+
+def _create_invite() -> str:
+    inv   = _load_invites()
+    code  = uuid.uuid4().hex[:16]
+    inv[code] = {"used": False}
+    _save_invites(inv)
+    return code
+
+def _use_invite(code: str) -> bool:
+    inv = _load_invites()
+    if code not in inv or inv[code].get("used"):
+        return False
+    inv[code]["used"] = True
+    _save_invites(inv)
+    return True
 
 def _hash(pw: str) -> str:
     return hashlib.sha256(pw.encode()).hexdigest()
@@ -235,26 +259,64 @@ def register_routes(app: Flask):
 
     @app.route("/register", methods=["GET", "POST"])
     def register():
+        users     = _load_users()
+        first_run = len(users) == 0
+        code      = request.args.get("invite", "") or request.form.get("invite_code", "")
+
         if request.method == "GET":
-            return render_template("register.html", error=None)
+            if not first_run and not code:
+                return render_template("register.html",
+                                       error="Registration requires an invite link.",
+                                       invite_code="", success=None)
+            if not first_run and not _load_invites().get(code, {}).get("used") is False:
+                inv = _load_invites()
+                if code not in inv or inv[code].get("used"):
+                    return render_template("register.html",
+                                           error="Invalid or already-used invite link.",
+                                           invite_code="", success=None)
+            return render_template("register.html", error=None, invite_code=code, success=None)
 
         username = request.form.get("username", "").strip().lower()
         password = request.form.get("password", "")
+        confirm  = request.form.get("confirm", "")
+
+        def _err(msg):
+            return render_template("register.html", error=msg, invite_code=code, success=None)
+
         if not username or not password:
-            return render_template("register.html", error="Username and password required.")
+            return _err("Username and password required.")
         if not re.match(r"^[a-z0-9_]{3,32}$", username):
-            return render_template("register.html", error="3-32 chars: letters, numbers, underscore.")
+            return _err("3-32 chars: letters, numbers, underscore.")
+        if password != confirm:
+            return _err("Passwords do not match.")
+        if len(password) < 6:
+            return _err("Password must be at least 6 characters.")
 
         users    = _load_users()
         is_admin = len(users) == 0
+
+        if not is_admin:
+            if not code or not _use_invite(code):
+                return _err("Invalid or already-used invite link.")
+
         if username in users:
-            return render_template("register.html", error="Username already taken.")
+            return _err("Username already taken.")
 
         users[username] = {"password": _hash(password), "is_admin": is_admin}
         _save_users(users)
         session["username"] = username
         session["is_admin"]  = is_admin
         return redirect("/")
+
+    @app.route("/admin/invite")
+    @_login_required
+    def admin_invite():
+        if not session.get("is_admin"):
+            abort(403)
+        code = _create_invite()
+        base = request.host_url.rstrip("/")
+        link = f"{base}/register?invite={code}"
+        return render_template("invite.html", link=link)
 
     @app.route("/logout")
     def logout():

@@ -263,6 +263,7 @@
   <div class="form-col">
 
     <form class="form-area" method="POST" action="/register">
+      <input type="hidden" name="invite_code" value="{{ invite_code or '' }}">
 
       <div class="section-label">CREATE ACCOUNT</div>
 
