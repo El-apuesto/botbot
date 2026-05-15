@@ -729,6 +729,7 @@ audio { width: 100%; margin-top: 4px; }
       <!-- sub-tabs -->
       <div class="lab-tab-row">
         <button class="lab-tab active" id="ptab-missions-btn" onclick="switchProjectsTab('missions',this)">MISSIONS</button>
+        <button class="lab-tab" id="ptab-committees-btn" onclick="switchProjectsTab('committees',this)">COMMITTEES</button>
         <button class="lab-tab" id="ptab-pipeline-btn" onclick="switchProjectsTab('pipeline',this)">PIPELINE</button>
       </div>
 
@@ -776,6 +777,63 @@ audio { width: 100%; margin-top: 4px; }
             <span id="viewer-title" style="color:var(--neon);font-size:13px;font-weight:600"></span>
           </div>
           <div id="viewer-phases"></div>
+        </div>
+      </div>
+
+      <!-- COMMITTEES tab -->
+      <div id="ptab-committees" class="panel-scroll" style="padding:10px 12px;display:none">
+        <div class="fg" style="margin-bottom:4px">
+          <span class="fl" style="color:var(--neon)">COMMITTEE BUILDER</span>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin:0 0 10px">
+          Describe the expertise you need. TWIN assembles the right committee from the full model roster. Save it and deploy it to any mission.
+        </p>
+
+        <!-- design form -->
+        <div id="committee-design-form" style="background:var(--purple-dim);border:1px solid var(--border);padding:10px 12px;margin-bottom:12px">
+          <div class="fg">
+            <label class="fl">WHAT EXPERTISE DO YOU NEED?</label>
+            <textarea class="fi" id="committee-request" rows="3"
+              placeholder="e.g. I need a music industry panel — A&amp;R, distribution, social media, and sync licensing experts&#10;e.g. Build me a podcast monetization committee&#10;e.g. I need analysts for an esoteric comedy content launch"></textarea>
+          </div>
+          <button class="btn" id="committee-design-btn" onclick="designCommittee()" style="width:100%;text-align:center">[ DESIGN COMMITTEE ]</button>
+        </div>
+
+        <!-- preview of designed committee (before saving) -->
+        <div id="committee-preview" style="display:none;margin-bottom:12px;border:1px solid var(--purple);padding:10px 12px;background:rgba(80,0,60,.2)">
+          <div style="color:var(--cyan);font-size:11px;letter-spacing:.08em;margin-bottom:6px">── TWIN DESIGNED THIS COMMITTEE ──</div>
+          <div id="committee-preview-name" style="color:var(--neon-bright);font-size:14px;font-weight:700;margin-bottom:3px"></div>
+          <div id="committee-preview-desc" style="color:var(--muted);font-size:11px;margin-bottom:10px"></div>
+          <div id="committee-preview-members" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px"></div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn" id="committee-save-btn" onclick="saveCommittee()" style="padding:4px 12px">[ SAVE COMMITTEE ]</button>
+            <button class="btn" onclick="committeeLaunchQuick()" style="padding:4px 12px">[ SAVE + LAUNCH MISSION ]</button>
+          </div>
+        </div>
+
+        <!-- saved committees list -->
+        <div style="color:var(--cyan);font-size:10px;letter-spacing:.1em;margin-bottom:8px">SAVED COMMITTEES</div>
+        <div id="committee-list"></div>
+        <p class="ph-text" id="committee-empty" style="display:none">NO SAVED COMMITTEES.</p>
+
+        <!-- launch overlay: pick brief for a saved committee -->
+        <div id="committee-launch-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:none;align-items:center;justify-content:center">
+          <div style="background:var(--bg-panel);border:1px solid var(--purple);padding:20px;width:min(90vw,480px)">
+            <div style="color:var(--neon);font-size:13px;font-weight:700;margin-bottom:10px">LAUNCH MISSION</div>
+            <div style="color:var(--muted);font-size:11px;margin-bottom:8px">Committee: <span id="launch-committee-name" style="color:var(--cyan)"></span></div>
+            <div class="fg">
+              <label class="fl">MISSION TITLE</label>
+              <input class="fi" id="launch-mission-title" type="text" placeholder="e.g. Twin Shadow Q3 Launch Strategy">
+            </div>
+            <div class="fg">
+              <label class="fl">RESEARCH BRIEF</label>
+              <textarea class="fi" id="launch-mission-brief" rows="4" placeholder="What exactly should this committee research and produce?"></textarea>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="btn" onclick="committeeLaunchConfirm()" style="flex:1;text-align:center">[ LAUNCH ]</button>
+              <button class="btn" onclick="closeLaunchOverlay()" style="padding:4px 12px">[ CANCEL ]</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2676,12 +2734,188 @@ async function sendToVideoLab(source) {
    PROJECTS SUB-TABS
 ───────────────────────────────────────── */
 function switchProjectsTab(name, btn) {
-  ['missions','pipeline'].forEach(t => {
+  ['missions','committees','pipeline'].forEach(t => {
     const el = document.getElementById('ptab-' + t);
     if (el) el.style.display = (t === name) ? '' : 'none';
   });
   document.querySelectorAll('#panel-projects .lab-tab').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
+  if (name === 'committees') loadCommittees();
+}
+
+/* ─────────────────────────────────────────
+   DYNAMIC COMMITTEE BUILDER
+───────────────────────────────────────── */
+let _committeePreviewData = null;  // the committee config returned by TWIN, not yet saved
+let _launchTargetId       = null;  // committee id being launched
+
+async function designCommittee() {
+  const req = document.getElementById('committee-request').value.trim();
+  if (!req) { alert('Describe the expertise you need.'); return; }
+
+  const btn = document.getElementById('committee-design-btn');
+  btn.textContent = '[ TWIN IS DESIGNING... ]';
+  btn.disabled = true;
+  document.getElementById('committee-preview').style.display = 'none';
+
+  try {
+    const res = await fetch('/api/committees/design', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ request: req }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      alert('Error: ' + (err.error || res.status));
+      return;
+    }
+    const cfg = await res.json();
+    _committeePreviewData = cfg;
+    renderCommitteePreview(cfg);
+  } catch(e) {
+    alert('Design failed: ' + e.message);
+  } finally {
+    btn.textContent = '[ DESIGN COMMITTEE ]';
+    btn.disabled = false;
+  }
+}
+
+function renderCommitteePreview(cfg) {
+  document.getElementById('committee-preview-name').textContent = cfg.name;
+  document.getElementById('committee-preview-desc').textContent = cfg.description;
+  const membersEl = document.getElementById('committee-preview-members');
+  membersEl.innerHTML = (cfg.members || []).map(m => `
+    <div style="display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid rgba(100,0,80,.3)">
+      <span style="color:var(--cyan);font-size:11px;font-weight:700;min-width:90px">${_esc(m.name)}</span>
+      <span style="color:var(--neon);font-size:10px;flex:1">${_esc(m.role)}</span>
+      <span style="color:var(--muted);font-size:9px">${_esc(m.key)}</span>
+    </div>
+  `).join('');
+  document.getElementById('committee-preview').style.display = '';
+}
+
+async function saveCommittee() {
+  if (!_committeePreviewData) return;
+  const btn = document.getElementById('committee-save-btn');
+  btn.textContent = '[ SAVING... ]';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/committees', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(_committeePreviewData),
+    });
+    if (!res.ok) { alert('Save failed'); return; }
+    document.getElementById('committee-preview').style.display = 'none';
+    document.getElementById('committee-request').value = '';
+    _committeePreviewData = null;
+    loadCommittees();
+  } catch(e) {
+    alert('Save failed: ' + e.message);
+  } finally {
+    btn.textContent = '[ SAVE COMMITTEE ]';
+    btn.disabled = false;
+  }
+}
+
+async function committeeLaunchQuick() {
+  // Save first, then open launch overlay
+  if (!_committeePreviewData) return;
+  const res = await fetch('/api/committees', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(_committeePreviewData),
+  });
+  if (!res.ok) { alert('Save failed'); return; }
+  const saved = await res.json();
+  document.getElementById('committee-preview').style.display = 'none';
+  document.getElementById('committee-request').value = '';
+  _committeePreviewData = null;
+  loadCommittees();
+  openLaunchOverlay(saved.id, saved.name);
+}
+
+async function loadCommittees() {
+  const list  = document.getElementById('committee-list');
+  const empty = document.getElementById('committee-empty');
+  try {
+    const committees = await fetch('/api/committees').then(r => r.json());
+    list.innerHTML = '';
+    empty.style.display = committees.length ? 'none' : '';
+    committees.forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'mission-row';
+      row.innerHTML = `
+        <div class="mission-top">
+          <span class="mission-name">${_esc(c.name)}</span>
+          <span style="font-size:10px;color:var(--muted)">${(c.members||[]).length} members</span>
+        </div>
+        <div class="mission-brief">${_esc(c.description||'')}</div>
+        <div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px">
+          ${(c.members||[]).map(m =>
+            `<span style="font-size:9px;border:1px solid var(--border);padding:1px 5px;color:var(--cyan)">${_esc(m.name)}</span>`
+          ).join('')}
+        </div>
+        <div class="mission-actions">
+          <button class="btn" onclick="openLaunchOverlay('${c.id}','${_esc(c.name)}')" style="padding:2px 8px;font-size:10px">[ LAUNCH MISSION ]</button>
+          <button class="btn" onclick="previewSavedCommittee('${c.id}')" style="padding:2px 8px;font-size:10px">[ VIEW ]</button>
+          <button class="btn" onclick="deleteCommittee('${c.id}')" style="padding:2px 8px;font-size:10px;margin-left:auto">[ DEL ]</button>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+  } catch(e) {
+    console.error('loadCommittees', e);
+  }
+}
+
+async function previewSavedCommittee(cid) {
+  const c = await fetch('/api/committees/' + cid).then(r => r.json());
+  _committeePreviewData = c;
+  renderCommitteePreview(c);
+  document.getElementById('committee-preview').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function deleteCommittee(cid) {
+  if (!confirm('Delete this committee?')) return;
+  await fetch('/api/committees/' + cid, { method: 'DELETE' });
+  loadCommittees();
+}
+
+function openLaunchOverlay(cid, cname) {
+  _launchTargetId = cid;
+  document.getElementById('launch-committee-name').textContent = cname;
+  document.getElementById('launch-mission-title').value = cname + ' Mission';
+  document.getElementById('launch-mission-brief').value = '';
+  const ov = document.getElementById('committee-launch-overlay');
+  ov.style.display = 'flex';
+}
+
+function closeLaunchOverlay() {
+  document.getElementById('committee-launch-overlay').style.display = 'none';
+  _launchTargetId = null;
+}
+
+async function committeeLaunchConfirm() {
+  if (!_launchTargetId) return;
+  const title = document.getElementById('launch-mission-title').value.trim();
+  const brief = document.getElementById('launch-mission-brief').value.trim();
+  if (!brief) { alert('Describe the research brief.'); return; }
+
+  try {
+    const res = await fetch('/api/committees/' + _launchTargetId + '/launch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, brief }),
+    });
+    if (!res.ok) { alert('Launch failed'); return; }
+    closeLaunchOverlay();
+    // Switch to missions tab to show the running mission
+    switchProjectsTab('missions', document.getElementById('ptab-missions-btn'));
+    loadMissions();
+  } catch(e) {
+    alert('Launch failed: ' + e.message);
+  }
 }
 
 /* ─────────────────────────────────────────
