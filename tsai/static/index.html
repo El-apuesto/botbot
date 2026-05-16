@@ -623,7 +623,7 @@ audio { width: 100%; margin-top: 4px; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.nav-btn:nth-child(4n) { border-right: none; }
+.nav-btn:nth-child(5n) { border-right: none; }
 .nav-btn + .nav-btn::before { content: none; }
 .nav-btn .nav-num { color: var(--purple); margin-right: 2px; }
 .nav-btn:hover, .nav-btn.active {
@@ -1621,6 +1621,45 @@ audio { width: 100%; margin-top: 4px; }
       </div>
     </div><!-- /panel-gorilla -->
 
+    <!-- [9] ARCHIVE — everything you've ever done -->
+    <div class="panel" id="panel-archive">
+      <div class="panel-scroll" style="padding:10px 12px">
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+          <span style="color:var(--neon);font-size:var(--font-size-base);letter-spacing:.12em;font-weight:700">ARCHIVE</span>
+          <button class="btn" style="font-size:var(--font-size-sm);padding:3px 10px" onclick="loadArchive()">[ REFRESH ]</button>
+        </div>
+
+        <!-- filter row -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+          <button class="opt on" id="af-all"        onclick="archiveFilter('all',this)">ALL</button>
+          <button class="opt"    id="af-boardroom"  onclick="archiveFilter('boardroom',this)">BOARDROOM</button>
+          <button class="opt"    id="af-brainstorm" onclick="archiveFilter('brainstorm',this)">BRAINSTORM</button>
+          <button class="opt"    id="af-podcast"    onclick="archiveFilter('podcast',this)">PODCAST</button>
+          <button class="opt"    id="af-twin"       onclick="archiveFilter('twin',this)">TWIN CHAT</button>
+          <button class="opt"    id="af-shadow"     onclick="archiveFilter('shadow',this)">SHADOW CHAT</button>
+        </div>
+
+        <!-- session list -->
+        <div id="archive-list" style="display:flex;flex-direction:column;gap:6px"></div>
+        <p class="ph-text" id="archive-empty" style="display:none">NO SESSIONS SAVED YET.</p>
+
+        <!-- viewer overlay -->
+        <div id="archive-viewer" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9998;overflow-y:auto;padding:16px">
+          <div style="max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <button class="btn" onclick="closeArchiveViewer()" style="padding:3px 10px;font-size:var(--font-size-sm)">[ ← CLOSE ]</button>
+              <span id="archive-viewer-title" style="color:var(--neon);font-size:var(--font-size-base);font-weight:700;flex:1"></span>
+              <button class="btn" id="archive-reload-btn" onclick="reloadArchiveSession()" style="padding:3px 10px;font-size:var(--font-size-sm)">[ RELOAD INTO TAB ]</button>
+            </div>
+            <div id="archive-viewer-meta" style="color:var(--muted);font-size:var(--font-size-sm)"></div>
+            <div id="archive-viewer-body" style="display:flex;flex-direction:column;gap:6px;padding-bottom:40px"></div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /panel-archive -->
+
   </div><!-- /terminal -->
 
   <!-- ═══ INPUT ROW — below the box ═══ -->
@@ -1640,6 +1679,7 @@ audio { width: 100%; margin-top: 4px; }
     <button class="nav-btn" onclick="switchTab('social', this)"><span class="nav-num">[6]</span>SOCIAL</button>
     <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[7]</span>SETTINGS</button>
     <button class="nav-btn" onclick="switchTab('gorilla', this)"><span class="nav-num">[8]</span>GORILLA</button>
+    <button class="nav-btn" onclick="switchTab('archive', this)"><span class="nav-num">[9]</span>ARCHIVE</button>
     <span class="nav-user" style="width:100%;order:99;text-align:right;padding:2px 8px;font-size:7px">{{ session.get('username', '') | upper }}&nbsp;<a class="nav-logout" href="/logout">[ EXIT ]</a></span>
   </nav>
 
@@ -1861,6 +1901,7 @@ function switchTab(name, btn) {
   if (name === 'settings') { loadAudioGallery(); loadTranscripts(); }
   if (name === 'projects') { loadMissions(); loadPipeline(); }
   if (name === 'social')   { loadSocialJobs(); }
+  if (name === 'archive')  { loadArchive(); }
 }
 
 function switchLab(name, btn) {
@@ -3563,7 +3604,7 @@ async function loadAudioGallery() {
 }
 
 /* ─────────────────────────────────────────
-   SAVED TRANSCRIPTS
+   SAVED TRANSCRIPTS (settings panel quick view)
 ───────────────────────────────────────── */
 async function loadTranscripts() {
   const list  = document.getElementById('transcripts-list');
@@ -3571,24 +3612,215 @@ async function loadTranscripts() {
   list.innerHTML = '<p style="font-size:var(--font-size-sm);color:var(--muted)">LOADING...</p>';
   empty.style.display = 'none';
   try {
-    const items = await fetch('/api/transcripts/list').then(r => r.json());
+    const items = await fetch('/api/sessions/list').then(r => r.json());
     list.innerHTML = '';
     if (!items.length) { empty.style.display = ''; return; }
-    items.forEach(t => {
+    items.slice(0, 20).forEach(t => {
       const dt   = new Date(t.created_at).toLocaleString();
       const type = (t.session_type || '').toUpperCase();
       const row  = document.createElement('div');
       row.className = 'gallery-row';
       row.innerHTML =
-        `<span class="gallery-row-name">${t.title}</span>` +
+        `<span class="gallery-row-name">${t.title || '(untitled)'}</span>` +
         `<span class="gallery-row-meta">${type} &nbsp;|&nbsp; ${dt}</span>` +
-        (t.public_url
-          ? `<a href="${t.public_url}" target="_blank" class="action-link" style="align-self:flex-start;margin-top:2px">[ VIEW ]</a>`
-          : '');
+        `<button class="btn" style="font-size:10px;padding:1px 6px;align-self:flex-start;margin-top:2px" onclick="switchTab('archive',document.querySelector('.nav-btn:nth-child(9)'))">[ → ARCHIVE ]</button>`;
       list.appendChild(row);
     });
   } catch(e) {
     list.innerHTML = '<p style="font-size:var(--font-size-sm);color:var(--red)">ERROR: ' + e + '</p>';
+  }
+}
+
+/* ─────────────────────────────────────────
+   ARCHIVE TAB
+───────────────────────────────────────── */
+let _archiveData   = [];   // all loaded sessions
+let _archiveFilter = 'all';
+let _archiveViewSession = null;
+
+async function loadArchive() {
+  const list  = document.getElementById('archive-list');
+  const empty = document.getElementById('archive-empty');
+  list.innerHTML = '<p style="font-size:var(--font-size-sm);color:var(--muted)">LOADING...</p>';
+  empty.style.display = 'none';
+  try {
+    const [sessions, chatTwin, chatShadow] = await Promise.all([
+      fetch('/api/sessions/list').then(r => r.json()),
+      fetch('/api/history/load?bot=twin').then(r => r.json()),
+      fetch('/api/history/load?bot=shadow').then(r => r.json()),
+    ]);
+    _archiveData = [
+      ...sessions.map(s => ({ ...s, _kind: 'session' })),
+      chatTwin.length   ? { id: 'chat-twin',   session_type: 'twin',   title: `TWIN — ${chatTwin.length} messages`,   created_at: chatTwin[chatTwin.length-1]?.created_at   || '', content: chatTwin,   _kind: 'chat' } : null,
+      chatShadow.length ? { id: 'chat-shadow', session_type: 'shadow', title: `SHADOW — ${chatShadow.length} messages`, created_at: chatShadow[chatShadow.length-1]?.created_at || '', content: chatShadow, _kind: 'chat' } : null,
+    ].filter(Boolean);
+    renderArchive();
+  } catch(e) {
+    list.innerHTML = '<p style="font-size:var(--font-size-sm);color:var(--red)">ERROR: ' + e + '</p>';
+  }
+}
+
+function renderArchive() {
+  const list  = document.getElementById('archive-list');
+  const empty = document.getElementById('archive-empty');
+  list.innerHTML = '';
+  const filtered = _archiveData.filter(s => {
+    if (_archiveFilter === 'all') return true;
+    return s.session_type === _archiveFilter;
+  });
+  if (!filtered.length) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  filtered.forEach(s => {
+    const dt   = s.created_at ? new Date(s.created_at).toLocaleString() : '';
+    const type = (s.session_type || '').toUpperCase();
+    const typeColor = { boardroom:'var(--cyan)', brainstorm:'var(--neon)', podcast:'var(--purple)', twin:'var(--muted)', shadow:'var(--red)' }[s.session_type] || 'var(--muted)';
+    const row  = document.createElement('div');
+    row.className = 'gallery-row';
+    row.style.cssText = 'flex-direction:column;gap:4px;padding:8px 10px';
+    row.innerHTML =
+      `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+        <span style="color:var(--text);font-size:var(--font-size-sm);font-weight:600;flex:1">${s.title || '(untitled)'}</span>
+        <span style="color:${typeColor};font-size:10px;letter-spacing:.08em;white-space:nowrap">${type}</span>
+      </div>` +
+      (dt ? `<span style="color:var(--muted);font-size:10px">${dt}</span>` : '') +
+      `<div style="display:flex;gap:6px;margin-top:2px;flex-wrap:wrap">
+        <button class="btn" style="font-size:10px;padding:1px 8px" onclick="viewArchiveSession(${JSON.stringify(s.id)})">[ VIEW ]</button>
+        ${s._kind === 'session' ? `<button class="btn" style="font-size:10px;padding:1px 8px" onclick="reloadArchiveById(${JSON.stringify(s.id)})">[ RELOAD ]</button>` : ''}
+        ${s._kind === 'session' ? `<button class="btn" style="font-size:10px;padding:1px 8px;color:var(--red)" onclick="deleteArchiveSession(${JSON.stringify(s.id)},this)">[ DELETE ]</button>` : ''}
+      </div>`;
+    list.appendChild(row);
+  });
+}
+
+function archiveFilter(type, btn) {
+  _archiveFilter = type;
+  document.querySelectorAll('[id^="af-"]').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderArchive();
+}
+
+async function viewArchiveSession(id) {
+  let session;
+  if (id === 'chat-twin' || id === 'chat-shadow') {
+    session = _archiveData.find(s => s.id === id);
+  } else {
+    try {
+      const r = await fetch(`/api/sessions/${id}`);
+      session = await r.json();
+    } catch { return; }
+  }
+  if (!session) return;
+  _archiveViewSession = session;
+
+  document.getElementById('archive-viewer-title').textContent = session.title || '(untitled)';
+  const dt = session.created_at ? new Date(session.created_at).toLocaleString() : '';
+  document.getElementById('archive-viewer-meta').textContent = (session.session_type||'').toUpperCase() + (dt ? '  —  ' + dt : '');
+
+  const body = document.getElementById('archive-viewer-body');
+  body.innerHTML = '';
+
+  const content = session.content || [];
+  const isChatRaw = Array.isArray(content) && content.length && content[0].role;
+  const reloadBtn = document.getElementById('archive-reload-btn');
+  reloadBtn.style.display = isChatRaw ? 'none' : '';
+
+  if (isChatRaw) {
+    content.forEach(m => {
+      const div = document.createElement('div');
+      div.style.cssText = 'border:1px solid var(--border);padding:6px 10px;background:var(--purple-dim)';
+      div.innerHTML = `<div style="color:var(--cyan);font-size:10px;letter-spacing:.08em;margin-bottom:3px">${(m.role||'').toUpperCase()}</div><div style="font-size:var(--font-size-sm);color:var(--text);white-space:pre-wrap;line-height:1.6">${m.content||''}</div>`;
+      body.appendChild(div);
+    });
+  } else if (Array.isArray(content) && content.length && content[0].speaker !== undefined) {
+    content.forEach(t => {
+      const div = document.createElement('div');
+      div.style.cssText = 'border:1px solid var(--border);padding:6px 10px;background:var(--purple-dim)';
+      div.innerHTML = `<div style="color:var(--cyan);font-size:10px;letter-spacing:.08em;margin-bottom:3px">${t.speaker||''}</div><div style="font-size:var(--font-size-sm);color:var(--text);white-space:pre-wrap;line-height:1.6">${t.text||''}</div>`;
+      body.appendChild(div);
+    });
+  } else {
+    const div = document.createElement('div');
+    div.style.cssText = 'font-size:var(--font-size-sm);color:var(--text);white-space:pre-wrap;line-height:1.6';
+    div.textContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+    body.appendChild(div);
+  }
+
+  document.getElementById('archive-viewer').style.display = '';
+}
+
+function closeArchiveViewer() {
+  document.getElementById('archive-viewer').style.display = 'none';
+  _archiveViewSession = null;
+}
+
+async function reloadArchiveById(id) {
+  try {
+    const r = await fetch(`/api/sessions/${id}`);
+    _archiveViewSession = await r.json();
+  } catch { return; }
+  reloadArchiveSession();
+}
+
+function reloadArchiveSession() {
+  const s = _archiveViewSession;
+  if (!s) return;
+  const type = s.session_type;
+  const turns = Array.isArray(s.content) ? s.content : [];
+
+  if (type === 'boardroom') {
+    boardTurns = turns;
+    document.getElementById('boardroom-out').innerHTML = '';
+    turns.forEach(t => {
+      const p = document.createElement('p');
+      p.innerHTML = `<strong style="color:var(--cyan)">${t.speaker}:</strong> ${t.text}`;
+      document.getElementById('boardroom-out').appendChild(p);
+    });
+    document.getElementById('boardroom-save-btn').style.display = '';
+    document.getElementById('boardroom-audio-btn').style.display = '';
+    closeArchiveViewer();
+    switchTab('advisors', document.querySelector('.nav-btn:nth-child(5)'));
+    switchAdvisors('boardroom', document.querySelector('#panel-advisors .lab-tab:nth-child(3)'));
+  } else if (type === 'brainstorm') {
+    bsTurns = turns;
+    document.getElementById('brainstorm-out').innerHTML = '';
+    turns.forEach(t => {
+      const p = document.createElement('p');
+      p.innerHTML = `<strong style="color:var(--cyan)">${t.speaker}:</strong> ${t.text}`;
+      document.getElementById('brainstorm-out').appendChild(p);
+    });
+    document.getElementById('brainstorm-save-btn').style.display = '';
+    document.getElementById('brainstorm-audio-btn').style.display = '';
+    closeArchiveViewer();
+    switchTab('studio', document.querySelector('.nav-btn:nth-child(4)'));
+    switchStudio('brainstorm', document.querySelector('#panel-studio .lab-tab:nth-child(1)'));
+  } else if (type === 'podcast') {
+    POD.turns = turns;
+    document.getElementById('pod-out').innerHTML = '';
+    turns.forEach(t => {
+      const p = document.createElement('p');
+      p.innerHTML = `<strong style="color:var(--cyan)">${t.speaker}:</strong> ${t.text}`;
+      document.getElementById('pod-out').appendChild(p);
+    });
+    document.getElementById('pod-save-btn').style.display = '';
+    document.getElementById('pod-audio-btn').style.display = '';
+    closeArchiveViewer();
+    switchTab('studio', document.querySelector('.nav-btn:nth-child(4)'));
+    switchStudio('podcast', document.querySelector('#panel-studio .lab-tab:nth-child(2)'));
+  } else {
+    alert('Cannot reload this session type into a panel.');
+  }
+}
+
+async function deleteArchiveSession(id, btn) {
+  if (!confirm('Delete this session from the archive?')) return;
+  btn.disabled = true; btn.textContent = '[ DELETING... ]';
+  try {
+    await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
+    _archiveData = _archiveData.filter(s => s.id != id);
+    renderArchive();
+  } catch(e) {
+    btn.disabled = false; btn.textContent = '[ DELETE ]';
+    alert('Delete failed: ' + e);
   }
 }
 

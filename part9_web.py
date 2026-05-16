@@ -1252,7 +1252,7 @@ def register_routes(app: Flask):
             "detail": d.get("detail", ""),
             "phase":  d.get("phase", "1"),
         }
-        _pipeline.append(job)
+        pipeline_add(session.get("username", "anon"), job)
         return jsonify(job)
 
     # ── autonomous missions ────────────────────────────────────────────────────
