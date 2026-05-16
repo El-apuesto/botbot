@@ -13,6 +13,7 @@ Twin Shadow — Part 7: Command Layer
 """
 
 from __future__ import annotations
+import asyncio
 import time
 
 from part2_router import call_task
@@ -529,7 +530,7 @@ async def _run_and_prompt(
         full = label + content
         for chunk in [full[i:i+4000] for i in range(0, len(full), 4000)]:
             await reply_fn(chunk)
-        time.sleep(0.3)  # small pause between speakers
+        await asyncio.sleep(0.3)  # small pause between speakers
 
     rounds_done  = session["rounds_done"]
     rounds_total = session["rounds_total"]

@@ -42,7 +42,8 @@ CT = ZoneInfo("America/Chicago")
 
 orch = Orchestrator()
 
-_flask = Flask("TwinShadow", template_folder="static", static_folder="static")
+_TSAI_STATIC = str(Path(__file__).parent / "tsai" / "static")
+_flask = Flask("TwinShadow", template_folder=_TSAI_STATIC, static_folder=_TSAI_STATIC)
 register_routes(_flask)
 
 Thread(target=lambda: _flask.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000))), daemon=True).start()
@@ -302,7 +303,9 @@ async def approve_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     response = f"OK Project {pid} complete\n"
     for r in results:
-        response += f"\n── {r.get('module','?')}{'🌑' if r.get('shadow') else ''}{'OK' if r.get('approved') else ('ERROR' if 'approved' in r else '')} ──\n{str(r.get('output',''))[:300]}\n"
+        shadow_tag  = "🌑" if r.shadow else ""
+        approved_tag = "OK" if r.approved else ("ERROR" if r.approved is not None else "")
+        response += f"\n── {r.module}{shadow_tag}{approved_tag} ──\n{str(r.output)[:300]}\n"
     for chunk in [response[i:i+4000] for i in range(0, len(response), 4000)]:
         await update.message.reply_text(chunk)
 
@@ -317,7 +320,7 @@ async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not proj:
         await update.message.reply_text("Not found.")
         return
-    await update.message.reply_text(f"STATUS {proj['id']} — {proj.get('idea','?')[:80]}\nStatus: {proj.get('status','?')}")
+    await update.message.reply_text(f"STATUS {proj.id} — {proj.idea[:80]}\nStatus: {proj.status}")
 
 
 async def projects_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -327,7 +330,7 @@ async def projects_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not projects:
         await update.message.reply_text("No projects yet.")
         return
-    await update.message.reply_text("PROJECTS:\n" + "\n".join(f"{p['id']}. {p.get('idea','?')[:50]} — {p.get('status','?')}" for p in projects))
+    await update.message.reply_text("PROJECTS:\n" + "\n".join(f"{p.id}. {p.idea[:50]} — {p.status}" for p in projects))
 
 
 async def last_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):

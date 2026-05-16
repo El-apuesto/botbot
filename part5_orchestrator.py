@@ -2,19 +2,39 @@ from __future__ import annotations
 
 # ── runtime stubs (runtime package removed; functionality inlined) ───────────
 
-def emit_event(*args, **kwargs) -> None:
-    """No-op event emitter — was backed by a removed runtime module."""
+async def emit_event(*args, **kwargs) -> None:
+    """No-op async event emitter — was backed by a removed runtime module."""
     pass
 
 
 class EventType:
-    TASK_STARTED    = "task_started"
-    TASK_COMPLETED  = "task_completed"
-    TASK_FAILED     = "task_failed"
-    BUILD_STARTED   = "build_started"
-    BUILD_COMPLETED = "build_completed"
-    APPROVAL_GRANTED = "approval_granted"
-    BOARDROOM_OPENED = "boardroom_opened"
+    TASK_STARTED        = "task_started"
+    TASK_COMPLETED      = "task_completed"
+    TASK_FAILED         = "task_failed"
+    BUILD_STARTED       = "build_started"
+    BUILD_COMPLETED     = "build_completed"
+    BUILD_FAILED        = "build_failed"
+    APPROVAL_GRANTED    = "approval_granted"
+    BOARDROOM_OPENED    = "boardroom_opened"
+    # Approval lifecycle
+    APPROVE_STARTED     = "approve_started"
+    APPROVE_COMPLETED   = "approve_completed"
+    APPROVE_FAILED      = "approve_failed"
+    # Module lifecycle
+    MODULE_STARTED      = "module_started"
+    MODULE_COMPLETED    = "module_completed"
+    MODULE_FAILED       = "module_failed"
+    # Audit
+    AUDIT_STARTED       = "audit_started"
+    AUDIT_PASSED        = "audit_passed"
+    AUDIT_FLAGGED       = "audit_flagged"
+    # Cross-validation
+    CROSS_VAL_STARTED   = "cross_val_started"
+    CROSS_VAL_COMPLETED = "cross_val_completed"
+    # Boardroom
+    BOARDROOM_STARTED   = "boardroom_started"
+    BOARDROOM_ROUND_DONE= "boardroom_round_done"
+    BOARDROOM_COMPLETED = "boardroom_completed"
 
 
 """

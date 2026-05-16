@@ -332,10 +332,8 @@ def delete_file(storage_path: str) -> bool:
 
 
 
-from runtime.models import TaskRecord
-
-
-async def persist_task_record(supabase, task: TaskRecord):
+async def persist_task_record(supabase, task):
+    from runtime.models import TaskRecord  # lazy import — tsai/ must be in sys.path
     return await supabase.table("tasks").upsert(
         task.model_dump(mode="json")
     ).execute()

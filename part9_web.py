@@ -24,7 +24,7 @@ from flask import (
 
 # ── paths ──────────────────────────────────────────────────────────────────────
 _ROOT            = Path(__file__).parent
-_STATIC          = _ROOT / "static"
+_STATIC          = _ROOT / "tsai" / "static"
 _AUDIO_DIR       = _ROOT / "audio"
 _RENDERS_DIR     = _ROOT / "renders"
 _UPLOADS_DIR     = _ROOT / "uploads"
