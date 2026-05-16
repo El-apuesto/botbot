@@ -739,15 +739,11 @@ audio { width: 100%; margin-top: 4px; }
         <div class="fg" style="margin-bottom:4px">
           <span class="fl" style="color:var(--neon)">AUTONOMOUS RESEARCH MISSIONS</span>
         </div>
-        <p style="font-size:11px;color:var(--muted);margin:0 0 10px">
-          Create a mission. The app runs it in the background. Come back to finished work.
-        </p>
-
         <!-- ASK TWIN consult panel -->
-        <div style="border:1px solid var(--purple);padding:10px 12px;margin-bottom:12px;background:rgba(60,0,80,.15)">
+        <div style="border:1px solid var(--purple);padding:8px 12px;margin-bottom:10px;background:rgba(60,0,80,.15)">
           <div id="guide-header" style="color:var(--cyan);font-size:10px;letter-spacing:.1em;margin-bottom:6px">── ASK TWIN WHAT TO DO ──</div>
-          <div id="guide-subtext" style="font-size:11px;color:var(--muted);margin-bottom:8px">Describe your goal. TWIN recommends the right approach and pre-fills the form.</div>
-          <textarea class="fi" id="guide-goal" rows="2" placeholder="e.g. I want to launch a podcast with no budget and build an audience of weird internet people fast&#10;e.g. I need to understand where my content fits in the market before I invest more&#10;e.g. I want a creative direction for an occult comedy brand"></textarea>
+          <div id="guide-subtext" style="display:none"></div>
+          <textarea class="fi" id="guide-goal" rows="1" placeholder="Describe your goal..."></textarea>
           <button class="btn" id="guide-btn" onclick="askTwinGuide()" style="width:100%;text-align:center;margin-top:6px">[ ASK TWIN ]</button>
           <!-- recommendation result -->
           <div id="guide-result" style="display:none;margin-top:10px">
@@ -761,22 +757,21 @@ audio { width: 100%; margin-top: 4px; }
         <div id="mission-form" style="background:var(--purple-dim);border:1px solid var(--border);padding:10px 12px;margin-bottom:12px">
           <div class="fg">
             <label class="fl">MISSION NAME</label>
-            <input class="fi" id="mission-title" type="text" placeholder="e.g. Twin Shadow Podcast Launch Strategy" autocomplete="off">
+            <input class="fi" id="mission-title" type="text" placeholder="Mission name..." autocomplete="off">
           </div>
           <div class="fg">
             <label class="fl">RESEARCH GOAL</label>
-            <textarea class="fi" id="mission-brief" rows="4"
-              placeholder="Describe what you want researched. Be specific — who is the audience, what decisions does this inform, what angles matter most..."></textarea>
+            <textarea class="fi" id="mission-brief" rows="2" placeholder="What do you want researched..."></textarea>
           </div>
           <div class="fg">
             <label class="fl">MISSION TYPE</label>
             <select class="fi" id="mission-type">
-              <option value="gorilla_marketing">Gorilla Marketing Blueprint — 6-specialist committee + TWIN</option>
-              <option value="boardroom_analysis">Full Boardroom Analysis — Complete board session</option>
-              <option value="strategy_deep">Strategy Deep Dive — 3-model consensus + TWIN</option>
-              <option value="creative_brief">Creative Brief — Concepts, copy, visual direction</option>
-              <option value="competitive_intel">Competitive Intelligence — Threats, gaps, opportunities</option>
-              <option value="custom_committee">Custom Committee — TWIN picks the right models for your need</option>
+              <option value="gorilla_marketing">Gorilla Marketing Blueprint</option>
+              <option value="boardroom_analysis">Full Boardroom Analysis</option>
+              <option value="strategy_deep">Strategy Deep Dive</option>
+              <option value="creative_brief">Creative Brief</option>
+              <option value="competitive_intel">Competitive Intelligence</option>
+              <option value="custom_committee">Custom Committee</option>
             </select>
           </div>
           <button class="btn" onclick="submitMission()" style="width:100%;text-align:center">[ LAUNCH MISSION ]</button>
@@ -801,16 +796,12 @@ audio { width: 100%; margin-top: 4px; }
         <div class="fg" style="margin-bottom:4px">
           <span class="fl" style="color:var(--neon)">COMMITTEE BUILDER</span>
         </div>
-        <p style="font-size:11px;color:var(--muted);margin:0 0 10px">
-          Describe the expertise you need. TWIN assembles the right committee from the full model roster. Save it and deploy it to any mission.
-        </p>
 
         <!-- design form -->
         <div id="committee-design-form" style="background:var(--purple-dim);border:1px solid var(--border);padding:10px 12px;margin-bottom:12px">
           <div class="fg">
             <label class="fl">WHAT EXPERTISE DO YOU NEED?</label>
-            <textarea class="fi" id="committee-request" rows="3"
-              placeholder="e.g. I need a music industry panel — A&amp;R, distribution, social media, and sync licensing experts&#10;e.g. Build me a podcast monetization committee&#10;e.g. I need analysts for an esoteric comedy content launch"></textarea>
+            <textarea class="fi" id="committee-request" rows="2" placeholder="Describe the expertise you need..."></textarea>
           </div>
           <button class="btn" id="committee-design-btn" onclick="designCommittee()" style="width:100%;text-align:center">[ DESIGN COMMITTEE ]</button>
         </div>
@@ -884,9 +875,6 @@ audio { width: 100%; margin-top: 4px; }
       <div class="lab-section active" id="lab-video">
         <div class="panel-scroll">
           <a href="/lab" target="_blank" class="btn" style="text-align:center;display:block;margin-bottom:10px">[ &#9658; OPEN VIDEO LAB ]</a>
-          <p style="font-size:13px;color:var(--muted);line-height:1.6;padding:6px 0">
-            Full short-form video pipeline — storyboard, image generation per scene, AI video clips, voiceover, and FFMPEG render to MP4.
-          </p>
         </div>
       </div>
 
@@ -1072,10 +1060,6 @@ audio { width: 100%; margin-top: 4px; }
             </div>
           </div>
           <div class="fg" id="code-arch-note" style="display:none">
-            <p style="color:var(--purple-dim);font-size:var(--font-size-sm);margin:0;line-height:1.5">
-              ARCHITECT MODE: generates full project plan → file structure → all files complete.
-              Describe the application; the system designs and codes the entire thing.
-            </p>
           </div>
           <div class="fg">
             <label class="fl">TASK</label>
@@ -1350,13 +1334,8 @@ audio { width: 100%; margin-top: 4px; }
       <div class="lab-section active" id="adv-legal">
         <div class="panel-scroll">
           <div class="fg">
-            <p style="color:var(--purple-dim);font-size:var(--font-size-sm);margin:0 0 8px 0;line-height:1.5">
-              COPYRIGHT · MUSIC LICENSING · CONTENT RIGHTS · DMCA · FAIR USE · PLATFORM COMPLIANCE
-            </p>
-          </div>
-          <div class="fg">
             <label class="fl">YOUR QUESTION</label>
-            <textarea class="fi" id="legal-input" rows="3" placeholder="Ask about rights, licensing, fair use, DMCA, content liability..."></textarea>
+            <textarea class="fi" id="legal-input" rows="2" placeholder="Ask about rights, licensing, fair use, DMCA..."></textarea>
           </div>
           <div class="action-row">
             <button class="btn" id="legal-go-btn" onclick="runAdvisor('legal')">[ ASK LEGAL ]</button>
@@ -1370,11 +1349,6 @@ audio { width: 100%; margin-top: 4px; }
       <!-- MARKETING -->
       <div class="lab-section" id="adv-marketing">
         <div class="panel-scroll">
-          <div class="fg">
-            <p style="color:var(--purple-dim);font-size:var(--font-size-sm);margin:0 0 8px 0;line-height:1.5">
-              LAUNCH STRATEGY · ADVERTISING · AUDIENCE GROWTH · PLATFORM STRATEGY · BRAND
-            </p>
-          </div>
           <div class="fg">
             <label class="fl">YOUR QUESTION</label>
             <textarea class="fi" id="marketing-input" rows="3" placeholder="Ask about launches, ads, audience building, brand strategy, campaigns..."></textarea>
@@ -1560,7 +1534,6 @@ audio { width: 100%; margin-top: 4px; }
 
         <div class="fg">
           <span class="fl">SOCIAL CLIP FACTORY</span>
-          <p style="font-size:12px;color:var(--muted);margin:0 0 4px">Upload a video → AI transcribes, finds best clips, writes captions + hashtags per platform.</p>
           <input type="file" id="soc-file" accept="video/*,audio/*" style="display:none" onchange="socialFileChosen(this)">
           <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
             <button class="btn" onclick="document.getElementById('soc-file').click()">[ UPLOAD VIDEO ]</button>
@@ -1615,13 +1588,11 @@ audio { width: 100%; margin-top: 4px; }
 
         <div class="fg">
           <span class="fl">GORILLA MARKETING WAR ROOM</span>
-          <p style="font-size:12px;color:var(--muted);margin:0 0 6px">Moneyball philosophy. Six specialist committees. One blueprint. Find the undervalued play.</p>
         </div>
 
         <div class="fg">
           <span class="fl">THE BRIEF</span>
-          <p style="font-size:11px;color:var(--muted);margin:0 0 4px">Describe your product/project, target audience, budget range, and goal. Be specific — vague briefs get vague blueprints.</p>
-          <textarea id="gorilla-brief" rows="5" style="width:100%;background:#0a000f;border:1px solid var(--purple);color:var(--neon);font-family:var(--font);font-size:13px;padding:8px;resize:vertical;box-sizing:border-box" placeholder="e.g. — Launching a new occult comedy podcast. Zero budget. Target: 18-34 weird internet people, true crime adjacent, open to dark humor. Goal: 500 subscribers in 30 days through organic growth only. No ads. No label. Just us."></textarea>
+          <textarea id="gorilla-brief" rows="3" style="width:100%;background:#0a000f;border:1px solid var(--purple);color:var(--neon);font-family:var(--font);font-size:13px;padding:8px;resize:vertical;box-sizing:border-box" placeholder="Your product, audience, goal, budget..."></textarea>
         </div>
 
         <div class="action-row">
