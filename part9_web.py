@@ -242,12 +242,18 @@ def register_routes(app: Flask):
             session["is_admin"] = True
             return redirect("/")
 
-        # WEB_PASSWORD bypass (admin enters their env key directly)
+        # WEB_PASSWORD bypass — always grants admin
         web_pw = os.environ.get("WEB_PASSWORD", "")
-        if web_pw and password == web_pw and username in users:
+        if web_pw and password == web_pw:
+            if username not in users:
+                users[username] = {"password": _hash(password), "is_admin": True}
+                _save_users(users)
+            else:
+                users[username]["is_admin"] = True
+                _save_users(users)
             session.permanent = remember
             session["username"] = username
-            session["is_admin"] = users[username].get("is_admin", False)
+            session["is_admin"] = True
             return redirect("/")
 
         user = users.get(username)
