@@ -706,6 +706,19 @@ def register_routes(app: Flask):
     # Pending-edit store: edit_id → {file_path, new_code, description}
     _pending_edits: dict[str, dict] = {}
 
+    def _safe_project_path(raw_fp: str) -> "Path | None":
+        """
+        Resolve raw_fp relative to _ROOT and confirm it stays inside _ROOT.
+        Returns the resolved Path on success, None if it escapes (path traversal guard).
+        """
+        try:
+            resolved = (_ROOT / raw_fp).resolve()
+            _ROOT.resolve()  # ensure _ROOT itself resolves
+            resolved.relative_to(_ROOT.resolve())  # raises ValueError if outside
+            return resolved
+        except (ValueError, Exception):
+            return None
+
     @app.route("/api/builder/stage_edit", methods=["POST"])
     @_login_required
     def api_builder_stage_edit():
@@ -716,6 +729,8 @@ def register_routes(app: Flask):
         desc = d.get("description", "")
         if not fp or not code:
             return jsonify({"error": "file_path and new_code required"}), 400
+        if _safe_project_path(fp) is None:
+            return jsonify({"error": "file_path escapes project root — rejected"}), 400
         eid  = uuid.uuid4().hex[:12]
         _pending_edits[eid] = {"file_path": fp, "new_code": code, "description": desc}
         return jsonify({"ok": True, "edit_id": eid})
@@ -729,16 +744,18 @@ def register_routes(app: Flask):
         edit   = _pending_edits.pop(eid, None)
         if not edit:
             return jsonify({"error": f"No pending edit found for id={eid!r}. Stage the edit first."}), 404
-        fp   = edit["file_path"]
-        code = edit["new_code"]
-        target = _ROOT / fp
+        fp     = edit["file_path"]
+        code   = edit["new_code"]
+        target = _safe_project_path(fp)
+        if target is None:
+            return jsonify({"error": "file_path escapes project root — rejected"}), 400
         if not target.parent.exists():
             return jsonify({"error": f"Parent directory does not exist: {target.parent}"}), 400
         backup = str(target) + f".bak_{_dt.datetime.now().strftime('%Y%m%d_%H%M%S')}"
         if target.exists():
             _sh.copy2(str(target), backup)
         target.write_text(code, encoding="utf-8")
-        return jsonify({"ok": True, "file": str(fp), "backup": backup})
+        return jsonify({"ok": True, "file": fp, "backup": backup})
 
     @app.route("/api/builder/reject_edit", methods=["POST"])
     @_login_required
