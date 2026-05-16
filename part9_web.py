@@ -609,33 +609,102 @@ def register_routes(app: Flask):
         (_ROOT / f"{name}.py").write_text(code)
         return jsonify({"ok": True})
 
-    # ── pipeline ──────────────────────────────────────────────────────────────
-    _pipeline: list[dict] = []
+    # ── pipeline (DB-backed) ──────────────────────────────────────────────────
+    from part_db import (
+        pipeline_load, pipeline_add, pipeline_delete, pipeline_update_status,
+        history_append, history_load, history_clear,
+        session_save, session_list, session_get, session_delete,
+    )
 
     @app.route("/api/pipeline", methods=["GET", "POST"])
     @_login_required
     def api_pipeline():
+        uname = session.get("username", "anon")
         if request.method == "GET":
-            return jsonify(_pipeline)
-        job = {"id": uuid.uuid4().hex[:8], "status": "pending",
-               **(request.get_json(force=True) or {})}
-        _pipeline.append(job)
+            return jsonify(pipeline_load(uname))
+        d   = request.get_json(force=True) or {}
+        job = {"id": uuid.uuid4().hex[:8], "status": d.get("status", "queued"), **d}
+        job = pipeline_add(uname, job)
         return jsonify(job)
 
     @app.route("/api/pipeline/<job_id>", methods=["DELETE"])
     @_login_required
     def api_pipeline_delete(job_id):
-        _pipeline[:] = [j for j in _pipeline if j["id"] != job_id]
+        pipeline_delete(job_id, session.get("username", "anon"))
+        return jsonify({"ok": True})
+
+    @app.route("/api/pipeline/<job_id>/status", methods=["POST"])
+    @_login_required
+    def api_pipeline_status(job_id):
+        d = request.get_json(force=True) or {}
+        pipeline_update_status(job_id, d.get("status", "queued"), session.get("username", "anon"))
+        return jsonify({"ok": True})
+
+    # ── chat history (DB-backed) ───────────────────────────────────────────────
+    @app.route("/api/history/load", methods=["GET"])
+    @_login_required
+    def api_history_load():
+        uname = session.get("username", "anon")
+        bot   = request.args.get("bot", None)
+        rows  = history_load(uname, bot=bot, limit=60)
+        return jsonify(rows)
+
+    @app.route("/api/history/save", methods=["POST"])
+    @_login_required
+    def api_history_save():
+        uname = session.get("username", "anon")
+        d     = request.get_json(force=True) or {}
+        history_append(uname, d.get("bot", "twin"), d.get("role", "user"), d.get("content", ""))
+        return jsonify({"ok": True})
+
+    @app.route("/api/history/clear", methods=["POST"])
+    @_login_required
+    def api_history_clear():
+        uname = session.get("username", "anon")
+        bot   = (request.get_json(force=True) or {}).get("bot", None)
+        history_clear(uname, bot=bot)
+        return jsonify({"ok": True})
+
+    # ── sessions save/load (boardroom / brainstorm / podcast) ─────────────────
+    @app.route("/api/sessions/save", methods=["POST"])
+    @_login_required
+    def api_sessions_save():
+        uname = session.get("username", "anon")
+        d     = request.get_json(force=True) or {}
+        sid   = session_save(uname, d.get("session_type","misc"), d.get("title",""), d.get("content",[]))
+        return jsonify({"ok": bool(sid), "id": sid})
+
+    @app.route("/api/sessions/list", methods=["GET"])
+    @_login_required
+    def api_sessions_list():
+        uname = session.get("username", "anon")
+        stype = request.args.get("type", None)
+        return jsonify(session_list(uname, session_type=stype))
+
+    @app.route("/api/sessions/<int:sid>", methods=["GET"])
+    @_login_required
+    def api_sessions_get(sid):
+        uname = session.get("username", "anon")
+        row   = session_get(sid, uname)
+        return jsonify(row) if row else ("not found", 404)
+
+    @app.route("/api/sessions/<int:sid>", methods=["DELETE"])
+    @_login_required
+    def api_sessions_delete(sid):
+        session_delete(sid, session.get("username", "anon"))
         return jsonify({"ok": True})
 
     # ── transcripts / audio ───────────────────────────────────────────────────
     @app.route("/api/transcript/save", methods=["POST"])
     @_login_required
     def api_transcript_save():
-        d    = request.get_json(force=True) or {}
-        path = _TRANSCRIPTS_DIR / f"{uuid.uuid4().hex[:8]}.json"
-        path.write_text(json.dumps(d, indent=2))
-        return jsonify({"ok": True, "file": path.name})
+        uname = session.get("username", "anon")
+        d     = request.get_json(force=True) or {}
+        stype = d.get("session_type", "misc")
+        title = d.get("title", "")
+        turns = d.get("turns") or [{"speaker": "LOG", "text": d.get("content", "")}]
+        sid   = session_save(uname, stype, title, turns)
+        return jsonify({"ok": bool(sid), "id": sid})
 
     @app.route("/api/audio/list")
     @_login_required
@@ -646,14 +715,8 @@ def register_routes(app: Flask):
     @app.route("/api/transcripts/list")
     @_login_required
     def api_transcripts_list():
-        items = []
-        for f in sorted(_TRANSCRIPTS_DIR.iterdir(), reverse=True):
-            if f.suffix == ".json":
-                try:
-                    items.append(json.loads(f.read_text()))
-                except Exception:
-                    pass
-        return jsonify(items)
+        uname = session.get("username", "anon")
+        return jsonify(session_list(uname))
 
     # ── social ────────────────────────────────────────────────────────────────
     try:

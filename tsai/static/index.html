@@ -715,6 +715,7 @@ audio { width: 100%; margin-top: 4px; }
           <button id="upload-btn" onclick="document.getElementById('file-input').click()" title="Attach file">[FILE]</button>
           <input id="file-input" type="file" accept="image/*,audio/*,video/*" onchange="onFile(this)">
           <button id="speak-toggle" onclick="toggleAutoSpeak()" title="Auto-speak responses" style="background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:var(--font-size-sm);padding:1px 6px;letter-spacing:.08em;font-family:inherit">[SND]</button>
+          <button onclick="clearChat()" title="Clear conversation history" style="background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:var(--font-size-sm);padding:1px 6px;letter-spacing:.08em;font-family:inherit">[CLR]</button>
         </div>
         <div id="bot-toggle" onclick="toggleBot()">
           <span id="toggle-name">TWIN</span>
@@ -1662,6 +1663,37 @@ let defBot    = S.get('defBot', 'twin');
 let teamMode  = S.get('teamMode', 'normal');
 let history   = [];
 let boardMode   = 'normal';
+
+/* ── DB persistence helpers ─────────────────────────────── */
+function dbSaveTurn(botName, role, content) {
+  fetch('/api/history/save', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bot: botName, role, content }),
+  }).catch(() => {});
+}
+async function dbAutoSave(sessionType, title, turns) {
+  if (!turns || !turns.length) return null;
+  try {
+    const r = await fetch('/api/sessions/save', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_type: sessionType, title: title.slice(0,100), content: turns }),
+    });
+    const d = await r.json();
+    return d.id || null;
+  } catch { return null; }
+}
+async function dbLoadHistory(botName) {
+  try {
+    const r = await fetch('/api/history/load?bot=' + botName);
+    return await r.json();
+  } catch { return []; }
+}
+async function dbClearHistory(botName) {
+  await fetch('/api/history/clear', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bot: botName }),
+  }).catch(() => {});
+}
 let boardRounds = 1;
 let bsMode      = 'normal';
 let bsRounds    = 1;
@@ -1774,6 +1806,18 @@ const _labConcepts = {};
   setDef(defBot, true);
   setMode(teamMode, true);
   addMsg('SYSTEM', 'TWIN SHADOW v2.0 — AI ENGINE ACTIVE. TYPE YOUR COMMAND.');
+
+  dbLoadHistory(bot).then(rows => {
+    if (!rows || !rows.length) return;
+    rows.forEach(r => {
+      const who = r.role === 'user' ? uname : bot.toUpperCase();
+      addMsg(who, r.content);
+      history.push({ role: r.role, content: r.content });
+    });
+    addMsg('SYSTEM', `[${rows.length} MESSAGES RESTORED FROM ARCHIVE]`);
+    document.getElementById('msgs').scrollTop = 99999;
+  }).catch(() => {});
+
   fetch('/api/me').then(r => r.json()).then(me => {
     if (me.is_admin) {
       const ap = document.getElementById('admin-prompts');
@@ -1846,6 +1890,25 @@ function switchWrite(name, btn) {
 function toggleBot() {
   bot = bot === 'twin' ? 'shadow' : 'twin';
   S.set('bot', bot); applyBot(bot);
+  history = [];
+  document.getElementById('msgs').innerHTML = '';
+  addMsg('SYSTEM', 'TWIN SHADOW v2.0 — AI ENGINE ACTIVE. SWITCHING TO ' + bot.toUpperCase() + '...');
+  dbLoadHistory(bot).then(rows => {
+    if (!rows || !rows.length) { addMsg('SYSTEM', '[NO ARCHIVE FOR ' + bot.toUpperCase() + ']'); return; }
+    rows.forEach(r => {
+      addMsg(r.role === 'user' ? uname : bot.toUpperCase(), r.content);
+      history.push({ role: r.role, content: r.content });
+    });
+    addMsg('SYSTEM', `[${rows.length} MESSAGES RESTORED FROM ARCHIVE]`);
+    document.getElementById('msgs').scrollTop = 99999;
+  }).catch(() => {});
+}
+async function clearChat() {
+  if (!confirm('Clear this conversation from the archive?')) return;
+  await dbClearHistory(bot);
+  history = [];
+  document.getElementById('msgs').innerHTML = '';
+  addMsg('SYSTEM', 'ARCHIVE CLEARED. NEW SESSION STARTED.');
 }
 function applyBot(b) {
   document.getElementById('sw').classList.toggle('on', b === 'shadow');
@@ -1882,6 +1945,7 @@ async function send() {
   const label = pendingFile ? `${msg ? msg + ' ' : ''}[${pendingFile.name}]` : msg;
   addMsg(uname, label);
   history.push({ role: 'user', content: msg });
+  dbSaveTurn(bot, 'user', msg);
 
   el.value = ''; el.style.height = 'auto'; clearFile();
 
@@ -1929,6 +1993,7 @@ async function send() {
       _lastMsgBody  = body;
       _lastFullText = full;
       history.push({ role: 'assistant', content: full });
+      dbSaveTurn(bot, 'assistant', full);
 
       if (/```[\s\S]*?```/.test(full)) {
         const btn = document.createElement('button');
@@ -2156,6 +2221,7 @@ async function runBoardroom() {
     _labConcepts.boardroom = { topic, transcript: txt };
     document.getElementById('boardroom-lab-btn').style.display = '';
     document.getElementById('boardroom-extend-row').style.display = 'flex';
+    dbAutoSave('boardroom', topic || 'boardroom', boardTurns);
   }
 }
 
@@ -2207,6 +2273,7 @@ async function extendBoardroom() {
     _labConcepts.boardroom = { topic, transcript: txt };
     document.getElementById('boardroom-lab-btn').style.display = '';
     document.getElementById('boardroom-extend-row').style.display = 'flex';
+    dbAutoSave('boardroom', topic || 'boardroom-ext', boardTurns);
   }
 }
 
@@ -2256,6 +2323,8 @@ async function runBrainstorm() {
     document.getElementById('brainstorm-export-btn').href = URL.createObjectURL(blob);
     document.getElementById('brainstorm-export-btn').style.display = '';
     document.getElementById('brainstorm-extend-row').style.display = 'flex';
+    const bsTopic = document.getElementById('brainstorm-topic').value.trim();
+    dbAutoSave('brainstorm', bsTopic || 'brainstorm', bsTurns);
   }
 }
 
@@ -2298,6 +2367,8 @@ async function extendBrainstorm() {
     document.getElementById('brainstorm-export-btn').href = URL.createObjectURL(blob);
     document.getElementById('brainstorm-export-btn').style.display = '';
     document.getElementById('brainstorm-extend-row').style.display = 'flex';
+    const bsTopic2 = document.getElementById('brainstorm-topic').value.trim();
+    dbAutoSave('brainstorm', bsTopic2 || 'brainstorm-ext', bsTurns);
   }
 }
 
@@ -2663,6 +2734,8 @@ async function runPodcast() {
     document.getElementById('pod-export-btn').href = URL.createObjectURL(blob);
     document.getElementById('pod-export-btn').style.display = '';
     document.getElementById('pod-extend-row').style.display = 'flex';
+    const podTopic = document.getElementById('pod-topic').value.trim();
+    dbAutoSave('podcast', podTopic || 'podcast', POD.turns);
   }
 }
 
@@ -2705,6 +2778,8 @@ async function extendPodcast() {
     document.getElementById('pod-export-btn').href = URL.createObjectURL(blob);
     document.getElementById('pod-export-btn').style.display = '';
     document.getElementById('pod-extend-row').style.display = 'flex';
+    const podTopic2 = document.getElementById('pod-topic').value.trim();
+    dbAutoSave('podcast', podTopic2 || 'podcast-ext', POD.turns);
   }
 }
 
@@ -2731,19 +2806,11 @@ async function renderPodcastTTS() {
 async function savePodcastTranscript() {
   if (!POD.turns.length) return;
   const topic = document.getElementById('pod-topic').value.trim() || 'podcast';
-  const txt   = POD.turns.map(t => t.speaker + ': ' + t.text).join('\n\n');
-  try {
-    const res  = await fetch('/api/transcript/save', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: topic, content: txt, session_type: 'podcast' }),
-    });
-    const data = await res.json();
-    const btn  = document.getElementById('pod-save-btn');
-    btn.textContent = data.ok ? '[ SAVED ]' : '[ SAVE FAILED ]';
-    setTimeout(() => { btn.textContent = '[ SAVE ]'; }, 2000);
-  } catch(e) {
-    alert('Save error: ' + e);
-  }
+  const btn   = document.getElementById('pod-save-btn');
+  btn.textContent = '[ SAVING... ]'; btn.disabled = true;
+  const sid = await dbAutoSave('podcast', topic, POD.turns);
+  btn.textContent = sid ? '[ SAVED \u2713 ]' : '[ SAVE FAILED ]';
+  if (!sid) btn.disabled = false;
 }
 
 /* ─────────────────────────────────────────
@@ -3460,20 +3527,10 @@ async function saveTranscript(mode) {
   const topic = mode === 'boardroom'
     ? document.getElementById('boardroom-topic').value.trim()
     : document.getElementById('brainstorm-topic').value.trim();
-  const content = turns.map(t => t.speaker + ': ' + t.text).join('\n\n');
   const title = (topic || mode).slice(0, 80);
-  try {
-    const res  = await fetch('/api/transcript/save', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, content, session_type: mode }),
-    });
-    const data = await res.json();
-    btn.textContent = data.ok ? '[ SAVED \u2713 ]' : '[ SAVE FAILED ]';
-    if (!data.ok) btn.disabled = false;
-  } catch(e) {
-    btn.textContent = '[ SAVE FAILED ]';
-    btn.disabled = false;
-  }
+  const sid = await dbAutoSave(mode, title, turns);
+  btn.textContent = sid ? '[ SAVED \u2713 ]' : '[ SAVE FAILED ]';
+  if (!sid) btn.disabled = false;
 }
 
 /* ─────────────────────────────────────────
