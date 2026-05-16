@@ -767,7 +767,7 @@ audio { width: 100%; margin-top: 4px; }
           <div class="fg">
             <label class="fl">MISSION TYPE</label>
             <select class="fi" id="mission-type">
-              <option value="gorilla_marketing">Gorilla Marketing Blueprint</option>
+              <option value="gorilla_marketing">Guerrilla Marketing Blueprint</option>
               <option value="boardroom_analysis">Full Boardroom Analysis</option>
               <option value="strategy_deep">Strategy Deep Dive</option>
               <option value="creative_brief">Creative Brief</option>
@@ -1588,12 +1588,15 @@ audio { width: 100%; margin-top: 4px; }
       <div class="panel-scroll">
 
         <div class="fg">
-          <span class="fl">GORILLA MARKETING WAR ROOM</span>
+          <span class="fl" style="color:var(--neon-bright);letter-spacing:.14em">GUERRILLA MARKETING WAR ROOM</span>
+        </div>
+        <div style="color:var(--muted);font-size:var(--font-size-sm);margin-bottom:10px;line-height:1.5">
+          Moneyball philosophy. TWIN intelligence pre-brief → 6-specialist committee (Scout, Street, Culture, Arbitrage, Narrative, Closer) → blueprint. No generic advice. Real channels, real costs, real tactics.
         </div>
 
         <div class="fg">
           <span class="fl">THE BRIEF</span>
-          <textarea id="gorilla-brief" rows="3" style="width:100%;background:#0a000f;border:1px solid var(--purple);color:var(--neon);font-family:var(--font);font-size:var(--font-size-base);padding:8px;resize:vertical;box-sizing:border-box" placeholder="Your product, audience, goal, budget..."></textarea>
+          <textarea id="gorilla-brief" rows="4" style="width:100%;background:#0a000f;border:1px solid var(--purple);color:var(--neon);font-family:var(--font);font-size:var(--font-size-base);padding:8px;resize:vertical;box-sizing:border-box" placeholder="Your product, audience, goal, budget, competitors, what's been tried..."></textarea>
         </div>
 
         <div class="action-row">
@@ -1603,18 +1606,18 @@ audio { width: 100%; margin-top: 4px; }
         </div>
 
         <div class="fg" id="gorilla-progress" style="display:none">
-          <span class="fl">WAR ROOM IN SESSION</span>
+          <span class="fl" style="color:var(--cyan)">WAR ROOM IN SESSION</span>
           <div id="gorilla-member-bar" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px"></div>
         </div>
 
         <div id="gorilla-output" style="display:none">
           <div class="fg" id="gorilla-transcript-box">
             <span class="fl">COMMITTEE TRANSCRIPT</span>
-            <div id="gorilla-transcript" style="font-size:var(--font-size-sm);color:var(--dim);line-height:1.6;max-height:320px;overflow-y:auto;padding:4px 0"></div>
+            <div id="gorilla-transcript" style="font-size:var(--font-size-sm);color:var(--text);line-height:1.6;max-height:400px;overflow-y:auto;padding:4px 0;white-space:pre-wrap"></div>
           </div>
           <div class="fg" id="gorilla-blueprint-box">
-            <span class="fl" style="color:var(--neon-bright)">BLUEPRINT</span>
-            <div id="gorilla-blueprint" style="font-size:var(--font-size-base);color:var(--neon);line-height:1.7;white-space:pre-wrap;word-wrap:break-word"></div>
+            <span class="fl" style="color:var(--neon-bright)">GUERRILLA BLUEPRINT</span>
+            <div id="gorilla-blueprint" style="font-size:var(--font-size-base);color:var(--neon);line-height:1.8;white-space:pre-wrap;word-wrap:break-word"></div>
           </div>
         </div>
 
@@ -1678,7 +1681,7 @@ audio { width: 100%; margin-top: 4px; }
     <button class="nav-btn" onclick="switchTab('advisors', this)"><span class="nav-num">[5]</span>ADVISE</button>
     <button class="nav-btn" onclick="switchTab('social', this)"><span class="nav-num">[6]</span>SOCIAL</button>
     <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[7]</span>SETTINGS</button>
-    <button class="nav-btn" onclick="switchTab('gorilla', this)"><span class="nav-num">[8]</span>GORILLA</button>
+    <button class="nav-btn" onclick="switchTab('gorilla', this)"><span class="nav-num">[8]</span>GUERRILLA</button>
     <button class="nav-btn" onclick="switchTab('archive', this)"><span class="nav-num">[9]</span>ARCHIVE</button>
     <span class="nav-user" style="width:100%;order:99;text-align:right;padding:2px 8px;font-size:7px">{{ session.get('username', '') | upper }}&nbsp;<a class="nav-logout" href="/logout">[ EXIT ]</a></span>
   </nav>
@@ -3291,7 +3294,7 @@ async function loadMissions() {
       const sc    = _missionStatusColor(m.status);
       const hasResults = m.results && Object.keys(m.results).length > 0;
       const typeLabel = {
-        gorilla_marketing:  'GORILLA MARKETING',
+        gorilla_marketing:  'GUERRILLA MARKETING',
         boardroom_analysis: 'BOARDROOM ANALYSIS',
         strategy_deep:      'STRATEGY DEEP DIVE',
         creative_brief:     'CREATIVE BRIEF',
@@ -4782,9 +4785,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ─────────────────────────────────────────
-   GORILLA MARKETING WAR ROOM
+   GUERRILLA MARKETING WAR ROOM
 ───────────────────────────────────────── */
-const _GORILLA_MEMBERS = ['SCOUT','STREET','CULTURE','ARBITRAGE','NARRATIVE','CLOSER','TWIN'];
+const _GORILLA_MEMBERS = ['INTEL','SCOUT','STREET','CULTURE','ARBITRAGE','NARRATIVE','CLOSER','TWIN'];
 let _gorillaBusy = false;
 let _gorillaBlueprintText = '';
 let _gorillaTranscriptText = '';

@@ -1189,13 +1189,13 @@ def register_routes(app: Flask):
     def api_deploy_web():
         return jsonify({"ok": True, "message": "Use the Replit Publish button to deploy."})
 
-    # ── gorilla marketing war room ─────────────────────────────────────────────
+    # ── guerrilla marketing war room ──────────────────────────────────────────
     @app.route("/api/gorilla/run", methods=["POST"])
     @_login_required
     def api_gorilla_run():
         from part14_gorilla import (
-            GORILLA_COMMITTEE, GORILLA_SYNTHESIZER,
-            gorilla_member_prompt, gorilla_synthesizer_prompt,
+            GUERRILLA_COMMITTEE,
+            guerrilla_intel_prompt, guerrilla_member_prompt, guerrilla_synthesizer_prompt,
         )
         from part2_router import direct_stream as _ds, stream_task as _st
         from part1_registry import get_task_routing
@@ -1209,12 +1209,27 @@ def register_routes(app: Flask):
 
         async def _run():
             transcript = ""
-            for member in GORILLA_COMMITTEE:
+
+            # Step 0: TWIN intelligence pre-brief (runs before committee)
+            try:
+                q.put(("speaker", "INTEL"))
+                msgs  = guerrilla_intel_prompt(brief)
+                intel = ""
+                async for chunk in _st("twin", msgs):
+                    q.put(("ok", chunk))
+                    intel += chunk
+                q.put(("end", "INTEL"))
+                transcript += f"[TWIN INTELLIGENCE PRE-BRIEF]\n{intel}"
+            except Exception as e:
+                q.put(("err", f"[INTEL] {e}"))
+
+            # Step 1-6: Six specialist committee members
+            for member in GUERRILLA_COMMITTEE:
                 name = member["name"]
                 key  = member["key"]
                 try:
                     provider, model = get_task_routing(key)
-                    msgs = gorilla_member_prompt(member, brief, transcript)
+                    msgs = guerrilla_member_prompt(member, brief, transcript)
                     q.put(("speaker", name))
                     full = ""
                     async for chunk in _ds(provider, model, msgs):
@@ -1225,10 +1240,10 @@ def register_routes(app: Flask):
                 except Exception as e:
                     q.put(("err", f"[{name}] {e}"))
 
-            # Synthesizer: TWIN compiles the blueprint
+            # Step 7: TWIN synthesizes the final blueprint
             try:
                 q.put(("speaker", "TWIN"))
-                msgs = gorilla_synthesizer_prompt(brief, transcript)
+                msgs = guerrilla_synthesizer_prompt(brief, transcript)
                 async for chunk in _st("twin", msgs):
                     q.put(("ok", chunk))
                 q.put(("end", "TWIN"))
