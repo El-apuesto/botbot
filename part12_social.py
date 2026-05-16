@@ -516,6 +516,7 @@ async def run_social_pipeline(
     transcript_mode: str = "raw",   # raw | clean | summary
     max_clips: int = 5,
     on_progress=None,
+    job_id: str | None = None,
 ) -> SocialResult:
     """
     Full pipeline from upload to platform-ready content.
@@ -526,8 +527,9 @@ async def run_social_pipeline(
         transcript_mode:  "raw", "clean", or "summary"
         max_clips:        max number of short clips to identify
         on_progress:      optional async callable(step, message)
+        job_id:           optional pre-assigned job ID (generated if not provided)
     """
-    job_id = _next_job_id()
+    job_id = job_id or _next_job_id()
     result = SocialResult(
         job_id=job_id,
         source_file=source_path,

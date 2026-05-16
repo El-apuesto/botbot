@@ -635,6 +635,13 @@ def register_routes(app: Flask):
         pipeline_delete(job_id, session.get("username", "anon"))
         return jsonify({"ok": True})
 
+    @app.route("/api/pipeline/<job_id>", methods=["PATCH"])
+    @_login_required
+    def api_pipeline_patch(job_id):
+        d = request.get_json(force=True) or {}
+        pipeline_update_status(job_id, d.get("status", "queued"), session.get("username", "anon"))
+        return jsonify({"ok": True})
+
     @app.route("/api/pipeline/<job_id>/status", methods=["POST"])
     @_login_required
     def api_pipeline_status(job_id):
@@ -727,6 +734,9 @@ def register_routes(app: Flask):
     except Exception:
         _social_ok = False
 
+    # Map file_id → local filesystem path for the social pipeline
+    _social_uploads: dict = {}
+
     @app.route("/api/social/upload", methods=["POST"])
     @_login_required
     def api_social_upload():
@@ -736,7 +746,9 @@ def register_routes(app: Flask):
         fname = f"{uuid.uuid4().hex[:12]}{Path(f.filename).suffix.lower()}"
         dest  = _UPLOADS_DIR / fname
         f.save(str(dest))
-        return jsonify({"ok": True, "path": str(dest), "url": f"/uploads/{fname}"})
+        file_id = fname                      # file_id IS the filename
+        _social_uploads[file_id] = str(dest)
+        return jsonify({"ok": True, "file_id": file_id, "url": f"/uploads/{fname}"})
 
     @app.route("/api/social/process", methods=["POST"])
     @_login_required
@@ -744,11 +756,27 @@ def register_routes(app: Flask):
         if not _social_ok:
             return jsonify({"error": "social module unavailable"}), 503
         d          = request.get_json(force=True) or {}
-        video_path = d.get("video_path", "")
+        file_id    = d.get("file_id", d.get("video_path", ""))
         platforms  = d.get("platforms", ["tiktok"])
-        Thread(target=lambda: _run_async(run_social_pipeline(video_path, platforms)),
-               daemon=True).start()
-        return jsonify({"ok": True})
+        max_clips  = int(d.get("max_clips", 5))
+        # Resolve file_id → local path
+        local_path = _social_uploads.get(file_id)
+        if not local_path:
+            # Try treating file_id as a direct path or uploads URL
+            candidate = _UPLOADS_DIR / Path(file_id).name
+            if candidate.exists():
+                local_path = str(candidate)
+            else:
+                return jsonify({"error": f"Unknown file_id: {file_id}. Upload the file first."}), 400
+        # Pre-assign a job_id so we can return it immediately
+        job_id = f"SOC{uuid.uuid4().hex[:6].upper()}"
+        Thread(
+            target=lambda: _run_async(
+                run_social_pipeline(local_path, platforms, max_clips=max_clips, job_id=job_id)
+            ),
+            daemon=True,
+        ).start()
+        return jsonify({"ok": True, "job_id": job_id})
 
     @app.route("/api/social/job/<job_id>")
     @_login_required
