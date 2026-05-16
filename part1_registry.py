@@ -258,7 +258,7 @@ TASK_MODELS: dict = {
     # ── routing / summarization (Cerebras fast) ───────────────────────────────
     "routing":          ("cerebras",     "llama_small"),
     "summarize":        ("cerebras",     "llama_small"),
-    "relay":            ("nvidia",       "kimi_k2"),
+    "relay":            ("nvidia",       "minimax_m25"),
 
     # ── shadow / dark personas ────────────────────────────────────────────────
     "board_dolphin":    ("venice",       "gemma4_uncensored"),
@@ -300,7 +300,7 @@ TASK_MODELS: dict = {
     "fast_reasoning":   ("venice",       "deepseek_flash"),
 
     # ── regular boardroom seats (6 free NVIDIA) ───────────────────────────────
-    "board_strategy":       ("nvidia",   "kimi_k2"),
+    "board_strategy":       ("nvidia",   "minimax_m25"),
     "board_finance":        ("nvidia",   "mistral_large3"),
     "board_creative":       ("nvidia",   "palmyra_creative_122b"),
     "board_tech":           ("nvidia",   "devstral"),
@@ -315,11 +315,11 @@ TASK_MODELS: dict = {
     "brainstorm_qwq":       ("groq",     "qwq_32b"),
     "brainstorm_minimax":   ("nvidia",   "minimax_m25"),
     "brainstorm_glm":       ("nvidia",   "glm51"),
-    "brainstorm_kimi":      ("nvidia",   "kimi_k2"),
+    "brainstorm_kimi":      ("nvidia",   "minimax_m25"),
     "brainstorm_mistral":   ("nvidia",   "mistral_large3"),
 
     # ── legacy board keys (back-compat with part6/part7) ──────────────────────
-    "board_hermes":     ("nvidia",       "kimi_k2"),
+    "board_hermes":     ("nvidia",       "minimax_m25"),
     "board_gptoss":     ("venice",       "hermes_405b"),
     "board_qwen":       ("nvidia",       "glm51"),
     "board_mistral":    ("nvidia",       "mistral_large3"),
@@ -329,7 +329,7 @@ TASK_MODELS: dict = {
     # ── committee sub-model slots (pre-discussion) ────────────────────────────
     "committee_strategy_1": ("nvidia",   "nemotron_ultra_253b"),
     "committee_strategy_2": ("nvidia",   "qwen35_397b"),
-    "committee_strategy_3": ("nvidia",   "kimi_k2_thinking"),
+    "committee_strategy_3": ("nvidia",   "deepseek_v3"),
     "committee_finance_1":  ("nvidia",   "palmyra_fin_70b"),
     "committee_finance_2":  ("nvidia",   "magistral_small"),
     "committee_finance_3":  ("nvidia",   "mistral_medium35"),

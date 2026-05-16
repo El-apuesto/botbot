@@ -241,7 +241,7 @@ async def _exec_strategy_deep(mission: Mission):
     members = [
         {"key": "committee_strategy_1", "name": "NEMOTRON",  "angle": "long-range macro positioning"},
         {"key": "committee_strategy_2", "name": "QWEN",      "angle": "competitive dynamics and market structure"},
-        {"key": "committee_strategy_3", "name": "KIMI",      "angle": "assumptions, risks, and blind spots"},
+        {"key": "committee_strategy_3", "name": "DEEPSEEK",  "angle": "assumptions, risks, and blind spots"},
     ]
     transcript = ""
     for m in members:

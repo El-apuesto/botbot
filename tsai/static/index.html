@@ -3408,6 +3408,7 @@ async function viewMission(mid) {
 
   const phaseLabels = {
     committee:       'COMMITTEE TRANSCRIPT',
+    synthesis:       'TWIN SYNTHESIS',
     blueprint:       'TWIN BLUEPRINT',
     boardroom:       'BOARDROOM SESSION',
     summary:         'EXECUTIVE SUMMARY',
@@ -3419,10 +3420,13 @@ async function viewMission(mid) {
     report:          'INTELLIGENCE REPORT',
   };
 
+  // Keys that are internal metadata — never display as result blocks
+  const _SKIP_KEYS = new Set(['committee_config', 'error_detail']);
+
   const phasesEl = document.getElementById('viewer-phases');
   phasesEl.innerHTML = '';
 
-  const phases = Object.entries(m.results || {});
+  const phases = Object.entries(m.results || {}).filter(([k]) => !_SKIP_KEYS.has(k));
   if (!phases.length) {
     phasesEl.innerHTML = '<p style="color:var(--muted);font-size:var(--font-size-sm)">No results yet.</p>';
     return;

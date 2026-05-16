@@ -22,7 +22,7 @@ COMMITTEE_ROSTER = [
     # Strategy
     {"key": "committee_strategy_1", "name": "NEMOTRON",    "domain": "strategy",  "desc": "Macro strategy, long-range planning, market positioning, competitive landscape"},
     {"key": "committee_strategy_2", "name": "QWEN-STRAT",  "domain": "strategy",  "desc": "Competitive analysis, structured strategic frameworks, market dynamics, SWOT"},
-    {"key": "committee_strategy_3", "name": "KIMI-THINK",  "domain": "strategy",  "desc": "Deep chain-of-thought reasoning, challenging assumptions, identifying blindspots and second-order effects"},
+    {"key": "committee_strategy_3", "name": "DEEPSEEK-R",  "domain": "strategy",  "desc": "Deep chain-of-thought reasoning, challenging assumptions, identifying blindspots and second-order effects"},
     # Finance
     {"key": "committee_finance_1",  "name": "PALMYRA-FIN", "domain": "finance",   "desc": "Financial modeling, unit economics, investment analysis, revenue projections"},
     {"key": "committee_finance_2",  "name": "MAGISTRAL",   "domain": "finance",   "desc": "Risk assessment, regulatory analysis, compliance, downside scenarios"},
