@@ -2567,19 +2567,55 @@ const _POD_DEFAULTS = [
   { name: 'GUEST', role: 'Guest', personality: 'Expert, opinionated, not afraid to contradict' },
 ];
 
-const _POD_VOICES = `
-  <option value="Ava-PlayAI">Ava (female)</option>
-  <option value="Orion-PlayAI">Orion (male, deep)</option>
-  <option value="Atlas-PlayAI">Atlas (male)</option>
-  <option value="Hudson-PlayAI">Hudson (male)</option>
-  <option value="Chip-PlayAI">Chip (male)</option>
-  <option value="Fritz-PlayAI">Fritz (male, accent)</option>
-  <option value="Briggs-PlayAI">Briggs (male)</option>
-  <option value="Celeste-PlayAI">Celeste (female)</option>
-  <option value="Mist-PlayAI">Mist (female)</option>
-  <option value="Seraphina-PlayAI">Seraphina (female)</option>
-  <option value="Calum-PlayAI">Calum (male)</option>
-`;
+const _POD_VOICES_PLAYAI = [
+  { value: 'Ava-PlayAI',      label: 'Ava (female)' },
+  { value: 'Orion-PlayAI',    label: 'Orion (male, deep)' },
+  { value: 'Atlas-PlayAI',    label: 'Atlas (male)' },
+  { value: 'Hudson-PlayAI',   label: 'Hudson (male)' },
+  { value: 'Chip-PlayAI',     label: 'Chip (male)' },
+  { value: 'Fritz-PlayAI',    label: 'Fritz (male, accent)' },
+  { value: 'Briggs-PlayAI',   label: 'Briggs (male)' },
+  { value: 'Celeste-PlayAI',  label: 'Celeste (female)' },
+  { value: 'Mist-PlayAI',     label: 'Mist (female)' },
+  { value: 'Seraphina-PlayAI',label: 'Seraphina (female)' },
+  { value: 'Calum-PlayAI',    label: 'Calum (male)' },
+];
+
+let _elVoicesList = [];  // [{name, voice_id}] populated from /api/voices
+
+async function _fetchElVoices() {
+  try {
+    const r = await fetch('/api/voices');
+    const d = await r.json();
+    if (d.ok && d.voices && d.voices.length) {
+      _elVoicesList = d.voices;
+      document.querySelectorAll('.pod-sp-voice').forEach(sel => {
+        const cur = sel.value;
+        sel.innerHTML = _buildVoiceOpts(cur);
+      });
+    }
+  } catch(e) {}
+}
+
+function _buildVoiceOpts(selected) {
+  selected = selected || 'Ava-PlayAI';
+  let html = '';
+  if (_elVoicesList.length) {
+    html += '<optgroup label="── ElevenLabs ──">';
+    _elVoicesList.forEach(v => {
+      const sel = (v.voice_id === selected || v.name === selected) ? ' selected' : '';
+      html += `<option value="${v.voice_id}"${sel}>${v.name}</option>`;
+    });
+    html += '</optgroup>';
+  }
+  html += '<optgroup label="── gTTS Fallback ──">';
+  _POD_VOICES_PLAYAI.forEach(v => {
+    const sel = v.value === selected ? ' selected' : '';
+    html += `<option value="${v.value}"${sel}>${v.label}</option>`;
+  });
+  html += '</optgroup>';
+  return html;
+}
 
 function _podSpeakers() {
   return Array.from(document.querySelectorAll('.pod-speaker-card')).map(card => ({
@@ -2629,7 +2665,7 @@ function _podMakeCard(name, role, pers, voice, pitch, speed, model) {
   const card = document.createElement('div');
   card.className = 'pod-speaker-card';
   card.style.cssText = 'border:1px solid var(--purple-dim);padding:8px;margin-bottom:6px';
-  const voiceOpts = _POD_VOICES.replace(`value="${voice}"`, `value="${voice}" selected`);
+  const voiceOpts = _buildVoiceOpts(voice);
   const pitchFmt  = parseFloat(pitch || 1.0).toFixed(2);
   const speedFmt  = parseFloat(speed || 1.0).toFixed(2);
   const modelKey  = model || 'twin';
@@ -4782,6 +4818,7 @@ function charRenderRoster() {
 /* init podcast cast on load */
 document.addEventListener('DOMContentLoaded', () => {
   _podRebuildCast(2);
+  _fetchElVoices();
 });
 
 /* ─────────────────────────────────────────

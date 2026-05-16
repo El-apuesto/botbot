@@ -546,21 +546,148 @@ def register_routes(app: Flask):
         Thread(target=lambda: _run_async(_run()), daemon=True).start()
         return _multi_agent_sse(q)
 
+    # ── ElevenLabs voice list (cached per process) ────────────────────────────
+    _el_voice_cache: list = []
+
+    def _fetch_el_voices(api_key: str) -> list:
+        """Return [{name, voice_id}] from ElevenLabs API."""
+        import requests as _req
+        try:
+            r = _req.get(
+                "https://api.elevenlabs.io/v1/voices",
+                headers={"xi-api-key": api_key},
+                timeout=10,
+            )
+            if r.status_code == 200:
+                return [
+                    {"name": v["name"], "voice_id": v["voice_id"]}
+                    for v in r.json().get("voices", [])
+                ]
+        except Exception:
+            pass
+        return []
+
+    def _el_voice_id(name_or_id: str, voices: list) -> str | None:
+        """Resolve a voice name or voice_id to an EL voice_id. None if not found."""
+        low = name_or_id.lower()
+        for v in voices:
+            if v["voice_id"] == name_or_id or v["name"].lower() == low:
+                return v["voice_id"]
+        return None
+
+    @app.route("/api/voices")
+    @_login_required
+    def api_voices():
+        import os as _os
+        for key_env in ("ELEVENLABS_API_KEY_1", "ELEVENLABS_API_KEY_2"):
+            api_key = _os.environ.get(key_env, "")
+            if not api_key:
+                continue
+            voices = _fetch_el_voices(api_key)
+            if voices:
+                _el_voice_cache.clear()
+                _el_voice_cache.extend(voices)
+                return jsonify({"ok": True, "voices": voices})
+        return jsonify({"ok": False, "voices": [], "error": "No ElevenLabs key configured"})
+
     # ── TTS ───────────────────────────────────────────────────────────────────
     @app.route("/api/tts", methods=["POST"])
     @_login_required
     def api_tts():
-        d     = request.get_json(force=True) or {}
-        turns = d.get("turns", [])
+        import os as _os, subprocess, tempfile, shutil
+        d               = request.get_json(force=True) or {}
+        turns           = d.get("turns", [])
+        voice_overrides = d.get("voice_overrides", {})   # {SPEAKER_NAME: voice_id}
         if not turns:
             return jsonify({"error": "no turns"}), 400
-        text  = " ".join(f"{t.get('speaker','')}: {t.get('text','')}" for t in turns)
+
         fname = f"tts_{uuid.uuid4().hex[:8]}.mp3"
         out   = _AUDIO_DIR / fname
+
+        # ── resolve ElevenLabs key + voice map ───────────────────────────────
+        el_key    = None
+        el_voices: list = []
+        for key_env in ("ELEVENLABS_API_KEY_1", "ELEVENLABS_API_KEY_2"):
+            k = _os.environ.get(key_env, "")
+            if k:
+                el_key = k
+                break
+
+        if el_key:
+            el_voices = _el_voice_cache if _el_voice_cache else _fetch_el_voices(el_key)
+            if el_voices and not _el_voice_cache:
+                _el_voice_cache.extend(el_voices)
+
+        # ── per-speaker clips ─────────────────────────────────────────────────
+        if el_key and el_voices:
+            tmpdir     = Path(tempfile.mkdtemp())
+            clip_paths = []
+            all_ok     = True
+
+            for i, turn in enumerate(turns):
+                speaker  = (turn.get("speaker") or "SPEAKER").upper()
+                text     = (turn.get("text") or "").strip()
+                if not text:
+                    continue
+
+                clip_path = tmpdir / f"clip_{i:04d}.mp3"
+                override  = voice_overrides.get(speaker, voice_overrides.get(speaker.title(), ""))
+                voice_id  = _el_voice_id(override, el_voices) if override else None
+
+                if voice_id:
+                    import requests as _req
+                    try:
+                        r = _req.post(
+                            f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
+                            headers={"xi-api-key": el_key, "Content-Type": "application/json"},
+                            json={
+                                "text": text[:3000],
+                                "model_id": "eleven_multilingual_v2",
+                                "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
+                            },
+                            timeout=30,
+                        )
+                        if r.status_code == 200:
+                            clip_path.write_bytes(r.content)
+                        else:
+                            all_ok = False
+                    except Exception:
+                        all_ok = False
+                else:
+                    try:
+                        from gtts import gTTS
+                        gTTS(text=f"{speaker}: {text}"[:3000], lang="en").save(str(clip_path))
+                    except Exception:
+                        all_ok = False
+
+                if not all_ok:
+                    break
+                clip_paths.append(str(clip_path))
+
+            if all_ok and clip_paths:
+                if len(clip_paths) == 1:
+                    shutil.copy(clip_paths[0], str(out))
+                else:
+                    list_file = tmpdir / "list.txt"
+                    list_file.write_text("\n".join(f"file '{p}'" for p in clip_paths))
+                    try:
+                        subprocess.run(
+                            ["ffmpeg", "-y", "-f", "concat", "-safe", "0",
+                             "-i", str(list_file), "-c", "copy", str(out)],
+                            capture_output=True, timeout=120,
+                        )
+                    except Exception:
+                        pass
+                shutil.rmtree(str(tmpdir), ignore_errors=True)
+                if out.exists():
+                    return jsonify({"url": f"/audio/{fname}", "engine": "elevenlabs"})
+
+        # ── gTTS full-transcript fallback ─────────────────────────────────────
         try:
             from gtts import gTTS
+            text = " ".join(f"{t.get('speaker','')}: {t.get('text','')}" for t in turns)
             gTTS(text=text[:3000], lang="en").save(str(out))
-            return jsonify({"url": f"/audio/{fname}"})
+            return jsonify({"url": f"/audio/{fname}", "engine": "gtts"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
