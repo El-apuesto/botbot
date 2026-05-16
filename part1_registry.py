@@ -291,9 +291,9 @@ TASK_MODELS: dict = {
     "code_check":       ("groq",         "llama"),
     "code_check_v2":    ("venice",       "gpt_codex_52"),
     "code_reason":      ("groq",         "qwq_32b"),
-    "builder":          ("venice",        "gpt_codex_52"),
-    "builder_review":   ("venice",        "gpt_codex_53"),
-    "builder_check":    ("venice",        "gpt_codex_52"),
+    "builder":          ("nvidia",        "glm51"),
+    "builder_review":   ("nvidia",        "qwen_coder_480"),
+    "builder_check":    ("nvidia",        "glm51"),
 
     # ── vision ────────────────────────────────────────────────────────────────
     "vision":           ("nvidia",       "vision_90b"),
