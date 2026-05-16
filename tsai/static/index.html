@@ -3499,6 +3499,7 @@ async function loadPipeline() {
           `<span class="job-name" title="${_esc(job.name)}">${_esc(job.name)}</span>` +
           `<button class="job-status" data-s="${job.status}" data-id="${job.id}"
                    onclick="cycleStatus(this)" title="Click to cycle status">[${job.status.toUpperCase()}]</button>` +
+          `<button class="btn" style="font-size:11px;padding:2px 7px" onclick="runPipelineJob('${_esc(job.name)}','${_esc((job.description||'').replace(/'/g,"\\'"))}')">[ RUN ]</button>` +
           `<button class="job-del" onclick="delJob(${job.id})">[ DEL ]</button>` +
         `</div>` +
         desc + meta;
@@ -3539,6 +3540,20 @@ async function addPipelineJob() {
     desc.value = '';
     loadPipeline();
   } catch {}
+}
+
+function runPipelineJob(name, description) {
+  /* Switch to LABS → CODE, pre-fill builder with the job, auto-run */
+  const task = (description || name || '').trim();
+  if (!task) return;
+  // Switch tabs
+  switchTab('lab', document.querySelector('.nav-btn[onclick*="lab"]'));
+  switchLab('code', document.querySelector('#panel-lab .lab-tab[onclick*="code"]'));
+  // Fill builder input
+  const inp = document.getElementById('builder-input');
+  if (inp) inp.value = task;
+  // Auto-run builder
+  setTimeout(() => runBuilder(), 150);
 }
 
 async function delJob(id) {
@@ -4058,15 +4073,33 @@ async function spawnBot() {
     const data = await res.json();
     if (data.ok) {
       btn.textContent = '[ SPAWNED \u2713 ]';
-      addMsg('SYSTEM', `BOT SPAWNED: ${data.name} (pid ${data.pid}) — id: ${data.id}`);
+      const el = document.getElementById('bot-monitor-list');
+      const err = document.getElementById('bot-spawn-error');
+      if (err) err.style.display = 'none';
       botRefresh();
     } else {
-      alert('Spawn failed: ' + (data.error || 'unknown'));
       btn.textContent = '[ SPAWN BOT ]';
+      let err = document.getElementById('bot-spawn-error');
+      if (!err) {
+        err = document.createElement('div');
+        err.id = 'bot-spawn-error';
+        err.style.cssText = 'color:var(--red);font-size:var(--font-size-sm);padding:6px 0;white-space:pre-wrap';
+        btn.parentNode.insertBefore(err, btn.nextSibling);
+      }
+      err.style.display = '';
+      err.textContent = '[ERROR] ' + (data.error || 'Spawn failed — build and deploy a script first.');
     }
   } catch(e) {
-    alert('Spawn error: ' + e);
     btn.textContent = '[ SPAWN BOT ]';
+    let err = document.getElementById('bot-spawn-error');
+    if (!err) {
+      err = document.createElement('div');
+      err.id = 'bot-spawn-error';
+      err.style.cssText = 'color:var(--red);font-size:var(--font-size-sm);padding:6px 0';
+      btn.parentNode.insertBefore(err, btn.nextSibling);
+    }
+    err.style.display = '';
+    err.textContent = '[ERROR] ' + e;
   }
   btn.disabled = false;
 }
