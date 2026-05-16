@@ -9,6 +9,8 @@ import json
 import os
 import queue as Q
 import re
+import urllib.parse
+import urllib.request
 import uuid
 from functools import wraps
 from pathlib import Path
@@ -976,17 +978,45 @@ def register_routes(app: Flask):
         d       = request.get_json(force=True) or {}
         concept = d.get("concept", "")
         msgs    = [
-            {"role": "system", "content":
-             "You generate short-form video storyboards as JSON. "
-             "Return ONLY a JSON object with a 'scenes' array. "
-             "Each scene: {scene_num, title, visual_prompt, voiceover, duration_s}. 4-6 scenes."},
+            {"role": "system", "content": (
+                "You generate short-form video storyboards as JSON. "
+                "Return ONLY valid JSON — no markdown, no code fences, no explanation. "
+                "Output a JSON object with a 'scenes' array of 4-6 scenes. "
+                "Each scene must have EXACTLY these fields: "
+                "id (string like 'scene_1'), "
+                "title (short scene name), "
+                "description (detailed visual prompt for image/video AI — rich, specific, cinematic), "
+                "voiceover (spoken narration text for this scene, 1-3 sentences), "
+                "style (visual style descriptor like 'dark cinematic occult', 'neon noir', etc.), "
+                "duration (integer seconds, 3-6). "
+                "Example: {\"scenes\": [{\"id\": \"scene_1\", \"title\": \"Opening\", "
+                "\"description\": \"A hooded figure stands at the edge of a cliff at dusk...\", "
+                "\"voiceover\": \"In the beginning, there was only silence.\", "
+                "\"style\": \"dark cinematic occult\", \"duration\": 4}]}"
+            )},
             {"role": "user", "content": f"Create a storyboard for: {concept}"},
         ]
         try:
-            raw    = _run_async(_ct("twin", msgs))
-            m      = re.search(r"\{.*\}", raw, re.DOTALL)
-            parsed = json.loads(m.group(0)) if m else {"scenes": []}
-            return jsonify(parsed)
+            raw = _run_async(_ct("twin", msgs))
+            # Strip markdown fences if model wrapped in them
+            raw = re.sub(r"```(?:json)?\s*", "", raw).strip().rstrip("`")
+            # Find the JSON object
+            m = re.search(r"\{[\s\S]*\}", raw)
+            if not m:
+                return jsonify({"error": "Model did not return valid JSON", "raw": raw[:500]}), 500
+            parsed = json.loads(m.group(0))
+            # Ensure scenes have required fields with fallbacks
+            scenes = parsed.get("scenes", [])
+            for i, sc in enumerate(scenes):
+                sc.setdefault("id", f"scene_{i+1}")
+                sc.setdefault("description", sc.get("visual_prompt", sc.get("title", f"Scene {i+1}")))
+                sc.setdefault("voiceover", sc.get("narration", sc.get("script", "")))
+                sc.setdefault("style", "cinematic dark occult")
+                sc.setdefault("duration", 4)
+                sc.setdefault("title", f"Scene {i+1}")
+            return jsonify({"scenes": scenes})
+        except json.JSONDecodeError as e:
+            return jsonify({"error": f"JSON parse error: {e}", "raw": raw[:500]}), 500
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -995,9 +1025,14 @@ def register_routes(app: Flask):
     def api_lab_image():
         from part4_video import fal_generate_image
         d = request.get_json(force=True) or {}
+        # Frontend sends 'description'; support both field names
+        prompt = d.get("prompt") or d.get("description", "")
+        style  = d.get("style", "")
+        ref    = d.get("reference_frame") or d.get("reference_clip")
+        if not prompt:
+            return jsonify({"error": "No prompt or description provided"}), 400
         try:
-            result = _run_async(fal_generate_image(d.get("prompt",""), d.get("style",""),
-                                                    d.get("reference_frame")))
+            result = _run_async(fal_generate_image(prompt, style, ref))
             return jsonify(result)
         except Exception as e:
             return jsonify({"error": str(e)}), 500
@@ -1116,6 +1151,309 @@ def register_routes(app: Flask):
             return jsonify(json.loads(_LAB_CONCEPT.read_text()) if _LAB_CONCEPT.exists() else {})
         _LAB_CONCEPT.write_text(json.dumps(request.get_json(force=True) or {}))
         return jsonify({"ok": True})
+
+    # ── lab session persistence ────────────────────────────────────────────────
+    @app.route("/api/lab/session", methods=["GET", "POST"])
+    @_login_required
+    def api_lab_session():
+        uname    = session.get("username", "anon")
+        sess_file = _ROOT / f"lab_session_{uname}.json"
+        if request.method == "GET":
+            if sess_file.exists():
+                try:
+                    return jsonify(json.loads(sess_file.read_text()))
+                except Exception:
+                    return jsonify({})
+            return jsonify({})
+        data = request.get_json(force=True) or {}
+        sess_file.write_text(json.dumps(data))
+        return jsonify({"ok": True})
+
+    # ── lab file listing ───────────────────────────────────────────────────────
+    @app.route("/api/lab/files")
+    @_login_required
+    def api_lab_files():
+        exts_video = {".mp4", ".mov", ".avi", ".webm", ".mkv"}
+        exts_audio = {".mp3", ".wav", ".ogg", ".m4a", ".aac"}
+        exts_image = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+        files = []
+        if _UPLOADS_DIR.exists():
+            for f in sorted(_UPLOADS_DIR.iterdir(), key=lambda x: -x.stat().st_mtime):
+                ext = f.suffix.lower()
+                if ext in exts_video | exts_audio | exts_image:
+                    ftype = "video" if ext in exts_video else ("audio" if ext in exts_audio else "image")
+                    files.append({
+                        "name": f.name, "url": f"/uploads/{f.name}",
+                        "path": str(f), "type": ftype,
+                        "size": f.stat().st_size,
+                    })
+        if _RENDERS_DIR.exists():
+            for f in sorted(_RENDERS_DIR.iterdir(), key=lambda x: -x.stat().st_mtime):
+                if f.suffix.lower() == ".mp4":
+                    files.append({
+                        "name": f.name, "url": f"/renders/{f.name}",
+                        "path": str(f), "type": "render",
+                        "size": f.stat().st_size,
+                    })
+        return jsonify(files)
+
+    # ── pexels stock footage ───────────────────────────────────────────────────
+    @app.route("/api/lab/pexels")
+    @_login_required
+    def api_lab_pexels():
+        import urllib.request as _ur
+        key = os.environ.get("PEXELS_API_KEY", "")
+        if not key:
+            return jsonify({"results": [], "error": "PEXELS_API_KEY not set"})
+        q           = request.args.get("q", "")
+        orientation = request.args.get("orientation", "landscape")
+        if not q:
+            return jsonify({"results": []})
+        url = f"https://api.pexels.com/videos/search?query={urllib.parse.quote(q)}&per_page=12&orientation={orientation}"
+        req = urllib.request.Request(url, headers={"Authorization": key})
+        try:
+            with _ur.urlopen(req, timeout=10) as r:
+                data = json.loads(r.read())
+            results = []
+            for v in data.get("videos", []):
+                files = v.get("video_files", [])
+                hd = next((f for f in files if f.get("quality") in ("hd", "sd")), files[0] if files else None)
+                if hd:
+                    results.append({
+                        "id": v["id"], "url": hd["link"],
+                        "thumb": v.get("image", ""),
+                        "duration": v.get("duration", 0),
+                        "width": hd.get("width", 0), "height": hd.get("height", 0),
+                    })
+            return jsonify({"results": results})
+        except Exception as e:
+            return jsonify({"results": [], "error": str(e)})
+
+    @app.route("/api/lab/pexels/import", methods=["POST"])
+    @_login_required
+    def api_lab_pexels_import():
+        import urllib.request as _ur
+        d   = request.get_json(force=True) or {}
+        url = d.get("url", "")
+        if not url:
+            return jsonify({"error": "url required"}), 400
+        fname = f"pexels_{uuid.uuid4().hex[:8]}.mp4"
+        dest  = _UPLOADS_DIR / fname
+        try:
+            _ur.urlretrieve(url, str(dest))
+            return jsonify({"ok": True, "url": f"/uploads/{fname}", "path": str(dest), "name": fname})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    # ── fonts listing ──────────────────────────────────────────────────────────
+    @app.route("/api/lab/fonts")
+    @_login_required
+    def api_lab_fonts():
+        defaults = [
+            {"name": "VT323",             "url": "https://fonts.googleapis.com/css2?family=VT323&display=swap"},
+            {"name": "Press Start 2P",    "url": "https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"},
+            {"name": "Courier New",       "url": None},
+            {"name": "Impact",            "url": None},
+            {"name": "Arial Black",       "url": None},
+        ]
+        return jsonify(defaults)
+
+    # ── ensure file is local (download remote URL) ─────────────────────────────
+    @app.route("/api/lab/ensure_local", methods=["POST"])
+    @_login_required
+    def api_lab_ensure_local():
+        import urllib.request as _ur
+        d   = request.get_json(force=True) or {}
+        url = d.get("url", "")
+        if not url:
+            return jsonify({"error": "url required"}), 400
+        if url.startswith("/"):
+            # Already a local path served by this server — resolve to filesystem
+            rel = url.lstrip("/")
+            local = _ROOT / rel
+            if local.exists():
+                return jsonify({"ok": True, "path": str(local), "url": url})
+            return jsonify({"error": "local file not found"}), 404
+        suffix = Path(url.split("?")[0]).suffix.lower() or ".mp4"
+        fname  = f"dl_{uuid.uuid4().hex[:8]}{suffix}"
+        dest   = _UPLOADS_DIR / fname
+        try:
+            _ur.urlretrieve(url, str(dest))
+            return jsonify({"ok": True, "path": str(dest), "url": f"/uploads/{fname}"})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    # ── transcribe audio/video ─────────────────────────────────────────────────
+    @app.route("/api/lab/transcribe", methods=["POST"])
+    @_login_required
+    def api_lab_transcribe():
+        import urllib.request as _ur
+        d         = request.get_json(force=True) or {}
+        file_path = d.get("path", d.get("url", ""))
+        hf_key    = os.environ.get("HUGGINGFACE_API_KEY", "")
+        if not file_path:
+            return jsonify({"error": "path required"}), 400
+        # Resolve to local path
+        if file_path.startswith("/uploads/") or file_path.startswith("/renders/"):
+            rel  = file_path.lstrip("/")
+            local = _ROOT / rel
+        else:
+            local = Path(file_path)
+        if not local.exists():
+            return jsonify({"error": f"File not found: {file_path}"}), 404
+        if not hf_key:
+            return jsonify({"error": "HUGGINGFACE_API_KEY not set — transcription unavailable"}), 400
+        try:
+            with open(str(local), "rb") as fh:
+                audio_bytes = fh.read()
+            req = urllib.request.Request(
+                "https://api-inference.huggingface.co/models/openai/whisper-large-v3",
+                data=audio_bytes,
+                headers={"Authorization": f"Bearer {hf_key}", "Content-Type": "audio/mpeg"},
+                method="POST",
+            )
+            with _ur.urlopen(req, timeout=120) as r:
+                result = json.loads(r.read())
+            return jsonify({"text": result.get("text", ""), "ok": True})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    # ── highlight extraction (LLM-based) ───────────────────────────────────────
+    @app.route("/api/lab/highlights", methods=["POST"])
+    @_login_required
+    def api_lab_highlights():
+        from part2_router import call_task as _ct
+        d          = request.get_json(force=True) or {}
+        transcript = d.get("transcript", "")
+        duration   = d.get("duration", 0)
+        count      = min(int(d.get("count", 3)), 8)
+        if not transcript:
+            return jsonify({"error": "transcript required"}), 400
+        msgs = [
+            {"role": "system", "content": (
+                "You extract highlight timestamps from transcripts. "
+                "Return ONLY valid JSON: {\"highlights\": [{\"start\": 12.5, \"end\": 45.0, "
+                "\"label\": \"Best moment\", \"reason\": \"why this is a highlight\"}]}. "
+                "No markdown. No explanation. Just JSON."
+            )},
+            {"role": "user", "content": (
+                f"Extract {count} highlight clips from this transcript. "
+                f"Video duration: {duration}s.\n\nTRANSCRIPT:\n{transcript[:4000]}"
+            )},
+        ]
+        try:
+            raw = _run_async(_ct("twin", msgs))
+            raw = re.sub(r"```(?:json)?\s*", "", raw).strip().rstrip("`")
+            m   = re.search(r"\{[\s\S]*\}", raw)
+            parsed = json.loads(m.group(0)) if m else {"highlights": []}
+            return jsonify(parsed)
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    # ── FFmpeg cut ─────────────────────────────────────────────────────────────
+    @app.route("/api/lab/cut", methods=["POST"])
+    @_login_required
+    def api_lab_cut():
+        import subprocess, shutil
+        d     = request.get_json(force=True) or {}
+        path  = d.get("path", "")
+        start = float(d.get("start", 0))
+        end   = float(d.get("end", 0))
+        if not path or end <= start:
+            return jsonify({"error": "path, start, end required and end > start"}), 400
+        # Resolve local file
+        if path.startswith("/uploads/") or path.startswith("/renders/"):
+            local = _ROOT / path.lstrip("/")
+        else:
+            local = Path(path)
+        if not local.exists():
+            return jsonify({"error": "file not found"}), 404
+        ffmpeg = shutil.which("ffmpeg") or "/nix/store/3zc5jbvqzrn8zmva4fx5p19goxxa8bm-ffmpeg-7.1/bin/ffmpeg"
+        fname  = f"cut_{uuid.uuid4().hex[:8]}.mp4"
+        out    = _UPLOADS_DIR / fname
+        try:
+            result = subprocess.run([
+                ffmpeg, "-y", "-i", str(local),
+                "-ss", str(start), "-to", str(end),
+                "-c", "copy", str(out),
+            ], capture_output=True, text=True, timeout=120)
+            if result.returncode != 0:
+                return jsonify({"error": result.stderr[-500:]}), 500
+            return jsonify({"ok": True, "url": f"/uploads/{fname}", "path": str(out)})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    # ── LLM metadata generation ────────────────────────────────────────────────
+    @app.route("/api/lab/metadata", methods=["POST"])
+    @_login_required
+    def api_lab_metadata():
+        from part2_router import call_task as _ct
+        d       = request.get_json(force=True) or {}
+        concept = d.get("concept", d.get("prompt", ""))
+        platform = d.get("platform", "youtube")
+        if not concept:
+            return jsonify({"error": "concept required"}), 400
+        msgs = [
+            {"role": "system", "content": (
+                "You generate video metadata optimized for platform algorithms. "
+                "Return ONLY valid JSON: {\"title\": \"...\", \"description\": \"...\", "
+                "\"tags\": [\"tag1\", \"tag2\"], \"hashtags\": [\"#tag1\"], "
+                "\"hook\": \"first 3 seconds hook line\", \"thumbnail_text\": \"short punchy text\"}. "
+                "No markdown. Just JSON."
+            )},
+            {"role": "user", "content": f"Generate {platform} metadata for: {concept}"},
+        ]
+        try:
+            raw = _run_async(_ct("twin", msgs))
+            raw = re.sub(r"```(?:json)?\s*", "", raw).strip().rstrip("`")
+            m   = re.search(r"\{[\s\S]*\}", raw)
+            parsed = json.loads(m.group(0)) if m else {}
+            return jsonify(parsed)
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    # ── FFmpeg reformat for platform ───────────────────────────────────────────
+    @app.route("/api/lab/reformat", methods=["POST"])
+    @_login_required
+    def api_lab_reformat():
+        import subprocess, shutil
+        d        = request.get_json(force=True) or {}
+        path     = d.get("path", "")
+        platform = d.get("platform", "youtube").lower()
+        if not path:
+            return jsonify({"error": "path required"}), 400
+        if path.startswith("/uploads/") or path.startswith("/renders/"):
+            local = _ROOT / path.lstrip("/")
+        else:
+            local = Path(path)
+        if not local.exists():
+            return jsonify({"error": "file not found"}), 404
+        # Platform format presets
+        presets = {
+            "tiktok":    {"w": 1080, "h": 1920, "fps": 30},
+            "instagram": {"w": 1080, "h": 1920, "fps": 30},
+            "youtube":   {"w": 1920, "h": 1080, "fps": 30},
+            "shorts":    {"w": 1080, "h": 1920, "fps": 60},
+            "twitter":   {"w": 1280, "h": 720,  "fps": 30},
+            "square":    {"w": 1080, "h": 1080, "fps": 30},
+        }
+        p = presets.get(platform, presets["youtube"])
+        ffmpeg = shutil.which("ffmpeg") or "/nix/store/3zc5jbvqzrn8zmva4fx5p19goxxa8bm-ffmpeg-7.1/bin/ffmpeg"
+        fname  = f"rf_{platform}_{uuid.uuid4().hex[:6]}.mp4"
+        out    = _RENDERS_DIR / fname
+        vf     = f"scale={p['w']}:{p['h']}:force_original_aspect_ratio=decrease,pad={p['w']}:{p['h']}:-1:-1:color=black"
+        try:
+            result = subprocess.run([
+                ffmpeg, "-y", "-i", str(local),
+                "-vf", vf, "-r", str(p["fps"]),
+                "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+                "-c:a", "aac", "-b:a", "128k", str(out),
+            ], capture_output=True, text=True, timeout=300)
+            if result.returncode != 0:
+                return jsonify({"error": result.stderr[-500:]}), 500
+            return jsonify({"ok": True, "url": f"/renders/{fname}", "path": str(out), "platform": platform})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
     # ── bots ──────────────────────────────────────────────────────────────────
     _bots: dict[str, dict] = {}
