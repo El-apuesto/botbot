@@ -941,22 +941,54 @@ def register_routes(app: Flask):
     try:
         from part10_story import (
             bible_chat, complete_bible, generate_full_story,
-            get_story, list_stories,
+            get_story, list_stories, StoryBible, StoryResult, _stories,
         )
         _story_ok = True
     except Exception:
         _story_ok = False
+
+    # Per-session bible chat history: {session_id: {"history": [...], "bible": dict|None}}
+    _bible_sessions: dict = {}
+
+    def _serialize_story(s) -> dict:
+        """Serialize a StoryResult to JSON-safe dict (handles nested StoryBible)."""
+        if not hasattr(s, "__dict__"):
+            return s
+        d = {}
+        for k, v in s.__dict__.items():
+            if hasattr(v, "__dict__"):
+                d[k] = v.__dict__
+            else:
+                d[k] = v
+        return d
 
     @app.route("/api/story/bible/chat", methods=["POST"])
     @_login_required
     def api_bible_chat():
         if not _story_ok:
             return jsonify({"error": "story module unavailable"}), 503
-        d = request.get_json(force=True) or {}
+        d          = request.get_json(force=True) or {}
+        msg        = d.get("message", "")
+        session_id = d.get("session_id") or uuid.uuid4().hex[:12]
+        writer     = d.get("writer", "twin")
+
+        if session_id not in _bible_sessions:
+            _bible_sessions[session_id] = {"history": [], "bible": None}
+        sess = _bible_sessions[session_id]
+
         try:
-            result = _run_async(bible_chat(d.get("message",""), d.get("bible",{}),
-                                           writer=d.get("writer","twin")))
-            return jsonify({"response": result})
+            response_text, bible_dict = _run_async(
+                bible_chat(msg, sess["history"], partial_bible=sess["bible"], writer=writer)
+            )
+            sess["history"].append({"role": "user",      "content": msg})
+            sess["history"].append({"role": "assistant", "content": response_text})
+            if bible_dict:
+                sess["bible"] = bible_dict
+            return jsonify({
+                "response":   response_text,
+                "session_id": session_id,
+                "bible":      sess["bible"],
+            })
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -965,12 +997,19 @@ def register_routes(app: Flask):
     def api_bible_complete():
         if not _story_ok:
             return jsonify({"error": "story module unavailable"}), 503
-        d = request.get_json(force=True) or {}
+        d          = request.get_json(force=True) or {}
+        session_id = d.get("session_id", "")
+        writer     = d.get("writer", "twin")
+        # Accept bible from request body, fall back to session store
+        partial = d.get("bible", {})
+        if not partial and session_id in _bible_sessions:
+            partial = _bible_sessions[session_id].get("bible") or {}
         try:
-            result = _run_async(complete_bible(d.get("partial",{}), d.get("idea",""),
-                                               writer=d.get("writer","twin")))
-            out = result.__dict__ if hasattr(result,"__dict__") else result
-            return jsonify(out)
+            result = _run_async(complete_bible(partial, d.get("idea", ""), writer=writer))
+            out = result.__dict__ if hasattr(result, "__dict__") else result
+            if session_id in _bible_sessions:
+                _bible_sessions[session_id]["bible"] = out
+            return jsonify({"bible": out})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -979,38 +1018,35 @@ def register_routes(app: Flask):
     def api_story_generate():
         if not _story_ok:
             return jsonify({"error": "story module unavailable"}), 503
-        d  = request.get_json(force=True) or {}
-        q: Q.Queue = Q.Queue()
+        d          = request.get_json(force=True) or {}
+        bible_dict = d.get("bible", {})
+        length     = d.get("length", "short")
+        writer     = d.get("writer", "twin")
 
-        async def _gen():
-            try:
-                result = await generate_full_story(d.get("bible",{}), d.get("length","short"),
-                                                   writer=d.get("writer","twin"))
-                out = result.__dict__ if hasattr(result,"__dict__") else result
-                q.put(("ok", json.dumps(out)))
-            except Exception as e:
-                q.put(("err", str(e)))
-            q.put(None)
+        # Convert dict → StoryBible object (fixes AttributeError on .to_prompt_block())
+        bible = StoryBible.from_dict(bible_dict) if bible_dict else StoryBible.from_dict({})
 
-        Thread(target=lambda: _run_async(_gen()), daemon=True).start()
+        # Pre-register so poll endpoint returns "generating" immediately
+        story_id = f"S{uuid.uuid4().hex[:6].upper()}"
+        _stories[story_id] = StoryResult(
+            story_id=story_id, title=bible.title or "Untitled",
+            bible=bible, chapters=[], word_count=0, status="generating",
+        )
 
-        def gen():
-            while True:
-                item = q.get()
-                if item is None:
-                    break
-                kind, val = item
-                yield _chunk_evt(val) if kind == "ok" else _err_evt(val)
-            yield _done_evt()
-
-        return _sse_response(gen)
+        Thread(
+            target=lambda: _run_async(
+                generate_full_story(bible, length, writer=writer, story_id=story_id)
+            ),
+            daemon=True,
+        ).start()
+        return jsonify({"ok": True, "story_id": story_id})
 
     @app.route("/api/story/list")
     @_login_required
     def api_story_list():
         if not _story_ok:
             return jsonify([])
-        return jsonify([s.__dict__ if hasattr(s,"__dict__") else s for s in list_stories()])
+        return jsonify([_serialize_story(s) for s in list_stories()])
 
     @app.route("/api/story/<story_id>")
     @_login_required
@@ -1019,8 +1055,8 @@ def register_routes(app: Flask):
             abort(404)
         s = get_story(story_id)
         if not s:
-            abort(404)
-        return jsonify(s.__dict__ if hasattr(s,"__dict__") else s)
+            return jsonify({"status": "not_found"}), 404
+        return jsonify(_serialize_story(s))
 
     @app.route("/api/story/<story_id>/download")
     @_login_required

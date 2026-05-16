@@ -456,6 +456,7 @@ async def generate_full_story(
     chat_id: int = 0,
     on_chapter_done=None,
     writer: str = "twin",
+    story_id: str | None = None,
 ) -> StoryResult:
     """
     Generate a complete multi-chapter story from a finished bible.
@@ -464,8 +465,9 @@ async def generate_full_story(
         vault_fn:        optional async callable(chat_id, topic, content) to store in vault
         on_chapter_done: optional async callable(story_id, chapter_num, total) for progress
         writer:          "twin" (fantm.ink) or "shadow" (Venice uncensored)
+        story_id:        optional pre-assigned ID (generated if not provided)
     """
-    story_id = _next_story_id()
+    story_id = story_id or _next_story_id()
     cfg      = LENGTH_CONFIG.get(length, LENGTH_CONFIG["short"])
 
     result = StoryResult(

@@ -4481,7 +4481,11 @@ async function bibleComplete() {
   try {
     const res  = await fetch('/api/story/bible/complete', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: ST.sessionId, writer: ST.storyWriter || 'twin' }),
+      body: JSON.stringify({
+        session_id: ST.sessionId,
+        bible:      ST.bible || {},
+        writer:     ST.storyWriter || 'twin',
+      }),
     });
     const data = await res.json();
     if (data.error) { bibleOut('err', '✗ ' + data.error); return; }
