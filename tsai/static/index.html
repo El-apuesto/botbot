@@ -712,9 +712,9 @@ audio { width: 100%; margin-top: 4px; }
     <div class="panel active" id="panel-home" style="position:relative">
       <div class="bot-strip">
         <div class="bot-strip-left">
-          <button id="upload-btn" onclick="document.getElementById('file-input').click()" title="Attach file">&#128206;</button>
+          <button id="upload-btn" onclick="document.getElementById('file-input').click()" title="Attach file">[FILE]</button>
           <input id="file-input" type="file" accept="image/*,audio/*,video/*" onchange="onFile(this)">
-          <button id="speak-toggle" onclick="toggleAutoSpeak()" title="Auto-speak responses" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 4px;line-height:1">&#128266;</button>
+          <button id="speak-toggle" onclick="toggleAutoSpeak()" title="Auto-speak responses" style="background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:10px;padding:1px 6px;letter-spacing:.08em;font-family:inherit">[SND]</button>
         </div>
         <div id="bot-toggle" onclick="toggleBot()">
           <span id="toggle-name">TWIN</span>
@@ -771,12 +771,12 @@ audio { width: 100%; margin-top: 4px; }
           <div class="fg">
             <label class="fl">MISSION TYPE</label>
             <select class="fi" id="mission-type">
-              <option value="gorilla_marketing">⚡ Gorilla Marketing Blueprint — 6-specialist committee + TWIN</option>
-              <option value="boardroom_analysis">🏛 Full Boardroom Analysis — Complete board session</option>
-              <option value="strategy_deep">🎯 Strategy Deep Dive — 3-model consensus + TWIN</option>
-              <option value="creative_brief">✦ Creative Brief — Concepts, copy, visual direction</option>
-              <option value="competitive_intel">🔍 Competitive Intelligence — Threats, gaps, opportunities</option>
-              <option value="custom_committee">⚙ Custom Committee — TWIN picks the right models for your need</option>
+              <option value="gorilla_marketing">Gorilla Marketing Blueprint — 6-specialist committee + TWIN</option>
+              <option value="boardroom_analysis">Full Boardroom Analysis — Complete board session</option>
+              <option value="strategy_deep">Strategy Deep Dive — 3-model consensus + TWIN</option>
+              <option value="creative_brief">Creative Brief — Concepts, copy, visual direction</option>
+              <option value="competitive_intel">Competitive Intelligence — Threats, gaps, opportunities</option>
+              <option value="custom_committee">Custom Committee — TWIN picks the right models for your need</option>
             </select>
           </div>
           <button class="btn" onclick="submitMission()" style="width:100%;text-align:center">[ LAUNCH MISSION ]</button>
@@ -1979,7 +1979,7 @@ async function send() {
       const spk = document.createElement('button');
       spk.className = 'btn';
       spk.style.cssText = 'font-size:10px;padding:2px 8px;margin-top:6px;display:inline-block';
-      spk.textContent = '[ \u266a SPEAK ]';
+      spk.textContent = '[ SPEAK ]';
       const capturedText = full, capturedVoice = bot;
       spk.onclick = () => speakText(capturedText, capturedVoice);
       body.parentElement.appendChild(spk);
