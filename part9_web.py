@@ -483,9 +483,9 @@ def register_routes(app: Flask):
     def api_advisor():
         from part8_personas import get_system_prompt
         d       = request.get_json(force=True) or {}
-        mode    = d.get("mode", "legal")
+        mode    = d.get("mode", d.get("advisor", "legal"))
         message = d.get("message", "")
-        history = d.get("history", [])[-20:]
+        history = d.get("history", d.get("prior", []))[-20:]
         key     = "legal_finance" if mode == "legal" else "fast_reasoning"
         sys_p   = get_system_prompt(key)
         msgs    = [{"role": "system", "content": sys_p}] + history + [{"role": "user", "content": message}]
@@ -703,25 +703,49 @@ def register_routes(app: Flask):
         msgs     = [{"role": "system", "content": sys_p}, {"role": "user", "content": task}]
         return _sse_single("builder", msgs)
 
+    # Pending-edit store: edit_id → {file_path, new_code, description}
+    _pending_edits: dict[str, dict] = {}
+
+    @app.route("/api/builder/stage_edit", methods=["POST"])
+    @_login_required
+    def api_builder_stage_edit():
+        """Register a pending edit and return an edit_id for the approval UI."""
+        d    = request.get_json(force=True) or {}
+        fp   = d.get("file_path", "")
+        code = d.get("new_code", "")
+        desc = d.get("description", "")
+        if not fp or not code:
+            return jsonify({"error": "file_path and new_code required"}), 400
+        eid  = uuid.uuid4().hex[:12]
+        _pending_edits[eid] = {"file_path": fp, "new_code": code, "description": desc}
+        return jsonify({"ok": True, "edit_id": eid})
+
     @app.route("/api/builder/apply_edit", methods=["POST"])
     @_login_required
     def api_builder_apply_edit():
-        from part8_personas import get_system_prompt
-        d           = request.get_json(force=True) or {}
-        file_path   = d.get("file_path", "")
-        instruction = d.get("instruction", "")
-        current     = d.get("current_code", "")
-        sys_p       = get_system_prompt("builder")
-        prompt      = (f"Apply this edit to `{file_path}`:\n\n"
-                       f"INSTRUCTION: {instruction}\n\n"
-                       f"CURRENT CODE:\n```\n{current}\n```\n\n"
-                       f"Return ONLY the complete updated file. No markdown fences.")
-        msgs = [{"role": "system", "content": sys_p}, {"role": "user", "content": prompt}]
-        return _sse_single("builder", msgs)
+        import shutil as _sh, datetime as _dt
+        d      = request.get_json(force=True) or {}
+        eid    = d.get("edit_id", "")
+        edit   = _pending_edits.pop(eid, None)
+        if not edit:
+            return jsonify({"error": f"No pending edit found for id={eid!r}. Stage the edit first."}), 404
+        fp   = edit["file_path"]
+        code = edit["new_code"]
+        target = _ROOT / fp
+        if not target.parent.exists():
+            return jsonify({"error": f"Parent directory does not exist: {target.parent}"}), 400
+        backup = str(target) + f".bak_{_dt.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        if target.exists():
+            _sh.copy2(str(target), backup)
+        target.write_text(code, encoding="utf-8")
+        return jsonify({"ok": True, "file": str(fp), "backup": backup})
 
     @app.route("/api/builder/reject_edit", methods=["POST"])
     @_login_required
     def api_builder_reject_edit():
+        d   = request.get_json(force=True) or {}
+        eid = d.get("edit_id", "")
+        _pending_edits.pop(eid, None)
         return jsonify({"ok": True})
 
     @app.route("/api/builder/deploy", methods=["POST"])
@@ -1147,7 +1171,8 @@ def register_routes(app: Flask):
         music_dir = _STATIC / "music"
         if not music_dir.exists():
             return jsonify([])
-        return jsonify([{"name": f.name, "url": f"/static/music/{f.name}"}
+        return jsonify([{"name": f.name, "url": f"/static/music/{f.name}",
+                         "path": f"/static/music/{f.name}"}
                         for f in sorted(music_dir.iterdir())
                         if f.suffix.lower() in (".mp3", ".wav", ".ogg")])
 
@@ -1214,6 +1239,7 @@ def register_routes(app: Flask):
     @app.route("/api/lab/image", methods=["POST"])
     @_login_required
     def api_lab_image():
+        import urllib.request as _ur
         from part4_video import fal_generate_image
         d = request.get_json(force=True) or {}
         # Frontend sends 'description'; support both field names
@@ -1224,6 +1250,16 @@ def register_routes(app: Flask):
             return jsonify({"error": "No prompt or description provided"}), 400
         try:
             result = _run_async(fal_generate_image(prompt, style, ref))
+            # fal_generate_image returns local_path=None — download the image locally
+            # so the render slideshow step has real filesystem paths to work with
+            if result.get("url") and not result.get("local_path"):
+                try:
+                    img_fname = f"fal_{uuid.uuid4().hex[:8]}.jpg"
+                    img_local = _UPLOADS_DIR / img_fname
+                    _ur.urlretrieve(result["url"], str(img_local))
+                    result["local_path"] = f"/uploads/{img_fname}"
+                except Exception:
+                    pass   # non-fatal — render falls back to clips-only
             return jsonify(result)
         except Exception as e:
             return jsonify({"error": str(e)}), 500
@@ -1257,7 +1293,8 @@ def register_routes(app: Flask):
     @_login_required
     def api_lab_voice():
         d      = request.get_json(force=True) or {}
-        script = d.get("script", "")
+        # Frontend sends "text"; some callers send "script" — accept both
+        script = d.get("text", d.get("script", ""))
         if not script:
             return jsonify({"error": "no script"}), 400
         fname = f"vo_{uuid.uuid4().hex[:8]}.mp3"
@@ -1265,7 +1302,7 @@ def register_routes(app: Flask):
         try:
             from gtts import gTTS
             gTTS(text=script[:3000], lang="en").save(str(out))
-            return jsonify({"url": f"/audio/{fname}"})
+            return jsonify({"url": f"/audio/{fname}", "path": f"/audio/{fname}"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -1275,37 +1312,58 @@ def register_routes(app: Flask):
         from part4_video import images_to_slideshow, concatenate_clips, mix_audio_onto_video
         import shutil
         d      = request.get_json(force=True) or {}
-        images = d.get("images", [])
-        clips  = d.get("clips",  [])
-        audio  = d.get("audio")
-        music  = d.get("music")
-        fname  = f"render_{uuid.uuid4().hex[:8]}.mp4"
-        out    = str(_RENDERS_DIR / fname)
+        # Frontend sends image_paths / voiceover / output_name — accept both old and new field names
+        images    = d.get("image_paths", d.get("images", []))
+        clips     = d.get("clips",  [])
+        audio     = d.get("voiceover", d.get("audio"))     # voiceover path
+        music     = d.get("music")
+        out_name  = d.get("output_name") or f"render_{uuid.uuid4().hex[:8]}"
+        fname     = f"{out_name}.mp4" if not out_name.endswith(".mp4") else out_name
+        out       = str(_RENDERS_DIR / fname)
         q: Q.Queue = Q.Queue()
+
+        def _url_to_fs(p: str | None) -> str | None:
+            """Resolve a web URL path like /audio/x.mp3 to an absolute filesystem path."""
+            if not p:
+                return None
+            if p.startswith("/audio/"):
+                return str(_AUDIO_DIR / p[len("/audio/"):])
+            if p.startswith("/static/"):
+                return str(_ROOT / "static" / p[len("/static/"):])
+            if p.startswith("/uploads/"):
+                return str(_ROOT / "uploads" / p[len("/uploads/"):])
+            if p.startswith("/renders/"):
+                return str(_RENDERS_DIR / p[len("/renders/"):])
+            return p  # already a filesystem path
 
         def _bg():
             try:
                 if images:
                     q.put(("ok", "Building slideshow...\n"))
                     tmp = str(_RENDERS_DIR / f"slide_{uuid.uuid4().hex[:6]}.mp4")
-                    ok, msg = images_to_slideshow(images, tmp)
+                    ok, msg = images_to_slideshow([_url_to_fs(i) or i for i in images], tmp)
                     if not ok:
                         q.put(("err", f"Slideshow: {msg}")); q.put(None); return
                     video = tmp
                 elif clips:
                     q.put(("ok", "Concatenating clips...\n"))
-                    ok, msg = concatenate_clips(clips, out)
+                    ok, msg = concatenate_clips([_url_to_fs(c) or c for c in clips], out)
                     if not ok:
                         q.put(("err", f"Concat: {msg}")); q.put(None); return
                     video = out
                 else:
-                    q.put(("err", "No images or clips.")); q.put(None); return
+                    q.put(("err", "No images or clips provided.")); q.put(None); return
 
-                if audio or music:
+                vo_path = _url_to_fs(audio)
+                mu_path = _url_to_fs(music)
+
+                if vo_path or mu_path:
                     q.put(("ok", "Mixing audio...\n"))
                     ok, msg = mix_audio_onto_video(
-                        video, audio or music, out,
-                        music_path=(music if audio else None), music_vol=0.25,
+                        video,
+                        vo_path,   # voiceover_path
+                        mu_path,   # music_path (always 25% vol)
+                        out,       # output_path
                     )
                     if not ok:
                         q.put(("err", f"Audio: {msg}")); q.put(None); return
@@ -1646,32 +1704,178 @@ def register_routes(app: Flask):
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
+    # ── music video ───────────────────────────────────────────────────────────
+    @app.route("/api/lab/musicvideo", methods=["POST"])
+    @_login_required
+    def api_lab_musicvideo():
+        from part4_video import (
+            images_to_slideshow, concatenate_clips_with_fade, mix_audio_onto_video,
+        )
+        import shutil as _sh
+        d          = request.get_json(force=True) or {}
+        music      = d.get("music", "")
+        files      = d.get("files", [])
+        slide_dur  = float(d.get("slide_duration", 3.0))
+        transition = d.get("transition", "fade")
+        out_name   = d.get("output_name", f"mv_{uuid.uuid4().hex[:8]}")
+        if not music:
+            return jsonify({"error": "music track required"}), 400
+        if not files:
+            return jsonify({"error": "at least one image or clip required"}), 400
+
+        fname = f"{out_name}.mp4"
+        out   = str(_RENDERS_DIR / fname)
+        q: Q.Queue = Q.Queue()
+
+        def _resolve(p: str) -> str:
+            if p.startswith("/uploads/") or p.startswith("/renders/"):
+                return str(_ROOT / p.lstrip("/"))
+            return p
+
+        def _bg():
+            try:
+                img_exts  = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+                images    = [_resolve(f) for f in files if Path(f).suffix.lower() in img_exts]
+                clips     = [_resolve(f) for f in files if Path(f).suffix.lower() not in img_exts]
+                music_abs = _resolve(music)
+
+                if images:
+                    tmp_slide = str(_RENDERS_DIR / f"_slide_{uuid.uuid4().hex[:6]}.mp4")
+                    q.put(("ok", f"- Building slideshow from {len(images)} images...\n"))
+                    ok, msg = images_to_slideshow(images, tmp_slide, duration=slide_dur)
+                    if not ok:
+                        q.put(("err", f"Slideshow error: {msg}")); q.put(None); return
+                    clips.insert(0, tmp_slide)
+
+                if len(clips) > 1:
+                    tmp_vid = str(_RENDERS_DIR / f"_cat_{uuid.uuid4().hex[:6]}.mp4")
+                    q.put(("ok", f"- Joining {len(clips)} clips...\n"))
+                    ok, msg = concatenate_clips_with_fade(clips, tmp_vid)
+                    if not ok:
+                        q.put(("err", f"Concat error: {msg}")); q.put(None); return
+                    video = tmp_vid
+                elif clips:
+                    video = clips[0]
+                else:
+                    q.put(("err", "No usable media files.")); q.put(None); return
+
+                q.put(("ok", "- Mixing music...\n"))
+                ok, msg = mix_audio_onto_video(video, None, music_abs, out)
+                if not ok:
+                    q.put(("err", f"Audio mix error: {msg}")); q.put(None); return
+
+                q.put(("ok", f"DONE:/renders/{fname}"))
+            except Exception as e:
+                q.put(("err", str(e)))
+            q.put(None)
+
+        Thread(target=_bg, daemon=True).start()
+
+        def gen():
+            while True:
+                item = q.get()
+                if item is None: break
+                kind, val = item
+                if kind == "ok":
+                    yield _chunk_evt(val)
+                else:
+                    yield _err_evt(val); return
+            yield _done_evt()
+
+        return _sse_response(gen)
+
+    # ── thumbnail ─────────────────────────────────────────────────────────────
+    @app.route("/api/lab/thumbnail", methods=["POST"])
+    @_login_required
+    def api_lab_thumbnail():
+        from part4_video import make_thumbnail
+        d      = request.get_json(force=True) or {}
+        src    = d.get("source_path", "")
+        if not src:
+            return jsonify({"error": "source_path required"}), 400
+        if src.startswith("/uploads/") or src.startswith("/renders/"):
+            local = _ROOT / src.lstrip("/")
+        else:
+            local = Path(src)
+        if not local.exists():
+            return jsonify({"error": f"file not found: {src}"}), 404
+
+        fname  = f"thumb_{uuid.uuid4().hex[:8]}.jpg"
+        out    = str(_RENDERS_DIR / fname)
+        font   = d.get("font") or None
+        if font and not Path(font).exists():
+            font = None
+        ok, msg = make_thumbnail(
+            source_path = str(local),
+            output_path = out,
+            timestamp   = float(d.get("timestamp", 0.0)),
+            text        = d.get("text", ""),
+            position    = d.get("position", "bottom"),
+            font_path   = font,
+            font_size   = int(d.get("font_size", 52)),
+            font_color  = d.get("font_color", "white"),
+            outline     = bool(d.get("outline", True)),
+        )
+        if not ok:
+            return jsonify({"error": msg}), 500
+        return jsonify({"ok": True, "url": f"/renders/{fname}"})
+
     # ── bots ──────────────────────────────────────────────────────────────────
     _bots: dict[str, dict] = {}
 
     @app.route("/api/bots/spawn", methods=["POST"])
     @_login_required
     def api_bots_spawn():
-        import subprocess
+        import subprocess, datetime as _dt
         d      = request.get_json(force=True) or {}
-        script = d.get("script", "")
         name   = d.get("name", f"bot_{uuid.uuid4().hex[:6]}")
-        if not script or not Path(script).exists():
-            return jsonify({"error": f"script not found: {script}"}), 400
+        # Accept explicit script path or infer from name
+        script = d.get("script") or str(_ROOT / f"{name}.py")
+        if not Path(script).exists():
+            return jsonify({"error": f"Script not found: {script}. Build and deploy the bot first."}), 400
         try:
             proc = subprocess.Popen(["python3", script],
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                     cwd=str(_ROOT), text=True)
-            _bots[name] = {"name": name, "pid": proc.pid, "proc": proc, "script": script}
-            return jsonify({"ok": True, "id": name, "pid": proc.pid})
+            _bots[name] = {
+                "name": name, "pid": proc.pid, "proc": proc, "script": script,
+                "created_at": _dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "output_lines": [],
+            }
+            return jsonify({"ok": True, "id": name, "name": name, "pid": proc.pid})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
     @app.route("/api/bots/list")
     @_login_required
     def api_bots_list():
-        return jsonify([{"id": k, "name": v["name"], "pid": v["pid"], "script": v["script"]}
-                        for k, v in _bots.items()])
+        import select
+        out = []
+        for k, v in _bots.items():
+            proc = v["proc"]
+            running = proc.poll() is None
+            # Drain any new stdout without blocking
+            try:
+                while True:
+                    r, _, _ = select.select([proc.stdout], [], [], 0)
+                    if not r: break
+                    line = proc.stdout.readline()
+                    if not line: break
+                    v["output_lines"].append(line.rstrip())
+                    if len(v["output_lines"]) > 500:
+                        v["output_lines"] = v["output_lines"][-500:]
+            except Exception:
+                pass
+            tail = v["output_lines"][-3:]
+            out.append({
+                "id": k, "name": v["name"], "pid": v["pid"],
+                "path": v.get("script", ""),
+                "status": "running" if running else "stopped",
+                "created_at": v.get("created_at", ""),
+                "lines": len(v["output_lines"]),
+                "tail": tail,
+            })
+        return jsonify(out)
 
     @app.route("/api/bots/stop/<bot_id>", methods=["POST"])
     @_login_required
@@ -1698,19 +1902,20 @@ def register_routes(app: Flask):
         b = _bots.get(bot_id)
         if not b:
             return jsonify({"error": "not found"}), 404
-        lines = int(request.args.get("lines", 50))
+        max_lines = int(request.args.get("lines", 200))
+        proc = b["proc"]
         try:
-            out  = []
-            proc = b["proc"]
-            while len(out) < lines:
+            while True:
                 r, _, _ = select.select([proc.stdout], [], [], 0)
                 if not r: break
                 line = proc.stdout.readline()
                 if not line: break
-                out.append(line)
-            return jsonify({"output": "".join(out)})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+                b["output_lines"].append(line.rstrip())
+                if len(b["output_lines"]) > 500:
+                    b["output_lines"] = b["output_lines"][-500:]
+        except Exception:
+            pass
+        return jsonify({"lines": b["output_lines"][-max_lines:]})
 
     # ── deploy ────────────────────────────────────────────────────────────────
     @app.route("/api/deploy/web", methods=["POST"])

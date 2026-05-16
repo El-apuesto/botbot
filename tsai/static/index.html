@@ -4058,7 +4058,7 @@ async function spawnBot() {
     const data = await res.json();
     if (data.ok) {
       btn.textContent = '[ SPAWNED \u2713 ]';
-      addMsg('SYSTEM', `BOT SPAWNED: ${data.name} (pid ${data.pid}) — id: ${data.bot_id}`);
+      addMsg('SYSTEM', `BOT SPAWNED: ${data.name} (pid ${data.pid}) — id: ${data.id}`);
       botRefresh();
     } else {
       alert('Spawn failed: ' + (data.error || 'unknown'));
@@ -4129,7 +4129,7 @@ async function botViewOutput(id, name) {
   try {
     const res  = await fetch(`/api/bots/output/${id}?lines=200`);
     const data = await res.json();
-    lines.textContent = data.lines.length ? data.lines.join('\n') : '(no output yet)';
+    lines.textContent = (data.lines && data.lines.length) ? data.lines.join('\n') : '(no output yet)';
     lines.scrollTop = lines.scrollHeight;
   } catch(e) {
     lines.textContent = 'Error: ' + e;

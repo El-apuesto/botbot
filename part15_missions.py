@@ -182,7 +182,7 @@ async def _exec_gorilla(mission: Mission):
     # TWIN compiles the blueprint
     try:
         msgs      = gorilla_synthesizer_prompt(mission.brief, transcript)
-        blueprint = await _collect_stream(stream_task("twin", msgs))
+        blueprint = await _collect_stream(_st("twin", msgs))
         mission.log("blueprint", blueprint)
     except Exception as e:
         mission.log("blueprint", f"[ERROR] {e}")
