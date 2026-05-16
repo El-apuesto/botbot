@@ -496,27 +496,38 @@ def register_routes(app: Flask):
         from part8_personas import podcast_character_system
         from part2_router import direct_stream as _ds
         from part1_registry import get_task_routing
-        d      = request.get_json(force=True) or {}
-        topic  = d.get("topic", "")
-        cast   = d.get("cast", [])
-        rounds = min(int(d.get("rounds", 1)), 4)
-        prior  = d.get("prior_context", "")
+        d          = request.get_json(force=True) or {}
+        topic      = d.get("topic", "")
+        cast       = d.get("speakers", d.get("cast", []))
+        rounds     = min(int(d.get("rounds", 1)), 4)
+        prior      = d.get("prior_context", "")
+        show_type  = d.get("show_type", "podcast")
+        complexity = d.get("complexity", "simple")
+        steer      = d.get("steer", "")
         q: Q.Queue = Q.Queue()
 
         async def _run():
             ctx = prior or ""
             for rnd in range(rounds):
                 for char in cast:
-                    name = char.get("name", "HOST")
-                    role = char.get("role", "Host")
-                    key  = char.get("key",  "twin")
+                    name        = char.get("name", "HOST")
+                    role        = char.get("role", "Host")
+                    personality = char.get("personality", "")
+                    key         = char.get("model", char.get("key", "twin"))
                     try:
                         provider, model = get_task_routing(key)
-                        sys_p    = podcast_character_system(name, role)
+                        sys_p    = podcast_character_system(
+                            name, role,
+                            personality=personality,
+                            show_type=show_type,
+                            complexity=complexity,
+                        )
                         user_msg = f"SHOW TOPIC: {topic}"
                         if ctx:
                             user_msg += f"\n\nDIALOGUE SO FAR:\n{ctx}"
-                        user_msg += f"\n\nRound {rnd+1}. Your turn as {name}. Natural dialogue, 1-2 paragraphs."
+                        if steer:
+                            user_msg += f"\n\nDIRECTOR NOTE: {steer}"
+                        user_msg += f"\n\nRound {rnd+1}. Your turn as {name}. Natural dialogue, stay in character."
                         msgs = [{"role": "system", "content": sys_p},
                                 {"role": "user",   "content": user_msg}]
                         q.put(("speaker", name))
