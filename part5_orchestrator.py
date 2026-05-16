@@ -1,8 +1,20 @@
 from __future__ import annotations
-from runtime.events import emit_event, EventType
-from runtime.models import TaskRecord
-from runtime.validation import validate_review_result
-from pydantic import ValidationError
+
+# ── runtime stubs (runtime package removed; functionality inlined) ───────────
+
+def emit_event(*args, **kwargs) -> None:
+    """No-op event emitter — was backed by a removed runtime module."""
+    pass
+
+
+class EventType:
+    TASK_STARTED    = "task_started"
+    TASK_COMPLETED  = "task_completed"
+    TASK_FAILED     = "task_failed"
+    BUILD_STARTED   = "build_started"
+    BUILD_COMPLETED = "build_completed"
+    APPROVAL_GRANTED = "approval_granted"
+    BOARDROOM_OPENED = "boardroom_opened"
 
 
 """
@@ -39,6 +51,7 @@ from part2_router import call_task, call_task_with_fallback, stream_task, direct
 from part3_modules import (
     generate_brief, evaluate, code_review, format_review,
     run_creative, run_code, run_business, shadow_fallback, shadow_audit,
+    validate_review_result,
     BRIEF_SYSTEM, CREATIVE_SYSTEM, BUILD_SYSTEM, BUSINESS_SYSTEM,
     SHADOW_SYSTEM, AUDIT_SYSTEM,
 )

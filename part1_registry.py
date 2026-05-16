@@ -310,7 +310,7 @@ TASK_MODELS: dict = {
     "board_strategy":       ("nvidia",   "minimax_m25"),
     "board_finance":        ("nvidia",   "mistral_large3"),
     "board_creative":       ("nvidia",   "palmyra_creative_122b"),
-    "board_tech":           ("nvidia",   "devstral"),
+    "board_tech":           ("nvidia",   "codestral_22b"),
     "board_ops":            ("nvidia",   "nemotron_49b"),
     "board_distribution":   ("nvidia",   "gpt_oss_120b"),
 
@@ -338,7 +338,7 @@ TASK_MODELS: dict = {
     "committee_strategy_2": ("nvidia",   "qwen35_397b"),
     "committee_strategy_3": ("nvidia",   "deepseek_v3"),
     "committee_finance_1":  ("nvidia",   "palmyra_fin_70b"),
-    "committee_finance_2":  ("nvidia",   "magistral_small"),
+    "committee_finance_2":  ("nvidia",   "mistral_medium35"),
     "committee_finance_3":  ("nvidia",   "mistral_medium35"),
     "committee_creative_1": ("nvidia",   "palmyra_creative_122b"),
     "committee_creative_2": ("cerebras", "qwen_instruct"),
@@ -486,12 +486,12 @@ def get_specialists_for_topic(topic: str) -> list[dict]:
 
 
 def resolve_execution_target(task_type: str) -> dict:
-    route = get_task_routing(task_type)
-    provider = get_provider_cfg(route["provider"])
-
+    provider_key, model_key = get_task_routing(task_type)
+    cfg = get_provider_cfg(provider_key)
+    model_id = cfg.get("models", {}).get(model_key, model_key)
     return {
-        "task": task_type,
-        "provider": route["provider"],
-        "model": route["model"],
-        "base_url": provider.get("base_url") or provider.get("base_url_env"),
+        "task":      task_type,
+        "provider":  provider_key,
+        "model":     model_id,
+        "base_url":  cfg.get("base_url") or cfg.get("base_url_env"),
     }

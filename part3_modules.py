@@ -5,11 +5,63 @@ Includes: exploration, evaluator, creative, code, business, shadow
 
 from __future__ import annotations
 import json
-from runtime.models import ReviewResult, BriefSchema
-from runtime.validation import validate_brief_with_retry, validate_review_result
-from pydantic import ValidationError
+import re as _re
 from part2_router import call_task, call_task_with_fallback
 from part8_personas import SHADOW_SYSTEM as _SHADOW_SYSTEM_P8
+
+
+# ── Inline validation helpers (no external runtime module required) ─────────
+
+async def validate_brief_with_retry(idea: str, raw: str, call_fn, max_retries: int = 2) -> dict:
+    """Strip markdown fences, parse JSON brief, re-prompt on failure."""
+    def _parse(text: str) -> dict | None:
+        text = _re.sub(r"```(?:json)?\s*", "", text).strip().rstrip("`")
+        m = _re.search(r"\{[\s\S]*\}", text)
+        if not m:
+            return None
+        try:
+            return json.loads(m.group(0))
+        except Exception:
+            return None
+
+    result = _parse(raw)
+    if result:
+        return result
+
+    for _ in range(max_retries):
+        try:
+            retry_raw = await call_fn([
+                {"role": "system", "content": BRIEF_SYSTEM},
+                {"role": "user", "content": f"Idea: {idea}"},
+                {"role": "user", "content": "Your last response was not valid JSON. Return ONLY a JSON object, no markdown, no explanation."},
+            ])
+            result = _parse(retry_raw)
+            if result:
+                return result
+        except Exception:
+            pass
+
+    return {
+        "summary": raw[:200], "goals": [], "project_type": "content",
+        "estimated_effort": "medium", "modules_needed": [], "tone": "raw",
+    }
+
+
+def validate_review_result(raw: str) -> dict:
+    """Strip markdown fences, parse JSON code review result."""
+    text = _re.sub(r"```(?:json)?\s*", "", raw).strip().rstrip("`")
+    m = _re.search(r"\{[\s\S]*\}", text)
+    if not m:
+        return {"approved": False, "issues": [], "summary": "Could not parse review output."}
+    try:
+        parsed = json.loads(m.group(0))
+        return {
+            "approved": bool(parsed.get("approved", False)),
+            "issues":   parsed.get("issues", []),
+            "summary":  parsed.get("summary", ""),
+        }
+    except Exception:
+        return {"approved": False, "issues": [], "summary": "JSON parse error in review."}
 
 
 def standardize_module_output(raw_output: str) -> dict:
