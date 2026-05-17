@@ -32,7 +32,14 @@ from part7_commands import (
 from part14_hardening import get_status, verify_all_endpoints
 from part13_daemon import register_daemon
 
-TOKEN = os.environ.get("TOKEN", "")
+# Production uses TOKEN (main bot). Dev uses CHILD_BOT_TOKEN to avoid
+# polling conflicts with the deployed app running the same token.
+_deployed = bool(os.environ.get("REPLIT_DEPLOYMENT"))
+TOKEN = (
+    os.environ.get("TOKEN", "")
+    if _deployed
+    else (os.environ.get("CHILD_BOT_TOKEN") or os.environ.get("TOKEN", ""))
+)
 RATE_LIMIT_S = int(os.environ.get("RATE_LIMIT_SECONDS", "10"))
 MAX_MEMORY = int(os.environ.get("MAX_MEMORY", "10"))
 _raw_ids = os.environ.get("ALLOWED_IDS", "")
