@@ -212,15 +212,20 @@ def register_routes(app: Flask):
         return send_from_directory(_UPLOADS_DIR, fname)
 
     # ── pages ─────────────────────────────────────────────────────────────────
+    @app.route("/favicon.ico")
+    def favicon():
+        return send_from_directory(_STATIC, "send_btn.jpg", mimetype="image/jpeg")
+
     @app.route("/")
     @_login_required
     def home():
-        return send_from_directory(_STATIC, "index.html")
+        og_url = request.host_url.rstrip("/")
+        return render_template("index.html", og_url=og_url)
 
     @app.route("/lab")
     @_login_required
     def lab():
-        return send_from_directory(_STATIC, "lab.html")
+        return render_template("lab.html")
 
     # ── auth ──────────────────────────────────────────────────────────────────
     @app.route("/login", methods=["GET", "POST"])
