@@ -709,6 +709,53 @@ def register_routes(app: Flask):
         msgs     = [{"role": "system", "content": sys_p}, {"role": "user", "content": task}]
         return _sse_single("builder", msgs)
 
+    # ── builder job store — runs LLM in background thread, survives page nav ──
+    _builder_jobs: dict[str, dict] = {}   # job_id → {status, chunks, error}
+
+    @app.route("/api/builder/job", methods=["POST"])
+    @_login_required
+    def api_builder_job_create():
+        from part8_personas import get_system_prompt
+        d        = request.get_json(force=True) or {}
+        task     = d.get("task", "")
+        sys_over = d.get("system_prompt", "")
+        if not task:
+            return jsonify({"error": "task required"}), 400
+        sys_p  = sys_over or get_system_prompt("builder")
+        msgs   = [{"role": "system", "content": sys_p}, {"role": "user", "content": task}]
+        job_id = uuid.uuid4().hex[:12]
+        _builder_jobs[job_id] = {"status": "running", "chunks": [], "error": None}
+
+        def _run():
+            from part2_router import stream_task as _st
+            import asyncio as _aio
+            loop = _aio.new_event_loop()
+            async def _collect():
+                try:
+                    async for chunk in _st("builder", msgs):
+                        _builder_jobs[job_id]["chunks"].append(chunk)
+                except Exception as exc:
+                    _builder_jobs[job_id]["error"] = str(exc)
+                finally:
+                    _builder_jobs[job_id]["status"] = "done"
+            loop.run_until_complete(_collect())
+            loop.close()
+
+        Thread(target=_run, daemon=True).start()
+        return jsonify({"ok": True, "job_id": job_id})
+
+    @app.route("/api/builder/job/<job_id>", methods=["GET"])
+    @_login_required
+    def api_builder_job_status(job_id):
+        job = _builder_jobs.get(job_id)
+        if not job:
+            return jsonify({"error": "not found"}), 404
+        return jsonify({
+            "status": job["status"],
+            "chunks": job["chunks"],
+            "error":  job["error"],
+        })
+
     # Pending-edit store: edit_id → {file_path, new_code, description}
     _pending_edits: dict[str, dict] = {}
 
