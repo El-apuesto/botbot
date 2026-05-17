@@ -789,6 +789,10 @@ async function uploadFiles(files) {
 async function doStoryboard() {
   const concept = document.getElementById('lab-concept').value.trim();
   if (!concept) { log('err', '> NO CONCEPT ENTERED'); return; }
+  const existing = document.getElementById('lab-output');
+  if (existing && existing.children.length > 0) {
+    if (!confirm('This will clear the current session. Continue?')) return;
+  }
   labState.concept = concept;
   clearOutput();
   log('hdr', '> GENERATING STORYBOARD...');

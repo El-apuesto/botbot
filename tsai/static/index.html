@@ -767,12 +767,12 @@ audio { width: 100%; margin-top: 4px; }
           <div class="fg">
             <label class="fl">MISSION TYPE</label>
             <select class="fi" id="mission-type">
-              <option value="gorilla_marketing">Guerrilla Marketing Blueprint</option>
+              <option value="custom_committee">Custom / Free Research</option>
               <option value="boardroom_analysis">Full Boardroom Analysis</option>
               <option value="strategy_deep">Strategy Deep Dive</option>
               <option value="creative_brief">Creative Brief</option>
               <option value="competitive_intel">Competitive Intelligence</option>
-              <option value="custom_committee">Custom Committee</option>
+              <option value="gorilla_marketing">Guerrilla Marketing Blueprint</option>
             </select>
           </div>
           <button class="btn" onclick="submitMission()" style="width:100%;text-align:center">[ LAUNCH MISSION ]</button>
@@ -2433,12 +2433,14 @@ async function renderTTS(mode) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ turns, voice_overrides: _getVoiceOverrides() }),
     });
-    const data = await res.json();
+    const raw = await res.text();
+    let data;
+    try { data = JSON.parse(raw); } catch(pe) { alert('TTS error: server returned an unexpected response. Try again.'); audioBtn.textContent = '[ PLAY AUDIO ]'; audioBtn.disabled = false; return; }
     if (data.url) {
       const el = document.getElementById(mode + '-audio');
       el.src = data.url;
       el.style.display = 'block';
-      el.play();
+      el.play().catch(() => {});
       const mp3btn = document.getElementById(mode + '-mp3-btn');
       mp3btn.href = data.url;
       mp3btn.style.display = '';
@@ -2957,10 +2959,12 @@ async function renderPodcastTTS() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ turns: POD.turns, voice_overrides: _getPodVoiceOverrides() }),
     });
-    const data = await res.json();
+    const raw = await res.text();
+    let data;
+    try { data = JSON.parse(raw); } catch(pe) { alert('TTS error: server returned an unexpected response. Try again.'); btn.textContent = '[ PLAY AUDIO ]'; btn.disabled = false; return; }
     if (data.url) {
       const el = document.getElementById('pod-audio');
-      el.src = data.url; el.style.display = 'block'; el.play();
+      el.src = data.url; el.style.display = 'block'; el.play().catch(() => {});
       document.getElementById('pod-mp3-btn').href = data.url;
       document.getElementById('pod-mp3-btn').style.display = '';
     } else { alert('TTS failed: ' + (data.error || 'unknown')); }
