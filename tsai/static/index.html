@@ -2509,6 +2509,7 @@ async function _pollBuilderJob(jobId, out, isArch, prefillTask) {
             document.getElementById('builder-deploy-btn').textContent = '[ DEPLOY ]';
             if (isArch) _renderCodeFiles(fullTxt);
             _showBuilderDownload(fullTxt, rawTask);
+            await _parseSelfEditProposal(txt);
           }
           resolve(turns);
         } else if (data.error) {
@@ -4169,25 +4170,44 @@ async function deployBuilder() {
   const btn    = document.getElementById('builder-deploy-btn');
   const name   = nameEl.value.trim().replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
   if (!name) { alert('Enter a script name first.'); return; }
-  btn.disabled = true; btn.textContent = '[ DEPLOYING... ]';
+
+  const rawOutput = _labConcepts.builder ? _labConcepts.builder.output : '';
+  const raw       = document.getElementById('builder-out') ? document.getElementById('builder-out').textContent : '';
+  const searchIn  = rawOutput || raw;
+
+  let code = '';
+  const pyMatch = searchIn.match(/```(?:python|py)\n([\s\S]*?)```/);
+  if (pyMatch) {
+    code = pyMatch[1].trim();
+  } else {
+    const anyMatch = searchIn.match(/```\w*\n([\s\S]*?)```/);
+    if (anyMatch) code = anyMatch[1].trim();
+  }
+  if (!code) {
+    alert('No code block found in builder output.\n\nRun the builder first, then name and deploy the result.');
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = '[ SAVING... ]';
   try {
-    const res  = await fetch('/api/deploy/web', {
+    const res  = await fetch('/api/builder/save', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, code }),
     });
     const data = await res.json();
     if (data.ok) {
-      addMsg('SYSTEM', 'DEPLOYED: ' + data.path);
-      btn.textContent = '[ DEPLOYED \u2713 ]';
+      addMsg('SYSTEM', '\u2713 SAVED TO DISK: ' + data.path);
+      btn.textContent = '[ SAVED \u2713 ]';
     } else {
-      alert('Deploy failed: ' + (data.error || 'unknown'));
+      alert('Save failed: ' + (data.error || 'unknown'));
       btn.textContent = '[ DEPLOY ]';
+      btn.disabled = false;
     }
   } catch(e) {
-    alert('Deploy error: ' + e);
+    alert('Save error: ' + e);
     btn.textContent = '[ DEPLOY ]';
+    btn.disabled = false;
   }
-  btn.disabled = false;
 }
 
 /* ─────────────────────────────────────────
@@ -4318,10 +4338,41 @@ function _showPendingEdit(editId, file, desc) {
   const resEl  = document.getElementById('builder-edit-result');
   fileEl.textContent = '→ ' + file;
   descEl.textContent = desc;
-  prev.textContent   = 'Loading file preview...';
+  prev.textContent   = 'Loading current file...';
   resEl.textContent  = '';
   box.style.display  = 'block';
   box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  fetch('/api/builder/read_file', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ file_path: file }),
+  }).then(r => r.json()).then(d => {
+    if (d.content) {
+      const lines = d.lines || '?';
+      prev.textContent = `(${lines} lines — first 120 shown)\n\n` + d.content.split('\n').slice(0, 120).join('\n');
+    } else if (d.exists === false) {
+      prev.textContent = '(new file — will be created)';
+    } else {
+      prev.textContent = '(could not read file)';
+    }
+  }).catch(() => { prev.textContent = '(preview unavailable)'; });
+}
+
+async function _parseSelfEditProposal(txt) {
+  const re = /SELF_EDIT_PROPOSAL\s*\nfile:\s*(.+?)\ndescription:\s*(.+?)\n---CONTENT---\n([\s\S]*?)\n---END---/;
+  const m = re.exec(txt);
+  if (!m) return;
+  const filePath    = m[1].trim();
+  const description = m[2].trim();
+  const newCode     = m[3].trim();
+  try {
+    const r = await fetch('/api/builder/stage_edit', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file_path: filePath, new_code: newCode, description }),
+    });
+    const d = await r.json();
+    if (d.ok) _showPendingEdit(d.edit_id, filePath, description);
+    else addMsg('SYSTEM', 'SELF-EDIT STAGE FAILED: ' + (d.error || 'unknown'));
+  } catch(e) { console.error('stage_edit failed:', e); }
 }
 
 async function approveEdit() {

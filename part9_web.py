@@ -826,6 +826,40 @@ def register_routes(app: Flask):
         _pending_edits.pop(eid, None)
         return jsonify({"ok": True})
 
+    @app.route("/api/builder/save", methods=["POST"])
+    @_login_required
+    def api_builder_save():
+        """Write generated code to a .py file in the project root (browser-accessible)."""
+        d    = request.get_json(force=True) or {}
+        name = d.get("name", "")
+        code = d.get("code", "")
+        if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", name):
+            return jsonify({"error": "invalid name — use letters, numbers, _ and - only"}), 400
+        if not code:
+            return jsonify({"error": "no code provided"}), 400
+        if len(code) > 131072:
+            return jsonify({"error": "code too large (128KB max)"}), 400
+        dest = _ROOT / f"{name}.py"
+        dest.write_text(code, encoding="utf-8")
+        return jsonify({"ok": True, "path": str(dest.relative_to(_ROOT))})
+
+    @app.route("/api/builder/read_file", methods=["POST"])
+    @_login_required
+    def api_builder_read_file():
+        """Read a project file for preview in the self-edit approval UI."""
+        d  = request.get_json(force=True) or {}
+        fp = d.get("file_path", "")
+        target = _safe_project_path(fp)
+        if target is None:
+            return jsonify({"error": "path rejected"}), 400
+        if not target.exists():
+            return jsonify({"content": None, "exists": False})
+        try:
+            content = target.read_text(encoding="utf-8", errors="replace")
+            return jsonify({"content": content, "exists": True, "lines": content.count("\n") + 1})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
     @app.route("/api/builder/deploy", methods=["POST"])
     def api_builder_deploy():
         if request.remote_addr not in ("127.0.0.1", "::1"):
