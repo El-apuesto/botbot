@@ -660,7 +660,7 @@ audio { width: 100%; margin-top: 4px; }
   }
 
   /* banner — portrait mobile image, fixed height, top-aligned */
-  #app-banner { height: 110px; overflow: hidden; }
+  #app-banner { height: 68px; overflow: hidden; }
   #app-banner picture { display: block; width: 100%; height: 100%; }
   #app-banner img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
 
@@ -1915,6 +1915,7 @@ function switchLab(name, btn) {
   document.querySelectorAll('#panel-lab > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
   document.getElementById('lab-' + name).classList.add('active');
   if (btn) btn.classList.add('active');
+  if (name === 'code') checkPendingBuilderJob();
 }
 
 function switchWrite(name, btn) {
@@ -2455,18 +2456,101 @@ async function renderTTS(mode) {
 /* ─────────────────────────────────────────
    BUILDER
 ───────────────────────────────────────── */
+// ── BUILDER PERSISTENCE — survives page leave / tab switch ───────────────────
+const _BUILDER_JOB_KEY = 'ts_builder_job';
+function _saveBuilderJob(jobId, task) { S.set(_BUILDER_JOB_KEY, { jobId, task, ts: Date.now() }); }
+function _clearBuilderJob() { try { localStorage.removeItem(_BUILDER_JOB_KEY); } catch {} }
+function _loadBuilderJob() {
+  const j = S.get(_BUILDER_JOB_KEY, null);
+  if (!j || (Date.now() - j.ts) > 30 * 60 * 1000) { _clearBuilderJob(); return null; }
+  return j;
+}
+
+async function _pollBuilderJob(jobId, out, isArch, prefillTask) {
+  out.innerHTML = '';
+  const turn = document.createElement('div'); turn.className = 'turn';
+  const who  = document.createElement('div'); who.className = 'turn-who'; who.textContent = 'BUILDER';
+  const curBody = document.createElement('div'); curBody.className = 'turn-body typing';
+  turn.appendChild(who); turn.appendChild(curBody);
+  out.appendChild(turn);
+  let lastCount = 0;
+
+  return new Promise(resolve => {
+    const poll = setInterval(async () => {
+      try {
+        const res  = await fetch('/api/builder/job/' + jobId);
+        if (res.status === 404) { clearInterval(poll); _clearBuilderJob(); out.innerHTML += '<p style="color:var(--red)">[ JOB EXPIRED — please re-run ]</p>'; resolve([]); return; }
+        if (!res.ok)            { clearInterval(poll); _clearBuilderJob(); resolve([]); return; }
+        const data = await res.json();
+
+        const newChunks = data.chunks.slice(lastCount);
+        lastCount = data.chunks.length;
+        newChunks.forEach(chunk => {
+          if (chunk) { curBody.textContent += chunk; curBody.classList.remove('typing'); }
+        });
+        if (lastCount > 0) curBody.scrollIntoView({ block: 'end', behavior: 'smooth' });
+
+        if (data.status === 'done') {
+          clearInterval(poll);
+          _clearBuilderJob();
+          curBody.classList.remove('typing');
+          const txt = curBody.textContent.trim();
+          const turns = txt ? [{ speaker: 'BUILDER', text: txt }] : [];
+          if (turns.length) {
+            const rawTask = prefillTask || document.getElementById('builder-input').value.trim();
+            const fullTxt = turns.map(t => t.speaker + ': ' + t.text).join('\n\n');
+            _labConcepts.builder = { task: rawTask, output: fullTxt };
+            document.getElementById('builder-lab-btn').style.display = '';
+            const deployRow = document.getElementById('builder-deploy-row');
+            deployRow.style.display = 'flex';
+            document.getElementById('builder-deploy-btn').textContent = '[ DEPLOY ]';
+            if (isArch) _renderCodeFiles(fullTxt);
+            _showBuilderDownload(fullTxt, rawTask);
+          }
+          resolve(turns);
+        } else if (data.error) {
+          clearInterval(poll);
+          _clearBuilderJob();
+          curBody.classList.remove('typing');
+          curBody.textContent += '\n[ERROR] ' + data.error;
+          resolve([]);
+        }
+      } catch(e) {
+        // network blip — keep polling
+        console.warn('[builder poll] retrying:', e);
+      }
+    }, 2500);
+  });
+}
+
+// Called when CODE tab is activated — resumes any in-progress job
+async function checkPendingBuilderJob() {
+  const job = _loadBuilderJob();
+  if (!job) return;
+  const out = document.getElementById('builder-out');
+  const btn = document.getElementById('builder-go-btn');
+  const inp = document.getElementById('builder-input');
+  if (inp && job.task) inp.value = job.task;
+  out.innerHTML = '<div style="color:var(--purple-dim);font-size:var(--font-size-sm);padding:6px 0;animation:blink 1s step-end infinite">&#9608; RESUMING JOB ' + job.jobId + '...</div>';
+  btn.disabled = true; btn.textContent = '[ BUILDING... ]';
+  await _pollBuilderJob(job.jobId, out, codeMode === 'architect', job.task);
+  btn.disabled = false;
+  btn.textContent = codeMode === 'architect' ? '[ ARCHITECT + BUILD ]' : '[ RUN BUILDER ]';
+}
+
 async function runBuilder() {
   const rawTask = document.getElementById('builder-input').value.trim();
   if (!rawTask) return;
-  const out     = document.getElementById('builder-out');
-  out.innerHTML = '<div style="color:var(--purple-dim);font-size:var(--font-size-sm);padding:6px 0;animation:blink 1s step-end infinite">&#9608; BUILDER ACTIVE — DEEPSEEK V3 INITIALIZING...</div>';
+  const out = document.getElementById('builder-out');
+  const btn = document.getElementById('builder-go-btn');
+  const isArch = codeMode === 'architect';
+
+  out.innerHTML = '<div style="color:var(--purple-dim);font-size:var(--font-size-sm);padding:6px 0;animation:blink 1s step-end infinite">&#9608; BUILDER ACTIVE — INITIALIZING...</div>';
   document.getElementById('code-files-row').style.display = 'none';
   const dlRow = document.getElementById('builder-dl-row');
   if (dlRow) dlRow.style.display = 'none';
   const labBtnBl = document.getElementById('builder-lab-btn');
   labBtnBl.style.display = 'none'; labBtnBl.disabled = false; labBtnBl.textContent = '[ SEND TO VIDEO LAB ]';
-  const btn = document.getElementById('builder-go-btn');
-  const isArch = codeMode === 'architect';
   btn.disabled = true; btn.textContent = isArch ? '[ ARCHITECTING... ]' : '[ BUILDING... ]';
 
   let task = rawTask;
@@ -2486,24 +2570,25 @@ async function runBuilder() {
       `Rules: No skeletons. No "coming soon". Complete, runnable, production-ready.`;
   }
 
-  let builderTurns = [];
   try {
-    builderTurns = await streamSession('/api/builder', { task, system_prompt: S.get('p_builder', '') }, out);
+    const startRes = await fetch('/api/builder/job', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task, system_prompt: S.get('p_builder', '') }),
+    });
+    if (!startRes.ok) {
+      out.innerHTML = '<p style="color:var(--red)">ERROR ' + startRes.status + ' — could not start job</p>';
+      btn.disabled = false; btn.textContent = isArch ? '[ ARCHITECT + BUILD ]' : '[ RUN BUILDER ]';
+      return;
+    }
+    const { job_id } = await startRes.json();
+    _saveBuilderJob(job_id, rawTask);
+    await _pollBuilderJob(job_id, out, isArch, rawTask);
   } catch(e) {
     out.innerHTML += '<p style="color:var(--red)">' + e + '</p>';
   }
   btn.disabled = false;
   btn.textContent = isArch ? '[ ARCHITECT + BUILD ]' : '[ RUN BUILDER ]';
-  if (builderTurns.length) {
-    const txt = builderTurns.map(t => t.speaker + ': ' + t.text).join('\n\n');
-    _labConcepts.builder = { task: rawTask, output: txt };
-    document.getElementById('builder-lab-btn').style.display = '';
-    const deployRow = document.getElementById('builder-deploy-row');
-    deployRow.style.display = 'flex';
-    document.getElementById('builder-deploy-btn').textContent = '[ DEPLOY ]';
-    if (isArch) _renderCodeFiles(txt);
-    _showBuilderDownload(txt, rawTask);
-  }
 }
 
 function _showBuilderDownload(txt, task) {
