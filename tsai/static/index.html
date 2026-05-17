@@ -1459,48 +1459,49 @@ audio { width: 100%; margin-top: 4px; }
         </div>
 
         <div class="fg">
-          <span class="fl">VOICES <span style="font-size:0.75em;opacity:0.5">(GROQ PLAYAI → gTTS FALLBACK)</span></span>
-          <div class="voice-grid">
+          <span class="fl">ELEVENLABS VOICES</span>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+            <button class="btn" id="el-load-btn" onclick="loadElVoices()" style="flex:1;text-align:center;min-width:180px">[ LOAD VOICES ]</button>
+            <span id="el-load-status" style="font-size:var(--font-size-sm);color:var(--muted)">Add your ELEVENLABS_API_KEY_1–11 secrets then hit LOAD.</span>
+          </div>
+          <div class="voice-grid" id="el-voice-grid">
+            <div style="color:var(--cyan);font-size:var(--font-size-sm);letter-spacing:.1em;grid-column:1/-1;margin-top:4px">── CORE ──</div>
             <label class="fl">TWIN</label>
-            <select class="fi" id="v-twin">
-              <option value="Ava-PlayAI">Ava (female, default)</option>
-              <option value="Orion-PlayAI">Orion (male)</option>
-              <option value="Atlas-PlayAI">Atlas (male)</option>
-              <option value="Hudson-PlayAI">Hudson (male)</option>
-              <option value="Chip-PlayAI">Chip (male)</option>
-              <option value="Fritz-PlayAI">Fritz (male, accent)</option>
-            </select>
+            <select class="fi el-vsel" id="elv-twin" onchange="S.set('voice_twin',this.value)"><option value="">-- load voices --</option></select>
             <label class="fl">SHADOW</label>
-            <select class="fi" id="v-shadow">
-              <option value="Fritz-PlayAI">Fritz (male accent, default)</option>
-              <option value="Orion-PlayAI">Orion (male, deep)</option>
-              <option value="Hudson-PlayAI">Hudson (male)</option>
-              <option value="Briggs-PlayAI">Briggs (male)</option>
-              <option value="Celeste-PlayAI">Celeste (female)</option>
-              <option value="Ava-PlayAI">Ava (female)</option>
-            </select>
+            <select class="fi el-vsel" id="elv-shadow" onchange="S.set('voice_shadow',this.value)"><option value="">-- load voices --</option></select>
             <label class="fl">CAPI</label>
-            <select class="fi" id="v-capi">
-              <option value="Mist-PlayAI">Mist (female, default)</option>
-              <option value="Seraphina-PlayAI">Seraphina (female)</option>
-              <option value="Celeste-PlayAI">Celeste (female)</option>
-              <option value="Calum-PlayAI">Calum (male)</option>
-              <option value="Orion-PlayAI">Orion (male)</option>
-            </select>
+            <select class="fi el-vsel" id="elv-capi" onchange="S.set('voice_capi',this.value)"><option value="">-- load voices --</option></select>
             <label class="fl">BUILDER</label>
-            <select class="fi" id="v-builder">
-              <option value="Chip-PlayAI">Chip (male, default)</option>
-              <option value="Atlas-PlayAI">Atlas (male)</option>
-              <option value="Hudson-PlayAI">Hudson (male)</option>
-              <option value="Ava-PlayAI">Ava (female)</option>
-            </select>
+            <select class="fi el-vsel" id="elv-builder" onchange="S.set('voice_builder',this.value)"><option value="">-- load voices --</option></select>
             <label class="fl">NARRATOR</label>
-            <select class="fi" id="v-narrator">
-              <option value="Atlas-PlayAI">Atlas (male, default)</option>
-              <option value="Orion-PlayAI">Orion (male)</option>
-              <option value="Ava-PlayAI">Ava (female)</option>
-              <option value="Celeste-PlayAI">Celeste (female)</option>
-            </select>
+            <select class="fi el-vsel" id="elv-narrator" onchange="S.set('voice_narrator',this.value)"><option value="">-- load voices --</option></select>
+            <div style="color:var(--cyan);font-size:var(--font-size-sm);letter-spacing:.1em;grid-column:1/-1;margin-top:8px">── BOARD ──</div>
+            <label class="fl">STRATEGY (Kimmy)</label>
+            <select class="fi el-vsel" id="elv-strategy" onchange="S.set('voice_strategy',this.value)"><option value="">-- load voices --</option></select>
+            <label class="fl">FINANCE (Rich Max)</label>
+            <select class="fi el-vsel" id="elv-finance" onchange="S.set('voice_finance',this.value)"><option value="">-- load voices --</option></select>
+            <label class="fl">CREATIVE (Palmyra)</label>
+            <select class="fi el-vsel" id="elv-creative" onchange="S.set('voice_creative',this.value)"><option value="">-- load voices --</option></select>
+            <label class="fl">TECH (Linnerd)</label>
+            <select class="fi el-vsel" id="elv-tech" onchange="S.set('voice_tech',this.value)"><option value="">-- load voices --</option></select>
+            <label class="fl">OPS</label>
+            <select class="fi el-vsel" id="elv-ops" onchange="S.set('voice_ops',this.value)"><option value="">-- load voices --</option></select>
+            <label class="fl">DISTRIBUTION</label>
+            <select class="fi el-vsel" id="elv-distribution" onchange="S.set('voice_distribution',this.value)"><option value="">-- load voices --</option></select>
+            <label class="fl">GEMMA</label>
+            <select class="fi el-vsel" id="elv-gemma" onchange="S.set('voice_gemma',this.value)"><option value="">-- load voices --</option></select>
+            <div style="color:var(--cyan);font-size:var(--font-size-sm);letter-spacing:.1em;grid-column:1/-1;margin-top:8px">── BRAINSTORM ──</div>
+            <label class="fl">HERMES</label>
+            <select class="fi el-vsel" id="elv-hermes" onchange="S.set('voice_hermes',this.value)"><option value="">-- load voices --</option></select>
+            <label class="fl">VENICE70 (Vince)</label>
+            <select class="fi el-vsel" id="elv-venice70" onchange="S.set('voice_venice70',this.value)"><option value="">-- load voices --</option></select>
+            <label class="fl">GLM (Glenda)</label>
+            <select class="fi el-vsel" id="elv-glm" onchange="S.set('voice_glm',this.value)"><option value="">-- load voices --</option></select>
+            <label class="fl">MINIMAX (Max)</label>
+            <select class="fi el-vsel" id="elv-minimax" onchange="S.set('voice_minimax',this.value)"><option value="">-- load voices --</option></select>
+            <label class="fl">QWQ (Quincy)</label>
+            <select class="fi el-vsel" id="elv-qwq" onchange="S.set('voice_qwq',this.value)"><option value="">-- load voices --</option></select>
           </div>
         </div>
 
@@ -3695,13 +3696,57 @@ function saveSettings() {
 }
 
 function _getVoiceOverrides() {
-  const map = { TWIN: 'twin', SHADOW: 'shadow', CAPI: 'capi', BUILDER: 'builder', NARRATOR: 'narrator' };
+  const map = {
+    TWIN: 'twin', SHADOW: 'shadow', CAPI: 'capi', BUILDER: 'builder', NARRATOR: 'narrator',
+    STRATEGY: 'strategy', FINANCE: 'finance', CREATIVE: 'creative', TECH: 'tech',
+    OPS: 'ops', DISTRIBUTION: 'distribution', GEMMA: 'gemma',
+    HERMES: 'hermes', VENICE70: 'venice70', GLM: 'glm', MINIMAX: 'minimax', QWQ: 'qwq',
+  };
   const out = {};
   for (const [speaker, key] of Object.entries(map)) {
     const v = S.get('voice_' + key, '');
     if (v) out[speaker] = v;
   }
   return out;
+}
+
+async function loadElVoices() {
+  const btn = document.getElementById('el-load-btn');
+  const status = document.getElementById('el-load-status');
+  btn.textContent = '[ LOADING... ]'; btn.disabled = true;
+  status.textContent = '';
+  try {
+    const raw = await fetch('/api/voices');
+    const data = await raw.json();
+    if (!data.ok || !data.voices || !data.voices.length) {
+      status.textContent = 'No voices found. Check your ELEVENLABS_API_KEY secrets.';
+      status.style.color = 'var(--red)';
+      btn.textContent = '[ LOAD VOICES ]'; btn.disabled = false;
+      return;
+    }
+    const voices = data.voices;
+    const selMap = {
+      'elv-twin':'voice_twin','elv-shadow':'voice_shadow','elv-capi':'voice_capi',
+      'elv-builder':'voice_builder','elv-narrator':'voice_narrator',
+      'elv-strategy':'voice_strategy','elv-finance':'voice_finance','elv-creative':'voice_creative',
+      'elv-tech':'voice_tech','elv-ops':'voice_ops','elv-distribution':'voice_distribution',
+      'elv-gemma':'voice_gemma','elv-hermes':'voice_hermes','elv-venice70':'voice_venice70',
+      'elv-glm':'voice_glm','elv-minimax':'voice_minimax','elv-qwq':'voice_qwq',
+    };
+    for (const [selId, storageKey] of Object.entries(selMap)) {
+      const sel = document.getElementById(selId);
+      if (!sel) continue;
+      const saved = S.get(storageKey, '');
+      sel.innerHTML = '<option value="">-- unassigned --</option>' +
+        voices.map(v => `<option value="${v.voice_id}"${v.voice_id===saved?' selected':''}>${v.name}</option>`).join('');
+    }
+    status.textContent = `${voices.length} voices loaded.`;
+    status.style.color = 'var(--neon)';
+  } catch(e) {
+    status.textContent = 'Error: ' + e;
+    status.style.color = 'var(--red)';
+  }
+  btn.textContent = '[ LOAD VOICES ]'; btn.disabled = false;
 }
 
 /* ─────────────────────────────────────────

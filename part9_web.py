@@ -390,7 +390,8 @@ def register_routes(app: Flask):
         voice_id = _EL_VOICES.get(voice, _EL_VOICES["twin"])
         fname = f"tts_{uuid.uuid4().hex[:8]}.mp3"
         out   = _AUDIO_DIR / fname
-        for key_env in ("ELEVENLABS_API_KEY", "ELEVENLABS_API_KEY_1", "ELEVENLABS_API_KEY_2"):
+        _el_key_envs = ["ELEVENLABS_API_KEY"] + [f"ELEVENLABS_API_KEY_{i}" for i in range(1, 12)]
+        for key_env in _el_key_envs:
             api_key = _os.environ.get(key_env, "")
             if not api_key:
                 continue
@@ -398,7 +399,7 @@ def register_routes(app: Flask):
                 r = _req.post(
                     f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
                     headers={"xi-api-key": api_key, "Content-Type": "application/json"},
-                    json={"text": text, "model_id": "eleven_monolingual_v1",
+                    json={"text": text, "model_id": "eleven_multilingual_v2",
                           "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}},
                     timeout=20,
                 )
@@ -590,7 +591,8 @@ def register_routes(app: Flask):
     @_login_required
     def api_voices():
         import os as _os
-        for key_env in ("ELEVENLABS_API_KEY", "ELEVENLABS_API_KEY_1", "ELEVENLABS_API_KEY_2"):
+        _el_key_envs = ["ELEVENLABS_API_KEY"] + [f"ELEVENLABS_API_KEY_{i}" for i in range(1, 12)]
+        for key_env in _el_key_envs:
             api_key = _os.environ.get(key_env, "")
             if not api_key:
                 continue
@@ -618,7 +620,8 @@ def register_routes(app: Flask):
         # ── resolve ElevenLabs key + voice map ───────────────────────────────
         el_key    = None
         el_voices: list = []
-        for key_env in ("ELEVENLABS_API_KEY", "ELEVENLABS_API_KEY_1", "ELEVENLABS_API_KEY_2"):
+        _el_key_envs = ["ELEVENLABS_API_KEY"] + [f"ELEVENLABS_API_KEY_{i}" for i in range(1, 12)]
+        for key_env in _el_key_envs:
             k = _os.environ.get(key_env, "")
             if k:
                 el_key = k
