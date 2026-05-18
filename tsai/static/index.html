@@ -1194,163 +1194,146 @@ audio { width: 100%; margin-top: 4px; }
     </div><!-- /panel-lab-code -->
 
     <!-- [6] PODCASTS — PODCAST / CHARACTERS -->
+    <!-- PODCASTS panel -->
     <div class="panel" id="panel-studio">
-      <div class="lab-tab-row">
-        <button class="lab-tab active" onclick="switchStudio('podcast', this)">PODCAST</button>
-        <button class="lab-tab" onclick="switchStudio('characters', this)">CHARS</button>
-      </div>
-
-      <!-- PODCAST -->
-      <div class="lab-section active" id="lab-podcast">
-        <div class="panel-scroll">
-          <p id="el-voices-notice" style="display:none;color:var(--yellow);font-size:var(--font-size-sm);border:1px solid var(--yellow);padding:4px 8px;margin-bottom:8px;background:rgba(255,200,0,.05)"></p>
-
-          <!-- Show type + format -->
-          <div class="fg">
-            <span class="fl">SHOW TYPE</span>
-            <div class="opt-row" id="pod-type-row">
-              <button class="opt on" id="pod-t-podcast"   onclick="setPodType('podcast')">PODCAST</button>
-              <button class="opt"    id="pod-t-interview"  onclick="setPodType('interview')">INTERVIEW</button>
-              <button class="opt"    id="pod-t-debate"     onclick="setPodType('debate')">DEBATE</button>
-              <button class="opt"    id="pod-t-talk"       onclick="setPodType('talk show')">TALK SHOW</button>
-              <button class="opt"    id="pod-t-comedy"     onclick="setPodType('comedy')">COMEDY</button>
-              <button class="opt"    id="pod-t-improv"     onclick="setPodType('improv')">IMPROV</button>
-            </div>
+      <div class="panel-scroll" id="lab-podcast">
+        <p id="el-voices-notice" style="display:none;color:var(--yellow);font-size:var(--font-size-sm);border:1px solid var(--yellow);padding:4px 8px;margin-bottom:8px;background:rgba(255,200,0,.05)"></p>
+        <div class="fg">
+          <span class="fl">SHOW TYPE</span>
+          <div class="opt-row" id="pod-type-row">
+            <button class="opt on" id="pod-t-podcast"   onclick="setPodType('podcast')">PODCAST</button>
+            <button class="opt"    id="pod-t-interview"  onclick="setPodType('interview')">INTERVIEW</button>
+            <button class="opt"    id="pod-t-debate"     onclick="setPodType('debate')">DEBATE</button>
+            <button class="opt"    id="pod-t-talk"       onclick="setPodType('talk show')">TALK SHOW</button>
+            <button class="opt"    id="pod-t-comedy"     onclick="setPodType('comedy')">COMEDY</button>
+            <button class="opt"    id="pod-t-improv"     onclick="setPodType('improv')">IMPROV</button>
           </div>
-
-          <div class="fg">
-            <span class="fl">CAST FORMAT</span>
-            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">
-              <span class="fl" style="width:100%;margin-bottom:2px;color:var(--neon);font-size:var(--font-size-sm)">SIMPLE —</span>
-              <button class="opt on" id="pod-f-1v1"   onclick="setPodFormat('1v1',   'simple',2)">1v1</button>
-              <button class="opt"    id="pod-f-2v1"   onclick="setPodFormat('2v1',   'simple',3)">2v1</button>
-              <button class="opt"    id="pod-f-1v2"   onclick="setPodFormat('1v2',   'simple',3)">1v2</button>
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">
-              <span class="fl" style="width:100%;margin-bottom:2px;color:var(--neon);font-size:var(--font-size-sm)">COMPLEX —</span>
-              <button class="opt"    id="pod-f-2v3"   onclick="setPodFormat('2v3',   'complex',5)">2v3</button>
-              <button class="opt"    id="pod-f-3v2"   onclick="setPodFormat('3v2',   'complex',5)">3v2</button>
-              <button class="opt"    id="pod-f-3v3"   onclick="setPodFormat('3v3',   'complex',6)">3v3</button>
-              <button class="opt"    id="pod-f-3v4"   onclick="setPodFormat('3v4',   'complex',7)">3v4</button>
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:4px">
-              <span class="fl" style="width:100%;margin-bottom:2px;color:var(--neon);font-size:var(--font-size-sm)">ALL-IN —</span>
-              <button class="opt"    id="pod-f-allin" onclick="setPodFormat('allin', 'all-in', 6)">1v1v1v1v1v1</button>
-            </div>
-          </div>
-
-          <!-- Cast builder -->
-          <div class="fg">
-            <span class="fl">CAST  <span id="pod-cast-count" style="color:var(--neon)">(2 speakers)</span></span>
-            <div id="pod-cast-list"></div>
-            <div class="action-row" style="margin-top:6px">
-              <button class="btn" onclick="podAddSpeaker()">[ + ADD SPEAKER ]</button>
-              <button class="btn" onclick="podRemoveSpeaker()">[ - REMOVE ]</button>
-            </div>
-          </div>
-
-          <!-- Topic + rounds -->
-          <div class="fg">
-            <label class="fl">TOPIC / CONCEPT</label>
-            <textarea class="fi" id="pod-topic" rows="2" placeholder="What is this show about?"></textarea>
-          </div>
-          <div class="fg">
-            <span class="fl">ROUNDS</span>
-            <div class="opt-row">
-              <button class="opt on" id="pod-r1" onclick="setPodRounds(1)">1</button>
-              <button class="opt"    id="pod-r2" onclick="setPodRounds(2)">2</button>
-              <button class="opt"    id="pod-r3" onclick="setPodRounds(3)">3</button>
-              <button class="opt"    id="pod-r4" onclick="setPodRounds(4)">4</button>
-            </div>
-          </div>
-
-          <div class="action-row">
-            <button class="btn" id="pod-go-btn" onclick="runPodcast()">[ RECORD ]</button>
-            <button class="btn" id="pod-audio-btn" style="display:none" onclick="renderPodcastTTS()">[ PLAY AUDIO ]</button>
-            <button class="btn" id="pod-save-btn"  style="display:none" onclick="savePodcastTranscript()">[ SAVE ]</button>
-            <a id="pod-export-btn" class="action-link" style="display:none" download="podcast_transcript.txt">[ EXPORT ]</a>
-            <a id="pod-mp3-btn"    class="action-link" style="display:none" download="podcast_audio.mp3">[ DL MP3 ]</a>
-          </div>
-          <div class="steer-box" id="pod-extend-row" style="display:none">
-            <span class="fl">CONTINUE SESSION — NEW DIRECTION (OPTIONAL)</span>
-            <textarea class="fi" id="pod-extend-steer" rows="2" placeholder="New topic, new tension, redirect..."></textarea>
-            <button class="btn" onclick="extendPodcast()">[ + CONTINUE ]</button>
-          </div>
-          <audio id="pod-audio" controls style="display:none"></audio>
-          <div id="pod-out" class="session-out"></div>
         </div>
-      </div>
-
-      <!-- CHARACTERS -->
-      <div class="lab-section" id="lab-characters">
-        <div class="panel-scroll">
-          <div class="fg"><span class="fl">NEW CHARACTER</span></div>
-          <div style="display:flex;gap:6px;margin-bottom:4px">
-            <input class="fi" id="char-name" type="text" placeholder="NAME" style="flex:0 0 90px;text-transform:uppercase">
-            <input class="fi" id="char-role" type="text" placeholder="Host / Guest / Co-host..." style="flex:1">
+        <div class="fg">
+          <span class="fl">CAST FORMAT</span>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">
+            <span class="fl" style="width:100%;margin-bottom:2px;color:var(--neon);font-size:var(--font-size-sm)">SIMPLE —</span>
+            <button class="opt on" id="pod-f-1v1"   onclick="setPodFormat('1v1',   'simple',2)">1v1</button>
+            <button class="opt"    id="pod-f-2v1"   onclick="setPodFormat('2v1',   'simple',3)">2v1</button>
+            <button class="opt"    id="pod-f-1v2"   onclick="setPodFormat('1v2',   'simple',3)">1v2</button>
           </div>
-          <textarea class="fi" id="char-personality" rows="2"
-            placeholder="Personality, speech style, backstory..."
-            style="width:100%;box-sizing:border-box;margin-bottom:4px;resize:vertical"></textarea>
-          <div style="margin-bottom:4px">
-            <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:2px">VOICE</label>
-            <select class="fi" id="char-voice">
-              <option value="Ava-PlayAI">Ava (female)</option>
-              <option value="Orion-PlayAI">Orion (male, deep)</option>
-              <option value="Atlas-PlayAI">Atlas (male)</option>
-              <option value="Hudson-PlayAI">Hudson (male)</option>
-              <option value="Chip-PlayAI">Chip (male)</option>
-              <option value="Fritz-PlayAI">Fritz (male, accent)</option>
-              <option value="Briggs-PlayAI">Briggs (male)</option>
-              <option value="Celeste-PlayAI">Celeste (female)</option>
-              <option value="Mist-PlayAI">Mist (female)</option>
-              <option value="Seraphina-PlayAI">Seraphina (female)</option>
-              <option value="Calum-PlayAI">Calum (male)</option>
-            </select>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">
+            <span class="fl" style="width:100%;margin-bottom:2px;color:var(--neon);font-size:var(--font-size-sm)">COMPLEX —</span>
+            <button class="opt"    id="pod-f-2v3"   onclick="setPodFormat('2v3',   'complex',5)">2v3</button>
+            <button class="opt"    id="pod-f-3v2"   onclick="setPodFormat('3v2',   'complex',5)">3v2</button>
+            <button class="opt"    id="pod-f-3v3"   onclick="setPodFormat('3v3',   'complex',6)">3v3</button>
+            <button class="opt"    id="pod-f-3v4"   onclick="setPodFormat('3v4',   'complex',7)">3v4</button>
           </div>
-          <div style="display:flex;gap:10px;margin-bottom:8px">
-            <div style="flex:1">
-              <label class="fl" style="font-size:var(--font-size-sm)">PITCH <span id="char-pitch-val" style="color:var(--cyan)">1.00</span></label>
-              <input type="range" id="char-pitch" min="0.5" max="2.0" step="0.05" value="1.0" style="width:100%;accent-color:var(--cyan)"
-                oninput="document.getElementById('char-pitch-val').textContent=parseFloat(this.value).toFixed(2)">
-            </div>
-            <div style="flex:1">
-              <label class="fl" style="font-size:var(--font-size-sm)">SPEED <span id="char-speed-val" style="color:var(--cyan)">1.00</span></label>
-              <input type="range" id="char-speed" min="0.5" max="2.0" step="0.05" value="1.0" style="width:100%;accent-color:var(--cyan)"
-                oninput="document.getElementById('char-speed-val').textContent=parseFloat(this.value).toFixed(2)">
-            </div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">
+            <span class="fl" style="width:100%;margin-bottom:2px;color:var(--neon);font-size:var(--font-size-sm)">ALL-IN —</span>
+            <button class="opt"    id="pod-f-allin" onclick="setPodFormat('allin', 'all-in', 6)">1v1v1v1v1v1</button>
           </div>
-          <div style="margin-bottom:8px">
-            <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:2px">AI MODEL</label>
-            <select class="fi" id="char-model" style="width:100%">
-              <option value="twin">TWIN · Groq Llama 3.3 70B (default)</option>
-              <option value="shadow">SHADOW · Venice Uncensored 1.2</option>
-              <option value="creative_dolphin">GEMMA 4 Uncensored · Venice</option>
-              <option value="board_gptoss">HERMES 405B · Venice</option>
-              <option value="brainstorm_qwq">QwQ 32B · Groq (reasoning)</option>
-              <option value="board_strategy">KIMI K2 · NVIDIA</option>
-              <option value="board_finance">MISTRAL LARGE 3 · NVIDIA</option>
-              <option value="board_creative">PALMYRA 122B · NVIDIA</option>
-              <option value="board_ops">NEMOTRON 49B · NVIDIA</option>
-              <option value="board_distribution">GPT-OSS 120B · NVIDIA</option>
-              <option value="brainstorm_minimax">MINIMAX M2.5 · NVIDIA</option>
-              <option value="creative">GLM 5.1 · NVIDIA</option>
-            </select>
-          </div>
-          <button class="btn" onclick="charSave()">[ + SAVE CHARACTER ]</button>
-
-          <div class="fg" style="margin-top:12px">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span class="fl">SAVED CHARACTERS</span>
-              <button class="btn" style="font-size:var(--font-size-sm);padding:3px 8px" onclick="charRenderRoster()">[ REFRESH ]</button>
-            </div>
-          </div>
-          <div id="char-roster"></div>
-          <p class="ph-text" id="char-roster-empty">NO CHARACTERS SAVED YET.</p>
         </div>
+        <div class="fg">
+          <span class="fl">CAST  <span id="pod-cast-count" style="color:var(--neon)">(2 speakers)</span></span>
+          <div id="pod-cast-list"></div>
+          <div class="action-row" style="margin-top:6px">
+            <button class="btn" onclick="podAddSpeaker()">[ + ADD SPEAKER ]</button>
+            <button class="btn" onclick="podRemoveSpeaker()">[ - REMOVE ]</button>
+          </div>
+        </div>
+        <div class="fg">
+          <label class="fl">TOPIC / CONCEPT</label>
+          <textarea class="fi" id="pod-topic" rows="2" placeholder="What is this show about?"></textarea>
+        </div>
+        <div class="fg">
+          <span class="fl">ROUNDS</span>
+          <div class="opt-row">
+            <button class="opt on" id="pod-r1" onclick="setPodRounds(1)">1</button>
+            <button class="opt"    id="pod-r2" onclick="setPodRounds(2)">2</button>
+            <button class="opt"    id="pod-r3" onclick="setPodRounds(3)">3</button>
+            <button class="opt"    id="pod-r4" onclick="setPodRounds(4)">4</button>
+          </div>
+        </div>
+        <div class="action-row">
+          <button class="btn" id="pod-go-btn" onclick="runPodcast()">[ RECORD ]</button>
+          <button class="btn" id="pod-audio-btn" style="display:none" onclick="renderPodcastTTS()">[ PLAY AUDIO ]</button>
+          <button class="btn" id="pod-save-btn"  style="display:none" onclick="savePodcastTranscript()">[ SAVE ]</button>
+          <a id="pod-export-btn" class="action-link" style="display:none" download="podcast_transcript.txt">[ EXPORT ]</a>
+          <a id="pod-mp3-btn"    class="action-link" style="display:none" download="podcast_audio.mp3">[ DL MP3 ]</a>
+        </div>
+        <div class="steer-box" id="pod-extend-row" style="display:none">
+          <span class="fl">CONTINUE SESSION — NEW DIRECTION (OPTIONAL)</span>
+          <textarea class="fi" id="pod-extend-steer" rows="2" placeholder="New topic, new tension, redirect..."></textarea>
+          <button class="btn" onclick="extendPodcast()">[ + CONTINUE ]</button>
+        </div>
+        <audio id="pod-audio" controls style="display:none"></audio>
+        <div id="pod-out" class="session-out"></div>
       </div>
-
     </div><!-- /panel-studio -->
+
+    <!-- CHARACTERS panel -->
+    <div class="panel" id="panel-characters">
+      <div class="panel-scroll" id="lab-characters">
+        <div class="fg"><span class="fl">NEW CHARACTER</span></div>
+        <div style="display:flex;gap:6px;margin-bottom:4px">
+          <input class="fi" id="char-name" type="text" placeholder="NAME" style="flex:0 0 90px;text-transform:uppercase">
+          <input class="fi" id="char-role" type="text" placeholder="Host / Guest / Co-host..." style="flex:1">
+        </div>
+        <textarea class="fi" id="char-personality" rows="2"
+          placeholder="Personality, speech style, backstory..."
+          style="width:100%;box-sizing:border-box;margin-bottom:4px;resize:vertical"></textarea>
+        <div style="margin-bottom:4px">
+          <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:2px">VOICE</label>
+          <select class="fi" id="char-voice">
+            <option value="Ava-PlayAI">Ava (female)</option>
+            <option value="Orion-PlayAI">Orion (male, deep)</option>
+            <option value="Atlas-PlayAI">Atlas (male)</option>
+            <option value="Hudson-PlayAI">Hudson (male)</option>
+            <option value="Chip-PlayAI">Chip (male)</option>
+            <option value="Fritz-PlayAI">Fritz (male, accent)</option>
+            <option value="Briggs-PlayAI">Briggs (male)</option>
+            <option value="Celeste-PlayAI">Celeste (female)</option>
+            <option value="Mist-PlayAI">Mist (female)</option>
+            <option value="Seraphina-PlayAI">Seraphina (female)</option>
+            <option value="Calum-PlayAI">Calum (male)</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:8px">
+          <div style="flex:1">
+            <label class="fl" style="font-size:var(--font-size-sm)">PITCH <span id="char-pitch-val" style="color:var(--cyan)">1.00</span></label>
+            <input type="range" id="char-pitch" min="0.5" max="2.0" step="0.05" value="1.0" style="width:100%;accent-color:var(--cyan)"
+              oninput="document.getElementById('char-pitch-val').textContent=parseFloat(this.value).toFixed(2)">
+          </div>
+          <div style="flex:1">
+            <label class="fl" style="font-size:var(--font-size-sm)">SPEED <span id="char-speed-val" style="color:var(--cyan)">1.00</span></label>
+            <input type="range" id="char-speed" min="0.5" max="2.0" step="0.05" value="1.0" style="width:100%;accent-color:var(--cyan)"
+              oninput="document.getElementById('char-speed-val').textContent=parseFloat(this.value).toFixed(2)">
+          </div>
+        </div>
+        <div style="margin-bottom:8px">
+          <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:2px">AI MODEL</label>
+          <select class="fi" id="char-model" style="width:100%">
+            <option value="twin">TWIN · Groq Llama 3.3 70B (default)</option>
+            <option value="shadow">SHADOW · Venice Uncensored 1.2</option>
+            <option value="creative_dolphin">GEMMA 4 Uncensored · Venice</option>
+            <option value="board_gptoss">HERMES 405B · Venice</option>
+            <option value="brainstorm_qwq">QwQ 32B · Groq (reasoning)</option>
+            <option value="board_strategy">KIMI K2 · NVIDIA</option>
+            <option value="board_finance">MISTRAL LARGE 3 · NVIDIA</option>
+            <option value="board_creative">PALMYRA 122B · NVIDIA</option>
+            <option value="board_ops">NEMOTRON 49B · NVIDIA</option>
+            <option value="board_distribution">GPT-OSS 120B · NVIDIA</option>
+            <option value="brainstorm_minimax">MINIMAX M2.5 · NVIDIA</option>
+            <option value="creative">GLM 5.1 · NVIDIA</option>
+          </select>
+        </div>
+        <button class="btn" onclick="charSave()">[ + SAVE CHARACTER ]</button>
+        <div class="fg" style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="fl">SAVED CHARACTERS</span>
+            <button class="btn" style="font-size:var(--font-size-sm);padding:3px 8px" onclick="charRenderRoster()">[ REFRESH ]</button>
+          </div>
+        </div>
+        <div id="char-roster"></div>
+        <p class="ph-text" id="char-roster-empty">NO CHARACTERS SAVED YET.</p>
+      </div>
+    </div><!-- /panel-characters -->
 
     <!-- [5] BRAINSTORM — standalone -->
     <div class="panel" id="panel-brainstorm">
@@ -1392,46 +1375,37 @@ audio { width: 100%; margin-top: 4px; }
       </div>
     </div><!-- /panel-brainstorm -->
 
-    <!-- [6] LEGAL/MKT — LEGAL / MARKETING -->
-    <div class="panel" id="panel-advisors">
-      <div class="lab-tab-row">
-        <button class="lab-tab active" onclick="switchAdvisors('legal', this)">LEGAL</button>
-        <button class="lab-tab"        onclick="switchAdvisors('marketing', this)">MARKETING</button>
-      </div>
-
-      <!-- LEGAL -->
-      <div class="lab-section active" id="adv-legal">
-        <div class="panel-scroll">
-          <div class="fg">
-            <label class="fl">YOUR QUESTION</label>
-            <textarea class="fi" id="legal-input" rows="2" placeholder="Ask about rights, licensing, fair use, DMCA..."></textarea>
-          </div>
-          <div class="action-row">
-            <button class="btn" id="legal-go-btn" onclick="runAdvisor('legal')">[ ASK LEGAL ]</button>
-            <button class="btn" id="legal-clear-btn" onclick="clearAdvisor('legal')">[ NEW MATTER ]</button>
-            <a id="legal-export-btn" class="action-link" style="display:none" download="legal_advice.txt">[ EXPORT ]</a>
-          </div>
-          <div id="legal-out" class="session-out"></div>
+    <!-- LEGAL panel -->
+    <div class="panel" id="panel-legal">
+      <div class="panel-scroll" id="adv-legal">
+        <div class="fg">
+          <label class="fl">YOUR QUESTION</label>
+          <textarea class="fi" id="legal-input" rows="2" placeholder="Ask about rights, licensing, fair use, DMCA..."></textarea>
         </div>
-      </div>
-
-      <!-- MARKETING -->
-      <div class="lab-section" id="adv-marketing">
-        <div class="panel-scroll">
-          <div class="fg">
-            <label class="fl">YOUR QUESTION</label>
-            <textarea class="fi" id="marketing-input" rows="3" placeholder="Ask about launches, ads, audience building, brand strategy, campaigns..."></textarea>
-          </div>
-          <div class="action-row">
-            <button class="btn" id="marketing-go-btn" onclick="runAdvisor('marketing')">[ ASK MARKETING ]</button>
-            <button class="btn" id="marketing-clear-btn" onclick="clearAdvisor('marketing')">[ NEW MATTER ]</button>
-            <a id="marketing-export-btn" class="action-link" style="display:none" download="marketing_advice.txt">[ EXPORT ]</a>
-          </div>
-          <div id="marketing-out" class="session-out"></div>
+        <div class="action-row">
+          <button class="btn" id="legal-go-btn" onclick="runAdvisor('legal')">[ ASK LEGAL ]</button>
+          <button class="btn" id="legal-clear-btn" onclick="clearAdvisor('legal')">[ NEW MATTER ]</button>
+          <a id="legal-export-btn" class="action-link" style="display:none" download="legal_advice.txt">[ EXPORT ]</a>
         </div>
+        <div id="legal-out" class="session-out"></div>
       </div>
+    </div><!-- /panel-legal -->
 
-    </div><!-- /panel-advisors -->
+    <!-- MARKETING panel -->
+    <div class="panel" id="panel-marketing">
+      <div class="panel-scroll" id="adv-marketing">
+        <div class="fg">
+          <label class="fl">YOUR QUESTION</label>
+          <textarea class="fi" id="marketing-input" rows="3" placeholder="Ask about launches, ads, audience building, brand strategy, campaigns..."></textarea>
+        </div>
+        <div class="action-row">
+          <button class="btn" id="marketing-go-btn" onclick="runAdvisor('marketing')">[ ASK MARKETING ]</button>
+          <button class="btn" id="marketing-clear-btn" onclick="clearAdvisor('marketing')">[ NEW MATTER ]</button>
+          <a id="marketing-export-btn" class="action-link" style="display:none" download="marketing_advice.txt">[ EXPORT ]</a>
+        </div>
+        <div id="marketing-out" class="session-out"></div>
+      </div>
+    </div><!-- /panel-marketing -->
 
     <!-- [7] SETTINGS -->
     <div class="panel" id="panel-settings">
@@ -1703,10 +1677,14 @@ audio { width: 100%; margin-top: 4px; }
     <button class="nav-btn" onclick="switchTab('lab-video', this)"><span class="nav-num">[4]</span>VIDEO LAB</button>
     <button class="nav-btn" onclick="switchTab('lab-write', this)"><span class="nav-num">[5]</span>WRITE LAB</button>
     <button class="nav-btn" onclick="switchTab('lab-code', this)"><span class="nav-num">[6]</span>CODE LAB</button>
-    <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[7]</span>PODCASTS</button>
-    <button class="nav-btn" onclick="switchTab('brainstorm', this)"><span class="nav-num">[8]</span>BRAINSTORM</button>
-    <button class="nav-btn" onclick="switchTab('advisors', this)"><span class="nav-num">[9]</span>LEGAL/MKT</button>
-    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[10]</span>SETTINGS</button>
+    <button class="nav-btn" onclick="switchTab('social', this)"><span class="nav-num">[7]</span>SOCIAL</button>
+    <button class="nav-btn" onclick="switchTab('gorilla', this)"><span class="nav-num">[8]</span>GORILLA</button>
+    <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[9]</span>PODCASTS</button>
+    <button class="nav-btn" onclick="switchTab('characters', this)"><span class="nav-num">[10]</span>CHARACTERS</button>
+    <button class="nav-btn" onclick="switchTab('brainstorm', this)"><span class="nav-num">[11]</span>BRAINSTORM</button>
+    <button class="nav-btn" onclick="switchTab('legal', this)"><span class="nav-num">[12]</span>LEGAL</button>
+    <button class="nav-btn" onclick="switchTab('marketing', this)"><span class="nav-num">[13]</span>MARKETING</button>
+    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[14]</span>SETTINGS</button>
     <span class="nav-user" style="width:100%;order:99;text-align:right;padding:2px 8px;font-size:7px">{{ session.get('username', '') | upper }}&nbsp;<a class="nav-logout" href="/logout">[ EXIT ]</a></span>
   </nav>
 
@@ -3314,8 +3292,8 @@ const _GUIDE_TOOL_MAP = {
   gorilla_warroom:      { tab: 'gorilla',    type: null },
   board_session:        { tab: 'board',      type: null },
   brainstorm:           { tab: 'studio',     type: null },
-  advisor_legal:        { tab: 'advisors',   type: null },
-  advisor_marketing:    { tab: 'advisors',   type: null },
+  advisor_legal:        { tab: 'legal',      type: null },
+  advisor_marketing:    { tab: 'marketing',  type: null },
   lab_video:            { tab: 'lab',        type: null },
   lab_write:            { tab: 'lab',        type: null },
   lab_code:             { tab: 'lab',        type: null },
@@ -3996,8 +3974,7 @@ function reloadArchiveSession() {
     document.getElementById('pod-save-btn').style.display = '';
     document.getElementById('pod-audio-btn').style.display = '';
     closeArchiveViewer();
-    switchTab('studio', document.querySelector('.nav-btn:nth-child(5)'));
-    switchStudio('podcast', document.querySelector('#panel-studio .lab-tab:nth-child(1)'));
+    switchTab('studio', document.querySelector('.nav-btn[onclick*="\'studio\'"]'));
   } else {
     alert('Cannot reload this session type into a panel.');
   }
@@ -4380,6 +4357,8 @@ const ST = {
 };
 
 function switchStudio(tab, btn) {
+  switchTab(tab === 'podcast' ? 'studio' : 'characters', document.querySelector('.nav-btn[onclick*="\''+( tab==='podcast'?'studio':'characters' )+'\'"]'));
+  return;
   ['podcast','characters'].forEach(t => {
     const el = document.getElementById('lab-' + t);
     if (el) el.classList.remove('active');
@@ -4398,11 +4377,13 @@ function switchBoard(tab, btn) {
 }
 
 function switchAdvisors(tab, btn) {
+  switchTab(tab, document.querySelector('.nav-btn[onclick*="\''+tab+'\'"]'));
+  return;
   ['legal','marketing'].forEach(t => {
     const el = document.getElementById('adv-' + t);
     if (el) el.classList.remove('active');
   });
-  document.querySelectorAll('#panel-advisors > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
+  // panel-advisors split into panel-legal / panel-marketing
   const target = document.getElementById('adv-' + tab);
   if (target) target.classList.add('active');
   if (btn) btn.classList.add('active');
@@ -4867,8 +4848,8 @@ document.addEventListener('keydown', e => {
   const tag = document.activeElement?.tagName;
   if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT') return;
   const navBtns = document.querySelectorAll('.nav-btn');
-  const _tabs   = ['home','projects','board','lab-video','lab-write','lab-code','studio','brainstorm','advisors','settings'];
-  const map = { '1':'home','2':'projects','3':'board','4':'lab-video','5':'lab-write','6':'lab-code','7':'studio','8':'brainstorm','9':'advisors','10':'settings' };
+  const _tabs   = ['home','projects','board','lab-video','lab-write','lab-code','social','gorilla','studio','characters','brainstorm','legal','marketing','settings'];
+  const map = { '1':'home','2':'projects','3':'board','4':'lab-video','5':'lab-write','6':'lab-code','7':'social','8':'gorilla','9':'studio','0':'characters' };
   if (map[e.key]) {
     const name = map[e.key];
     const idx  = _tabs.indexOf(name);
@@ -4945,7 +4926,7 @@ function charLoadToCast(name) {
   list.appendChild(_podMakeCard(char.name, char.role, char.personality || '', char.voice, char.pitch, char.speed, char.model || 'twin'));
   POD.numSpeakers = list.querySelectorAll('.pod-speaker-card').length;
   document.getElementById('pod-cast-count').textContent = `(${POD.numSpeakers} speaker${POD.numSpeakers !== 1 ? 's' : ''})`;
-  switchStudio('podcast', document.querySelector('#panel-studio .lab-tab:nth-child(1)'));
+  switchTab('studio', document.querySelector('.nav-btn[onclick*="\'studio\'"]'));
 }
 
 function charEditPrefill(name) {
