@@ -782,7 +782,7 @@ audio { width: 100%; margin-top: 4px; }
       <div class="lab-tab-row">
         <button class="lab-tab active" id="ptab-missions-btn" onclick="switchProjectsTab('missions',this)">MISSIONS</button>
         <button class="lab-tab" id="ptab-committees-btn" onclick="switchProjectsTab('committees',this)">COMMITTEE</button>
-        <button class="lab-tab" id="ptab-board-btn" onclick="switchProjectsTab('board',this)">BOARD</button>
+        <button class="lab-tab" id="ptab-board-btn" onclick="switchTab('board', document.querySelector('.nav-btn[onclick*=\'board\']'))">BOARD →</button>
       </div>
 
       <!-- MISSIONS tab -->
@@ -895,8 +895,12 @@ audio { width: 100%; margin-top: 4px; }
         </div>
       </div>
 
-      <!-- BOARD tab -->
-      <div id="ptab-board" class="panel-scroll" style="padding:10px 12px;display:none">
+      <!-- BOARD sub-tab removed — now its own top-level panel -->
+    </div>
+
+    <!-- BOARDROOM panel -->
+    <div class="panel" id="panel-board">
+      <div class="panel-scroll">
         <div class="fg">
           <label class="fl">TOPIC / IDEA</label>
           <textarea class="fi" id="boardroom-topic" rows="2" placeholder="Pitch your idea to the board..."></textarea>
@@ -1695,13 +1699,14 @@ audio { width: 100%; margin-top: 4px; }
   <nav class="nav">
     <button class="nav-btn active" onclick="switchTab('home', this)"><span class="nav-num">[1]</span>HOME</button>
     <button class="nav-btn" onclick="switchTab('projects', this)"><span class="nav-num">[2]</span>COMMITTEES</button>
-    <button class="nav-btn" onclick="switchTab('lab-video', this)"><span class="nav-num">[3]</span>VIDEO LAB</button>
-    <button class="nav-btn" onclick="switchTab('lab-write', this)"><span class="nav-num">[4]</span>WRITE LAB</button>
-    <button class="nav-btn" onclick="switchTab('lab-code', this)"><span class="nav-num">[5]</span>CODE LAB</button>
-    <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[6]</span>PODCASTS</button>
-    <button class="nav-btn" onclick="switchTab('brainstorm', this)"><span class="nav-num">[7]</span>BRAINSTORM</button>
-    <button class="nav-btn" onclick="switchTab('advisors', this)"><span class="nav-num">[8]</span>LEGAL/MKT</button>
-    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[9]</span>SETTINGS</button>
+    <button class="nav-btn" onclick="switchTab('board', this)"><span class="nav-num">[3]</span>BOARDROOM</button>
+    <button class="nav-btn" onclick="switchTab('lab-video', this)"><span class="nav-num">[4]</span>VIDEO LAB</button>
+    <button class="nav-btn" onclick="switchTab('lab-write', this)"><span class="nav-num">[5]</span>WRITE LAB</button>
+    <button class="nav-btn" onclick="switchTab('lab-code', this)"><span class="nav-num">[6]</span>CODE LAB</button>
+    <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[7]</span>PODCASTS</button>
+    <button class="nav-btn" onclick="switchTab('brainstorm', this)"><span class="nav-num">[8]</span>BRAINSTORM</button>
+    <button class="nav-btn" onclick="switchTab('advisors', this)"><span class="nav-num">[9]</span>LEGAL/MKT</button>
+    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[10]</span>SETTINGS</button>
     <span class="nav-user" style="width:100%;order:99;text-align:right;padding:2px 8px;font-size:7px">{{ session.get('username', '') | upper }}&nbsp;<a class="nav-logout" href="/logout">[ EXIT ]</a></span>
   </nav>
 
@@ -3967,8 +3972,7 @@ function reloadArchiveSession() {
     document.getElementById('boardroom-save-btn').style.display = '';
     document.getElementById('boardroom-audio-btn').style.display = '';
     closeArchiveViewer();
-    switchTab('projects', document.querySelector('.nav-btn:nth-child(2)'));
-    switchProjectsTab('board', document.getElementById('ptab-board-btn'));
+    switchTab('board', document.querySelector('.nav-btn[onclick*="\'board\'"]'));
   } else if (type === 'brainstorm') {
     bsTurns = turns;
     document.getElementById('brainstorm-out').innerHTML = '';
@@ -4863,8 +4867,8 @@ document.addEventListener('keydown', e => {
   const tag = document.activeElement?.tagName;
   if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT') return;
   const navBtns = document.querySelectorAll('.nav-btn');
-  const _tabs   = ['home','projects','lab','studio','board','advisors','settings'];
-  const map = { '1':'home','2':'projects','3':'lab','4':'studio','5':'board','6':'advisors','7':'settings' };
+  const _tabs   = ['home','projects','board','lab-video','lab-write','lab-code','studio','brainstorm','advisors','settings'];
+  const map = { '1':'home','2':'projects','3':'board','4':'lab-video','5':'lab-write','6':'lab-code','7':'studio','8':'brainstorm','9':'advisors','10':'settings' };
   if (map[e.key]) {
     const name = map[e.key];
     const idx  = _tabs.indexOf(name);
