@@ -42,17 +42,18 @@ All source files inside `twin shadow flat/`:
 | `uploads/` | Lab uploads (video, audio, image files) |
 | `renders/` | Final rendered MP4 output files |
 
-## Nav Structure (7 tabs)
+## Nav Structure (8 tabs)
 
 | Tab | Key | Content |
 |---|---|---|
 | HOME | 1 | Main chat (TWIN / SHADOW) + [DASH] pipeline popup |
 | COMMITTEES | 2 | MISSIONS + COMMITTEE builder + BOARDROOM (multi-agent board sessions) |
-| SOCIAL | 3 | Social media content generation |
-| PODCASTS | 4 | PODCAST (full character + cast format system) + CHARS |
-| BRAINSTORM | 5 | Standalone brainstorm/riff sessions |
-| LEGAL/MKT | 6 | LEGAL + MARKETING advisor chat |
-| SETTINGS | 7 | User preferences, API settings |
+| LABS | 3 | VIDEO LAB (link to /lab) + WRITE (Bible/Reader/Book) + CODE (Builder/Architect) |
+| SOCIAL | 4 | Social media content generation |
+| PODCASTS | 5 | PODCAST (full character + cast format system) + CHARS |
+| BRAINSTORM | 6 | Standalone brainstorm/riff sessions |
+| LEGAL/MKT | 7 | LEGAL + MARKETING advisor chat |
+| SETTINGS | 8 | User preferences, API settings |
 
 ## Color Palette (BBS/ANSI — no purple)
 

@@ -1705,11 +1705,12 @@ audio { width: 100%; margin-top: 4px; }
   <nav class="nav">
     <button class="nav-btn active" onclick="switchTab('home', this)"><span class="nav-num">[1]</span>HOME</button>
     <button class="nav-btn" onclick="switchTab('projects', this)"><span class="nav-num">[2]</span>COMMITTEES</button>
-    <button class="nav-btn" onclick="switchTab('social', this)"><span class="nav-num">[3]</span>SOCIAL</button>
-    <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[4]</span>PODCASTS</button>
-    <button class="nav-btn" onclick="switchTab('brainstorm', this)"><span class="nav-num">[5]</span>BRAINSTORM</button>
-    <button class="nav-btn" onclick="switchTab('advisors', this)"><span class="nav-num">[6]</span>LEGAL/MKT</button>
-    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[7]</span>SETTINGS</button>
+    <button class="nav-btn" onclick="switchTab('lab', this)"><span class="nav-num">[3]</span>LABS</button>
+    <button class="nav-btn" onclick="switchTab('social', this)"><span class="nav-num">[4]</span>SOCIAL</button>
+    <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[5]</span>PODCASTS</button>
+    <button class="nav-btn" onclick="switchTab('brainstorm', this)"><span class="nav-num">[6]</span>BRAINSTORM</button>
+    <button class="nav-btn" onclick="switchTab('advisors', this)"><span class="nav-num">[7]</span>LEGAL/MKT</button>
+    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[8]</span>SETTINGS</button>
     <span class="nav-user" style="width:100%;order:99;text-align:right;padding:2px 8px;font-size:7px">{{ session.get('username', '') | upper }}&nbsp;<a class="nav-logout" href="/logout">[ EXIT ]</a></span>
   </nav>
 
@@ -3996,7 +3997,7 @@ function reloadArchiveSession() {
     document.getElementById('brainstorm-save-btn').style.display = '';
     document.getElementById('brainstorm-audio-btn').style.display = '';
     closeArchiveViewer();
-    switchTab('brainstorm', document.querySelector('.nav-btn:nth-child(5)'));
+    switchTab('brainstorm', document.querySelector('.nav-btn:nth-child(6)'));
   } else if (type === 'podcast') {
     POD.turns = turns;
     document.getElementById('pod-out').innerHTML = '';
@@ -4008,7 +4009,7 @@ function reloadArchiveSession() {
     document.getElementById('pod-save-btn').style.display = '';
     document.getElementById('pod-audio-btn').style.display = '';
     closeArchiveViewer();
-    switchTab('studio', document.querySelector('.nav-btn:nth-child(4)'));
+    switchTab('studio', document.querySelector('.nav-btn:nth-child(5)'));
     switchStudio('podcast', document.querySelector('#panel-studio .lab-tab:nth-child(1)'));
   } else {
     alert('Cannot reload this session type into a panel.');
