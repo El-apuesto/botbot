@@ -95,7 +95,8 @@ body::before {
   flex-direction: column;
   gap: 0;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
 }
 
 .wizard-wrap { display: none !important; }
@@ -740,55 +741,155 @@ audio { width: 100%; margin-top: 4px; }
 .deploy-row .fi { flex: 1; min-width: 0; }
 
 /* ── DROPDOWN MENU ── */
-.menu-wrap { position: fixed; top: 10px; right: 12px; z-index: 9999; }
+.menu-wrap { position: absolute; bottom: 0; left: 0; z-index: 9999; }
 .menu-toggle {
-  background: var(--cyan-dark);
-  color: var(--cyan);
+  background: rgba(187,68,255,0.92);
+  color: #ffffff;
   font-family: var(--font-head);
-  font-size: 7px;
-  letter-spacing: .06em;
+  font-size: 11px;
+  letter-spacing: .1em;
   cursor: pointer;
-  padding: 6px 14px;
-  text-shadow: 0 0 8px var(--cyan-glow);
-  transition: color .1s, background .1s;
+  padding: 8px 18px;
+  text-shadow: 0 0 10px #ffffff, 0 0 20px var(--cyan-glow);
+  box-shadow: 0 0 20px var(--cyan-glow), 0 0 6px rgba(187,68,255,0.5);
+  transition: all .15s;
 }
-.menu-toggle:hover { color: var(--neon-bright); background: rgba(187,68,255,0.22); }
+.menu-toggle:hover {
+  background: var(--cyan);
+  text-shadow: 0 0 14px #ffffff;
+  box-shadow: 0 0 32px var(--cyan-glow), 0 0 12px var(--cyan-glow);
+}
 .menu-dropdown {
   display: none;
   position: absolute;
-  right: 0;
-  top: calc(100% + 5px);
-  background: var(--terminal-bg);
-  backdrop-filter: blur(6px);
-  min-width: 230px;
+  left: 0;
+  top: calc(100% + 4px);
+  background: rgba(8,0,15,.97);
+  backdrop-filter: blur(10px);
+  min-width: 270px;
   flex-direction: column;
-  box-shadow: 0 0 40px var(--cyan-glow);
+  box-shadow: 0 0 40px var(--cyan-glow), 0 0 2px var(--cyan);
 }
 .menu-dropdown.open { display: flex; }
 .menu-item {
   background: none;
   color: var(--text);
   font-family: var(--font-head);
-  font-size: 7px;
+  font-size: 13px;
   text-align: left;
   cursor: pointer;
-  padding: 10px 18px;
-  letter-spacing: .04em;
+  padding: 11px 18px;
+  letter-spacing: .06em;
   transition: color .1s, background .1s;
 }
 .menu-item:hover, .menu-item.active {
   color: var(--neon-bright);
   background: rgba(187,68,255,0.18);
-  text-shadow: 0 0 8px var(--cyan);
+  text-shadow: 0 0 10px var(--cyan);
 }
-.menu-item .nav-num { color: var(--yellow); margin-right: 8px; }
+.menu-item .nav-num { color: var(--yellow); margin-right: 10px; }
 .menu-user {
   font-family: var(--font-head);
-  font-size: 7px;
+  font-size: 11px;
   color: var(--muted);
-  padding: 10px 18px;
+  padding: 11px 18px;
   display: block;
   letter-spacing: .04em;
+}
+
+/* ── DASHBOARD ── */
+#pipeline-overlay { background: rgba(4,0,10,.97); }
+.dash-header-bar {
+  color: var(--cyan);
+  font-family: var(--font-head);
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-shadow: 0 0 12px var(--cyan);
+  margin-bottom: 14px;
+  padding-bottom: 6px;
+}
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+@media (max-width: 480px) { .dash-grid { grid-template-columns: 1fr; } }
+.dash-block {
+  background: rgba(187,68,255,0.05);
+  padding: 10px 14px;
+}
+.dash-block-title {
+  color: var(--cyan);
+  font-family: var(--font-head);
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-shadow: 0 0 8px var(--cyan);
+  margin-bottom: 8px;
+}
+.dash-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+  gap: 8px;
+}
+.dash-key {
+  color: var(--muted);
+  font-family: var(--font-head);
+  font-size: 8px;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+.dash-val {
+  color: #ffffff;
+  font-family: var(--font-head);
+  font-size: 9px;
+  font-weight: 700;
+  text-shadow: 0 0 8px rgba(255,255,255,0.6);
+  white-space: nowrap;
+}
+.dash-bar {
+  flex: 1;
+  font-family: var(--font-head);
+  font-size: 8px;
+  color: var(--cyan);
+  text-shadow: 0 0 6px var(--cyan);
+  overflow: hidden;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.dash-divider {
+  color: var(--muted);
+  font-family: var(--font-head);
+  font-size: 7px;
+  overflow: hidden;
+  white-space: nowrap;
+  margin: 10px 0;
+  letter-spacing: .02em;
+}
+.dash-loading {
+  color: var(--cyan);
+  font-family: var(--font-head);
+  font-size: 9px;
+  letter-spacing: .12em;
+  animation: blink .7s step-end infinite;
+}
+.dash-recent-item {
+  font-family: var(--font-head);
+  font-size: 8px;
+  color: var(--text);
+  padding: 3px 0;
+  letter-spacing: .04em;
+}
+.dash-recent-item .dr-type {
+  color: var(--yellow);
+  margin-right: 6px;
+}
+.dash-recent-item .dr-time {
+  color: var(--muted);
+  margin-left: 6px;
+  font-size: 7px;
 }
 
 /* ── NO BORDERS — user override ── */
@@ -806,6 +907,25 @@ audio { width: 100%; margin-top: 4px; }
         <source media="(max-width: 600px)" srcset="/static/header_mobile2.jpeg">
         <img src="/static/header_mobile.JPEG" alt="Twin Shadow">
       </picture>
+    </div>
+    <!-- MENU — bottom-left of hero -->
+    <div class="menu-wrap" id="menu-wrap">
+      <button class="menu-toggle" id="menu-toggle" onclick="toggleMenu(event)">[ ≡ MENU ]</button>
+      <div class="menu-dropdown" id="menu-dropdown">
+        <button class="menu-item active" data-tab="home"      onclick="menuNav('home')"><span class="nav-num">[1]</span> HOME</button>
+        <button class="menu-item" data-tab="projects"         onclick="menuNav('projects')"><span class="nav-num">[2]</span> COMMITTEES</button>
+        <button class="menu-item" data-tab="board"            onclick="menuNav('board')"><span class="nav-num">[3]</span> BOARDROOM</button>
+        <button class="menu-item" data-tab="lab-video"        onclick="menuNav('lab-video')"><span class="nav-num">[4]</span> VIDEO LAB</button>
+        <button class="menu-item" data-tab="lab-write"        onclick="menuNav('lab-write')"><span class="nav-num">[5]</span> WRITE LAB</button>
+        <button class="menu-item" data-tab="lab-code"         onclick="menuNav('lab-code')"><span class="nav-num">[6]</span> CODE LAB</button>
+        <button class="menu-item" data-tab="social"           onclick="menuNav('social')"><span class="nav-num">[7]</span> SOCIAL</button>
+        <button class="menu-item" data-tab="studio"           onclick="menuNav('studio')"><span class="nav-num">[8]</span> PODCASTS</button>
+        <button class="menu-item" data-tab="brainstorm"       onclick="menuNav('brainstorm')"><span class="nav-num">[9]</span> BRAINSTORM</button>
+        <button class="menu-item" data-tab="advisors"         onclick="menuNav('advisors')"><span class="nav-num">[10]</span> LEGAL/MKT</button>
+        <button class="menu-item" data-tab="settings"         onclick="menuNav('settings')"><span class="nav-num">[11]</span> SETTINGS</button>
+        <button class="menu-item" data-tab="archive"          onclick="menuNav('archive')"><span class="nav-num">[12]</span> ARCHIVE</button>
+        <span class="menu-user">{{ session.get('username', '') | upper }}&nbsp;<a href="/logout" style="color:var(--red);text-decoration:none;font-family:var(--font-head);font-size:11px;letter-spacing:.04em">[ EXIT ]</a></span>
+      </div>
     </div>
   </div>
 
@@ -1722,25 +1842,6 @@ audio { width: 100%; margin-top: 4px; }
     <button id="send-btn" onclick="send()"><img src="/static/send_btn_nobg.png" alt="Send"></button>
   </div>
 
-  <!-- ═══ DROPDOWN MENU ═══ -->
-  <div class="menu-wrap" id="menu-wrap">
-    <button class="menu-toggle" id="menu-toggle" onclick="toggleMenu(event)">[ ≡ MENU ]</button>
-    <div class="menu-dropdown" id="menu-dropdown">
-      <button class="menu-item active" data-tab="home"      onclick="menuNav('home')"><span class="nav-num">[1]</span> HOME</button>
-      <button class="menu-item" data-tab="projects"         onclick="menuNav('projects')"><span class="nav-num">[2]</span> COMMITTEES</button>
-      <button class="menu-item" data-tab="board"            onclick="menuNav('board')"><span class="nav-num">[3]</span> BOARDROOM</button>
-      <button class="menu-item" data-tab="lab-video"        onclick="menuNav('lab-video')"><span class="nav-num">[4]</span> VIDEO LAB</button>
-      <button class="menu-item" data-tab="lab-write"        onclick="menuNav('lab-write')"><span class="nav-num">[5]</span> WRITE LAB</button>
-      <button class="menu-item" data-tab="lab-code"         onclick="menuNav('lab-code')"><span class="nav-num">[6]</span> CODE LAB</button>
-      <button class="menu-item" data-tab="social"           onclick="menuNav('social')"><span class="nav-num">[7]</span> SOCIAL</button>
-      <button class="menu-item" data-tab="studio"           onclick="menuNav('studio')"><span class="nav-num">[8]</span> PODCASTS</button>
-      <button class="menu-item" data-tab="brainstorm"       onclick="menuNav('brainstorm')"><span class="nav-num">[9]</span> BRAINSTORM</button>
-      <button class="menu-item" data-tab="advisors"         onclick="menuNav('advisors')"><span class="nav-num">[10]</span> LEGAL/MKT</button>
-      <button class="menu-item" data-tab="settings"         onclick="menuNav('settings')"><span class="nav-num">[11]</span> SETTINGS</button>
-      <button class="menu-item" data-tab="archive"          onclick="menuNav('archive')"><span class="nav-num">[12]</span> ARCHIVE</button>
-      <span class="menu-user">{{ session.get('username', '') | upper }}&nbsp;<a href="/logout" style="color:var(--red);text-decoration:none;font-family:var(--font-head);font-size:7px;letter-spacing:.04em">[ EXIT ]</a></span>
-    </div>
-  </div>
 
 </div><!-- /app -->
 
@@ -1748,9 +1849,34 @@ audio { width: 100%; margin-top: 4px; }
 <div id="pipeline-overlay">
   <div class="pipe-overlay-inner">
     <div class="pipe-overlay-head">
-      <span>▓▓ PROJECT PIPELINE DASHBOARD ▓▓</span>
+      <span>▓▓ TWIN SHADOW — SYSTEM DASHBOARD ▓▓</span>
       <button class="pipe-close-btn" onclick="document.getElementById('pipeline-overlay').classList.remove('open')">[ CLOSE ✕ ]</button>
     </div>
+
+    <!-- ── LIVE STATS ── -->
+    <div class="dash-header-bar">█ SYSTEM STATUS &nbsp;<span id="dash-clock" style="color:var(--muted);font-size:9px"></span></div>
+    <div class="dash-grid">
+      <div class="dash-block">
+        <div class="dash-block-title">█ SESSION ARCHIVE</div>
+        <div class="dash-row"><span class="dash-key">BOARDROOM</span><span class="dash-bar" id="db-bar-board"></span><span class="dash-val" id="db-cnt-board">█</span></div>
+        <div class="dash-row"><span class="dash-key">BRAINSTORM</span><span class="dash-bar" id="db-bar-brain"></span><span class="dash-val" id="db-cnt-brain">█</span></div>
+        <div class="dash-row"><span class="dash-key">TWIN CHAT</span><span class="dash-bar" id="db-bar-twin"></span><span class="dash-val" id="db-cnt-twin">█</span></div>
+        <div class="dash-row"><span class="dash-key">SHADOW CHAT</span><span class="dash-bar" id="db-bar-shadow"></span><span class="dash-val" id="db-cnt-shadow">█</span></div>
+        <div class="dash-row"><span class="dash-key">PODCAST</span><span class="dash-bar" id="db-bar-pod"></span><span class="dash-val" id="db-cnt-pod">█</span></div>
+      </div>
+      <div class="dash-block">
+        <div class="dash-block-title">█ MEDIA &amp; PIPELINE</div>
+        <div class="dash-row"><span class="dash-key">AUDIO FILES</span><span class="dash-bar" id="db-bar-audio"></span><span class="dash-val" id="db-cnt-audio">█</span></div>
+        <div class="dash-row"><span class="dash-key">VIDEO RENDERS</span><span class="dash-bar" id="db-bar-renders"></span><span class="dash-val" id="db-cnt-renders">█</span></div>
+        <div class="dash-row"><span class="dash-key">PIPELINE JOBS</span><span class="dash-bar" id="db-bar-jobs"></span><span class="dash-val" id="db-cnt-jobs">█</span></div>
+        <div class="dash-block-title" style="margin-top:10px">█ RECENT SESSIONS</div>
+        <div id="db-recent" style="display:flex;flex-direction:column;gap:2px"></div>
+      </div>
+    </div>
+    <div class="dash-divider">══════════════════════════════════════════════════════════</div>
+
+    <!-- ── JOB QUEUE ── -->
+    <div class="dash-block-title" style="margin-bottom:8px">█ BUILD QUEUE</div>
     <div class="fg">
       <label class="fl">JOB NAME</label>
       <input class="fi" id="pipeline-name" type="text" placeholder="Short label for this job..." autocomplete="off">
@@ -1840,16 +1966,33 @@ function _looksComplete(text) {
 
 async function speakText(text, voice) {
   try {
+    const audio = document.createElement('audio');
+    audio.style.display = 'none';
+    document.body.appendChild(audio);
+    const cleanup = () => { try { audio.remove(); } catch {} };
+
     const res = await fetch('/api/tts/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: text.slice(0, 3000), voice: voice || 'twin' }),
     });
-    if (!res.ok) return;
-    const { url } = await res.json();
-    if (!url) return;
-    const audio = new Audio(url);
-    audio.play();
+    if (!res.ok) { cleanup(); console.warn('TTS HTTP', res.status); return; }
+    const data = await res.json();
+    if (!data.url) { cleanup(); return; }
+
+    audio.src = data.url;
+    audio.onended = cleanup;
+    setTimeout(cleanup, 120000);
+    const p = audio.play();
+    if (p) p.catch(e => {
+      console.warn('Audio play blocked:', e);
+      const spk = document.createElement('button');
+      spk.className = 'btn';
+      spk.style.cssText = 'font-size:var(--font-size-sm);padding:2px 8px;margin-top:4px;display:inline-block';
+      spk.textContent = '[ ▶ PLAY ]';
+      spk.onclick = () => { audio.play(); spk.remove(); };
+      document.getElementById('msgs').lastElementChild?.appendChild(spk);
+    });
   } catch(e) { console.warn('TTS failed:', e); }
 }
 
@@ -1976,6 +2119,84 @@ const _labConcepts = {};
 function openPipelineDash() {
   document.getElementById('pipeline-overlay').classList.add('open');
   loadPipeline();
+  loadDashStats();
+  _dashClock();
+}
+
+function _bbsBar(n, max, width) {
+  if (!max) max = 1;
+  const fill = Math.round((n / max) * width);
+  const empty = width - fill;
+  return '█'.repeat(Math.max(0, fill)) + '░'.repeat(Math.max(0, empty));
+}
+
+function _relTime(iso) {
+  if (!iso) return '';
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 60)   return Math.round(diff) + 's ago';
+  if (diff < 3600) return Math.round(diff / 60) + 'm ago';
+  if (diff < 86400)return Math.round(diff / 3600) + 'h ago';
+  return Math.round(diff / 86400) + 'd ago';
+}
+
+let _dashClockTimer = null;
+function _dashClock() {
+  clearInterval(_dashClockTimer);
+  const el = document.getElementById('dash-clock');
+  if (!el) return;
+  const tick = () => { if (el) el.textContent = new Date().toLocaleTimeString(); };
+  tick(); _dashClockTimer = setInterval(tick, 1000);
+}
+
+async function loadDashStats() {
+  const BAR_W = 8;
+  const set = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
+
+  set('db-cnt-board','█'); set('db-cnt-brain','█'); set('db-cnt-twin','█');
+  set('db-cnt-shadow','█'); set('db-cnt-pod','█');
+  set('db-cnt-audio','█'); set('db-cnt-renders','█'); set('db-cnt-jobs','█');
+
+  try {
+    const [sessR, audioR, pipeR] = await Promise.all([
+      fetch('/api/sessions/list').then(r => r.json()).catch(() => []),
+      fetch('/api/audio/list').then(r => r.json()).catch(() => []),
+      fetch('/api/pipeline').then(r => r.json()).catch(() => []),
+    ]);
+
+    const sessions = Array.isArray(sessR) ? sessR : [];
+    const audio    = Array.isArray(audioR) ? audioR : [];
+    const jobs     = Array.isArray(pipeR)  ? pipeR  : (pipeR?.jobs || []);
+
+    const cnt = t => sessions.filter(s => s.session_type === t).length;
+    const board  = cnt('boardroom');
+    const brain  = cnt('brainstorm');
+    const twin   = cnt('twin');
+    const shadow = cnt('shadow');
+    const pod    = cnt('podcast');
+    const maxSess = Math.max(board, brain, twin, shadow, pod, 1);
+
+    set('db-cnt-board',  board);  set('db-bar-board',  _bbsBar(board,  maxSess, BAR_W));
+    set('db-cnt-brain',  brain);  set('db-bar-brain',  _bbsBar(brain,  maxSess, BAR_W));
+    set('db-cnt-twin',   twin);   set('db-bar-twin',   _bbsBar(twin,   maxSess, BAR_W));
+    set('db-cnt-shadow', shadow); set('db-bar-shadow', _bbsBar(shadow, maxSess, BAR_W));
+    set('db-cnt-pod',    pod);    set('db-bar-pod',    _bbsBar(pod,    maxSess, BAR_W));
+
+    set('db-cnt-audio',   audio.length); set('db-bar-audio',   _bbsBar(audio.length,  20, BAR_W));
+    set('db-cnt-renders', '—');          set('db-bar-renders',  '░'.repeat(BAR_W));
+    set('db-cnt-jobs',    jobs.length);  set('db-bar-jobs',     _bbsBar(jobs.length,   10, BAR_W));
+
+    const rec = document.getElementById('db-recent');
+    if (rec) {
+      const last5 = sessions.slice(-5).reverse();
+      rec.innerHTML = last5.length
+        ? last5.map(s =>
+            `<div class="dash-recent-item"><span class="dr-type">${(s.session_type||'?').toUpperCase()}</span>${(s.title||'(untitled)').slice(0,24)}<span class="dr-time">${_relTime(s.created_at)}</span></div>`
+          ).join('')
+        : '<div class="dash-recent-item" style="color:var(--muted)">NO SESSIONS YET</div>';
+    }
+  } catch(e) {
+    console.warn('Dashboard stats error:', e);
+  }
 }
 
 /* ─────────────────────────────────────────
