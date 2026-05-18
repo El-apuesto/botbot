@@ -6,7 +6,7 @@ An esoteric/occult comedy content platform: Python Flask web server + Telegram b
 
 - **Flask web server** — port 5000, started by `part6_bot.py` at import time in a daemon thread
 - **Telegram bot** — runs concurrently via `python-telegram-bot` async loop; requires `TOKEN` env var
-- **Web UI** — `static/index.html` — IBM Plex Mono retro interface; 7-tab nav; chat panel, desktop background
+- **Web UI** — `static/index.html` — BBS/ANSI retro interface; purple phosphor + white; 11-tab flat nav; chat panel, desktop background
 - **Video Lab** — `static/lab.html` — `/lab` route; same aesthetic; full short-form video pipeline
 - **AI streaming** — all API calls are async; Flask↔async bridge uses a Queue + daemon thread per request for real SSE streaming
 
@@ -42,36 +42,39 @@ All source files inside `twin shadow flat/`:
 | `uploads/` | Lab uploads (video, audio, image files) |
 | `renders/` | Final rendered MP4 output files |
 
-## Nav Structure (8 tabs)
+## Nav Structure (11 flat tabs — no borders, purple phosphor)
 
 | Tab | Key | Content |
 |---|---|---|
 | HOME | 1 | Main chat (TWIN / SHADOW) + [DASH] pipeline popup |
-| COMMITTEES | 2 | MISSIONS + COMMITTEE builder + BOARDROOM (multi-agent board sessions) |
-| LABS | 3 | VIDEO LAB (link to /lab) + WRITE (Bible/Reader/Book) + CODE (Builder/Architect) |
-| SOCIAL | 4 | Social media content generation |
-| PODCASTS | 5 | PODCAST (full character + cast format system) + CHARS |
-| BRAINSTORM | 6 | Standalone brainstorm/riff sessions |
-| LEGAL/MKT | 7 | LEGAL + MARKETING advisor chat |
-| SETTINGS | 8 | User preferences, API settings |
+| COMMITTEES | 2 | MISSIONS + COMMITTEE builder + GUERRILLA war room (sub-tabs) |
+| BOARDROOM | 3 | Multi-agent boardroom sessions |
+| VIDEO LAB | 4 | Link to /lab — full video pipeline |
+| WRITE LAB | 5 | Bible / Reader / Book writing tools |
+| CODE LAB | 6 | Builder bot + Architect mode |
+| SOCIAL | 7 | Social media content generation |
+| PODCASTS | 8 | PODCAST (cast + format) + CHARACTERS (sub-tabs) |
+| BRAINSTORM | 9 | Standalone brainstorm/riff sessions |
+| LEGAL/MKT | 10 | LEGAL + MARKETING advisor (sub-tabs) |
+| SETTINGS | 11 | User preferences, API settings |
 
-## Color Palette (BBS/ANSI — no purple)
+## Color Palette (BBS/ANSI — purple phosphor + white)
 
 | Var | Value | Use |
 |---|---|---|
-| `--cyan` | `#00cccc` | Primary accent, borders |
-| `--cyan-dim` | `#003333` | Subtle backgrounds |
-| `--cyan-dark` | `#000d0d` | Dark tinted bg |
-| `--cyan-glow` | `rgba(0,200,200,0.45)` | Glow effects |
-| `--neon` | `#00ffaa` | Text labels |
-| `--neon-bright` | `#ccffee` | Active/highlighted text |
+| `--cyan` | `#bb44ff` | Primary accent (purple phosphor) |
+| `--cyan-dim` | `#1a0033` | Subtle backgrounds |
+| `--cyan-dark` | `#08000f` | Dark tinted bg |
+| `--cyan-glow` | `rgba(187,68,255,0.45)` | Glow effects |
+| `--neon` | `#ffffff` | Text labels (white phosphor) |
+| `--neon-bright` | `#eebbff` | Active/highlighted text |
 | `--green` | `#00ff41` | Success, highlights |
 | `--yellow` | `#ffff00` | Nav numbers, warnings |
 | `--magenta` | `#ff00ff` | Special accents |
 | `--red` | `#ff4444` | Errors |
-| `--text` | `#00cc88` | Body text |
-| `--muted` | `#006655` | Dimmed text |
-| `--border` | `#008888` | All borders |
+| `--text` | `#cc88ff` | Body text |
+| `--muted` | `#553377` | Dimmed text |
+| `--border` | `transparent` | No borders (zero border override) |
 
 ## Flask API Routes
 

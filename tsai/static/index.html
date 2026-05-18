@@ -21,16 +21,16 @@
 
 :root {
   --bg:          #000;
-  --cyan:        #00cccc;
-  --cyan-dim:    #003333;
-  --cyan-dark:   #000d0d;
-  --cyan-glow:   rgba(0,200,200,0.45);
-  --neon:        #00ffaa;
-  --neon-bright: #ccffee;
-  --terminal-bg: rgba(0,10,8,0.92);
-  --border:      #008888;
-  --text:        #00cc88;
-  --muted:       #006655;
+  --cyan:        #bb44ff;
+  --cyan-dim:    #1a0033;
+  --cyan-dark:   #08000f;
+  --cyan-glow:   rgba(187,68,255,0.45);
+  --neon:        #ffffff;
+  --neon-bright: #eebbff;
+  --terminal-bg: rgba(5,0,12,0.92);
+  --border:      transparent;
+  --text:        #cc88ff;
+  --muted:       #553377;
   --green:       #00ff41;
   --yellow:      #ffff00;
   --magenta:     #ff00ff;
@@ -197,7 +197,7 @@ body::before {
 
 @keyframes glow-pulse {
   0%,100% { box-shadow: 0 0 16px var(--cyan-glow); }
-  50%      { box-shadow: 0 0 36px var(--cyan-glow), 0 0 60px rgba(0,200,180,0.10); }
+  50%      { box-shadow: 0 0 36px var(--cyan-glow), 0 0 60px rgba(187,68,255,0.10); }
 }
 .terminal { animation: glow-pulse 6s ease-in-out infinite; }
 
@@ -440,9 +440,8 @@ body::before {
   transition: all .15s;
 }
 .lab-tab.active, .lab-tab:hover {
-  border-color: var(--neon);
   color: var(--neon-bright);
-  background: rgba(0,180,180,0.12);
+  background: rgba(187,68,255,0.12);
 }
 .lab-section { display: none; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }
 .lab-section.active { display: flex; }
@@ -608,7 +607,7 @@ audio { width: 100%; margin-top: 4px; }
   gap: 5px;
   margin-bottom: 6px;
   transition: border-color .15s;
-  background: rgba(0,20,20,.3);
+  background: rgba(20,0,35,.3);
 }
 .mission-row:hover { border-color: var(--cyan-dim); }
 .mission-top { display: flex; align-items: flex-start; gap: 8px; }
@@ -665,7 +664,7 @@ audio { width: 100%; margin-top: 4px; }
   letter-spacing: 0.01em;
   cursor: pointer;
   padding: 6px 0;
-  width: calc(100% / 7);
+  width: calc(100% / 11);
   text-align: center;
   transition: color .1s, text-shadow .1s, background .1s;
   white-space: nowrap;
@@ -692,7 +691,7 @@ audio { width: 100%; margin-top: 4px; }
   letter-spacing: 0.05em;
 }
 .nav-logout {
-  color: #44ccaa;
+  color: #bb77ff;
   text-decoration: none;
   font-size: 12px;
   font-weight: 700;
@@ -739,6 +738,10 @@ audio { width: 100%; margin-top: 4px; }
 /* ── DEPLOY ROW ── */
 .deploy-row { display: none; flex-direction: row; gap: 6px; margin-top: 2px; }
 .deploy-row .fi { flex: 1; min-width: 0; }
+
+/* ── NO BORDERS — user override ── */
+*, *::before, *::after { border-width: 0 !important; }
+.terminal { box-shadow: 0 0 24px var(--cyan-glow) !important; }
 </style>
 </head>
 <body>
@@ -782,6 +785,7 @@ audio { width: 100%; margin-top: 4px; }
       <div class="lab-tab-row">
         <button class="lab-tab active" id="ptab-missions-btn" onclick="switchProjectsTab('missions',this)">MISSIONS</button>
         <button class="lab-tab" id="ptab-committees-btn" onclick="switchProjectsTab('committees',this)">COMMITTEE</button>
+        <button class="lab-tab" id="ptab-guerrilla-btn" onclick="switchProjectsTab('guerrilla',this)">GUERRILLA</button>
         <button class="lab-tab" id="ptab-board-btn" onclick="switchTab('board', document.querySelector('.nav-btn[onclick*=\'board\']'))">BOARD →</button>
       </div>
 
@@ -791,7 +795,7 @@ audio { width: 100%; margin-top: 4px; }
           <span class="fl" style="color:var(--neon)">AUTONOMOUS RESEARCH MISSIONS</span>
         </div>
         <!-- ASK TWIN consult panel -->
-        <div style="border:1px solid var(--cyan);padding:8px 12px;margin-bottom:10px;background:rgba(0,30,30,.15)">
+        <div style="border:1px solid var(--cyan);padding:8px 12px;margin-bottom:10px;background:rgba(26,0,50,.15)">
           <div id="guide-header" style="color:var(--cyan);font-size:var(--font-size-sm);letter-spacing:.1em;margin-bottom:6px">── ASK TWIN WHAT TO DO ──</div>
           <div id="guide-subtext" style="display:none"></div>
           <textarea class="fi" id="guide-goal" rows="1" placeholder="Describe your goal..."></textarea>
@@ -858,7 +862,7 @@ audio { width: 100%; margin-top: 4px; }
         </div>
 
         <!-- preview of designed committee (before saving) -->
-        <div id="committee-preview" style="display:none;margin-bottom:12px;border:1px solid var(--cyan);padding:10px 12px;background:rgba(0,30,30,.2)">
+        <div id="committee-preview" style="display:none;margin-bottom:12px;border:1px solid var(--cyan);padding:10px 12px;background:rgba(26,0,50,.2)">
           <div style="color:var(--cyan);font-size:var(--font-size-sm);letter-spacing:.08em;margin-bottom:6px">── TWIN DESIGNED THIS COMMITTEE ──</div>
           <div id="committee-preview-name" style="color:var(--neon-bright);font-size:14px;font-weight:700;margin-bottom:3px"></div>
           <div id="committee-preview-desc" style="color:var(--muted);font-size:var(--font-size-sm);margin-bottom:10px"></div>
@@ -895,6 +899,38 @@ audio { width: 100%; margin-top: 4px; }
         </div>
       </div>
 
+      <!-- GUERRILLA WAR ROOM -->
+      <div id="ptab-guerrilla" class="panel-scroll" style="display:none;padding:10px 12px">
+        <div class="fg">
+          <span class="fl" style="color:var(--neon-bright);letter-spacing:.14em">GUERRILLA MARKETING WAR ROOM</span>
+        </div>
+        <div style="color:var(--muted);font-size:var(--font-size-sm);margin-bottom:10px;line-height:1.5">
+          Moneyball philosophy. TWIN intelligence pre-brief → 6-specialist committee (Scout, Street, Culture, Arbitrage, Narrative, Closer) → blueprint. No generic advice. Real channels, real costs, real tactics.
+        </div>
+        <div class="fg">
+          <span class="fl">THE BRIEF</span>
+          <textarea id="gorilla-brief" rows="4" class="fi" placeholder="Your product, audience, goal, budget, competitors, what's been tried..."></textarea>
+        </div>
+        <div class="action-row">
+          <button class="btn" id="gorilla-run-btn" onclick="gorillaRun()">[ DEPLOY COMMITTEE ]</button>
+          <button class="btn" onclick="gorillaClear()">[ CLEAR ]</button>
+          <button class="btn" id="gorilla-pipeline-btn" style="display:none" onclick="gorillaPushPipeline()">[ PUSH BLUEPRINT TO PIPELINE ]</button>
+        </div>
+        <div class="fg" id="gorilla-progress" style="display:none">
+          <span class="fl" style="color:var(--cyan)">WAR ROOM IN SESSION</span>
+          <div id="gorilla-member-bar" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px"></div>
+        </div>
+        <div id="gorilla-output" style="display:none">
+          <div class="fg" id="gorilla-transcript-box">
+            <span class="fl">COMMITTEE TRANSCRIPT</span>
+            <div id="gorilla-transcript" style="font-size:var(--font-size-sm);color:var(--text);line-height:1.6;max-height:400px;overflow-y:auto;padding:4px 0;white-space:pre-wrap"></div>
+          </div>
+          <div class="fg" id="gorilla-blueprint-box">
+            <span class="fl" style="color:var(--neon-bright)">GUERRILLA BLUEPRINT</span>
+            <div id="gorilla-blueprint" style="font-size:var(--font-size-base);color:var(--neon);line-height:1.8;white-space:pre-wrap;word-wrap:break-word"></div>
+          </div>
+        </div>
+      </div><!-- /ptab-guerrilla -->
       <!-- BOARD sub-tab removed — now its own top-level panel -->
     </div>
 
@@ -1196,7 +1232,11 @@ audio { width: 100%; margin-top: 4px; }
     <!-- [6] PODCASTS — PODCAST / CHARACTERS -->
     <!-- PODCASTS panel -->
     <div class="panel" id="panel-studio">
-      <div class="panel-scroll" id="lab-podcast">
+      <div class="lab-tab-row">
+        <button class="lab-tab active" id="stab-podcast-btn" onclick="switchStudioTab('podcast',this)">PODCAST</button>
+        <button class="lab-tab" id="stab-chars-btn" onclick="switchStudioTab('characters',this)">CHARACTERS</button>
+      </div>
+      <div id="stab-podcast" class="lab-section active panel-scroll">
         <p id="el-voices-notice" style="display:none;color:var(--yellow);font-size:var(--font-size-sm);border:1px solid var(--yellow);padding:4px 8px;margin-bottom:8px;background:rgba(255,200,0,.05)"></p>
         <div class="fg">
           <span class="fl">SHOW TYPE</span>
@@ -1265,11 +1305,7 @@ audio { width: 100%; margin-top: 4px; }
         <audio id="pod-audio" controls style="display:none"></audio>
         <div id="pod-out" class="session-out"></div>
       </div>
-    </div><!-- /panel-studio -->
-
-    <!-- CHARACTERS panel -->
-    <div class="panel" id="panel-characters">
-      <div class="panel-scroll" id="lab-characters">
+      <div id="stab-characters" class="lab-section panel-scroll">
         <div class="fg"><span class="fl">NEW CHARACTER</span></div>
         <div style="display:flex;gap:6px;margin-bottom:4px">
           <input class="fi" id="char-name" type="text" placeholder="NAME" style="flex:0 0 90px;text-transform:uppercase">
@@ -1333,7 +1369,7 @@ audio { width: 100%; margin-top: 4px; }
         <div id="char-roster"></div>
         <p class="ph-text" id="char-roster-empty">NO CHARACTERS SAVED YET.</p>
       </div>
-    </div><!-- /panel-characters -->
+    </div><!-- /panel-studio -->
 
     <!-- [5] BRAINSTORM — standalone -->
     <div class="panel" id="panel-brainstorm">
@@ -1375,9 +1411,13 @@ audio { width: 100%; margin-top: 4px; }
       </div>
     </div><!-- /panel-brainstorm -->
 
-    <!-- LEGAL panel -->
-    <div class="panel" id="panel-legal">
-      <div class="panel-scroll" id="adv-legal">
+    <!-- LEGAL / MARKETING ADVISORS -->
+    <div class="panel" id="panel-advisors">
+      <div class="lab-tab-row">
+        <button class="lab-tab active" id="atab-legal-btn" onclick="switchAdvisorsTab('legal',this)">LEGAL</button>
+        <button class="lab-tab" id="atab-marketing-btn" onclick="switchAdvisorsTab('marketing',this)">MARKETING</button>
+      </div>
+      <div id="adv-tab-legal" class="lab-section active panel-scroll">
         <div class="fg">
           <label class="fl">YOUR QUESTION</label>
           <textarea class="fi" id="legal-input" rows="2" placeholder="Ask about rights, licensing, fair use, DMCA..."></textarea>
@@ -1389,11 +1429,7 @@ audio { width: 100%; margin-top: 4px; }
         </div>
         <div id="legal-out" class="session-out"></div>
       </div>
-    </div><!-- /panel-legal -->
-
-    <!-- MARKETING panel -->
-    <div class="panel" id="panel-marketing">
-      <div class="panel-scroll" id="adv-marketing">
+      <div id="adv-tab-marketing" class="lab-section panel-scroll">
         <div class="fg">
           <label class="fl">YOUR QUESTION</label>
           <textarea class="fi" id="marketing-input" rows="3" placeholder="Ask about launches, ads, audience building, brand strategy, campaigns..."></textarea>
@@ -1405,7 +1441,7 @@ audio { width: 100%; margin-top: 4px; }
         </div>
         <div id="marketing-out" class="session-out"></div>
       </div>
-    </div><!-- /panel-marketing -->
+    </div><!-- /panel-advisors -->
 
     <!-- [7] SETTINGS -->
     <div class="panel" id="panel-settings">
@@ -1581,45 +1617,7 @@ audio { width: 100%; margin-top: 4px; }
     </div><!-- /panel-social -->
 
     <!-- ═══ GORILLA WAR ROOM ═══ -->
-    <div class="panel" id="panel-gorilla">
-      <div class="panel-scroll">
 
-        <div class="fg">
-          <span class="fl" style="color:var(--neon-bright);letter-spacing:.14em">GUERRILLA MARKETING WAR ROOM</span>
-        </div>
-        <div style="color:var(--muted);font-size:var(--font-size-sm);margin-bottom:10px;line-height:1.5">
-          Moneyball philosophy. TWIN intelligence pre-brief → 6-specialist committee (Scout, Street, Culture, Arbitrage, Narrative, Closer) → blueprint. No generic advice. Real channels, real costs, real tactics.
-        </div>
-
-        <div class="fg">
-          <span class="fl">THE BRIEF</span>
-          <textarea id="gorilla-brief" rows="4" style="width:100%;background:#000d0d;border:1px solid var(--cyan);color:var(--neon);font-family:var(--font);font-size:var(--font-size-base);padding:8px;resize:vertical;box-sizing:border-box" placeholder="Your product, audience, goal, budget, competitors, what's been tried..."></textarea>
-        </div>
-
-        <div class="action-row">
-          <button class="btn" id="gorilla-run-btn" onclick="gorillaRun()">[ DEPLOY COMMITTEE ]</button>
-          <button class="btn" onclick="gorillaClear()">[ CLEAR ]</button>
-          <button class="btn" id="gorilla-pipeline-btn" style="display:none" onclick="gorillaPushPipeline()">[ PUSH BLUEPRINT TO PIPELINE ]</button>
-        </div>
-
-        <div class="fg" id="gorilla-progress" style="display:none">
-          <span class="fl" style="color:var(--cyan)">WAR ROOM IN SESSION</span>
-          <div id="gorilla-member-bar" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px"></div>
-        </div>
-
-        <div id="gorilla-output" style="display:none">
-          <div class="fg" id="gorilla-transcript-box">
-            <span class="fl">COMMITTEE TRANSCRIPT</span>
-            <div id="gorilla-transcript" style="font-size:var(--font-size-sm);color:var(--text);line-height:1.6;max-height:400px;overflow-y:auto;padding:4px 0;white-space:pre-wrap"></div>
-          </div>
-          <div class="fg" id="gorilla-blueprint-box">
-            <span class="fl" style="color:var(--neon-bright)">GUERRILLA BLUEPRINT</span>
-            <div id="gorilla-blueprint" style="font-size:var(--font-size-base);color:var(--neon);line-height:1.8;white-space:pre-wrap;word-wrap:break-word"></div>
-          </div>
-        </div>
-
-      </div>
-    </div><!-- /panel-gorilla -->
 
     <!-- [9] ARCHIVE — everything you've ever done -->
     <div class="panel" id="panel-archive">
@@ -1678,13 +1676,10 @@ audio { width: 100%; margin-top: 4px; }
     <button class="nav-btn" onclick="switchTab('lab-write', this)"><span class="nav-num">[5]</span>WRITE LAB</button>
     <button class="nav-btn" onclick="switchTab('lab-code', this)"><span class="nav-num">[6]</span>CODE LAB</button>
     <button class="nav-btn" onclick="switchTab('social', this)"><span class="nav-num">[7]</span>SOCIAL</button>
-    <button class="nav-btn" onclick="switchTab('gorilla', this)"><span class="nav-num">[8]</span>GORILLA</button>
-    <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[9]</span>PODCASTS</button>
-    <button class="nav-btn" onclick="switchTab('characters', this)"><span class="nav-num">[10]</span>CHARACTERS</button>
-    <button class="nav-btn" onclick="switchTab('brainstorm', this)"><span class="nav-num">[11]</span>BRAINSTORM</button>
-    <button class="nav-btn" onclick="switchTab('legal', this)"><span class="nav-num">[12]</span>LEGAL</button>
-    <button class="nav-btn" onclick="switchTab('marketing', this)"><span class="nav-num">[13]</span>MARKETING</button>
-    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[14]</span>SETTINGS</button>
+    <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[8]</span>PODCASTS</button>
+    <button class="nav-btn" onclick="switchTab('brainstorm', this)"><span class="nav-num">[9]</span>BRAINSTORM</button>
+    <button class="nav-btn" onclick="switchTab('advisors', this)"><span class="nav-num">[10]</span>LEGAL/MKT</button>
+    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[11]</span>SETTINGS</button>
     <span class="nav-user" style="width:100%;order:99;text-align:right;padding:2px 8px;font-size:7px">{{ session.get('username', '') | upper }}&nbsp;<a class="nav-logout" href="/logout">[ EXIT ]</a></span>
   </nav>
 
@@ -3094,7 +3089,7 @@ async function sendToVideoLab(source) {
    PROJECTS SUB-TABS
 ───────────────────────────────────────── */
 function switchProjectsTab(name, btn) {
-  ['missions','committees','board'].forEach(t => {
+  ['missions','committees','guerrilla'].forEach(t => {
     const el = document.getElementById('ptab-' + t);
     if (el) el.style.display = (t === name) ? '' : 'none';
   });
@@ -3289,11 +3284,11 @@ const _GUIDE_TOOL_MAP = {
   missions_creative:    { tab: 'missions',   type: 'creative_brief' },
   missions_competitive: { tab: 'missions',   type: 'competitive_intel' },
   missions_custom:      { tab: 'missions',   type: 'custom_committee' },
-  gorilla_warroom:      { tab: 'gorilla',    type: null },
+  gorilla_warroom:      { tab: 'projects',   type: null },
   board_session:        { tab: 'board',      type: null },
-  brainstorm:           { tab: 'studio',     type: null },
-  advisor_legal:        { tab: 'legal',      type: null },
-  advisor_marketing:    { tab: 'marketing',  type: null },
+  brainstorm:           { tab: 'brainstorm', type: null },
+  advisor_legal:        { tab: 'advisors',   type: null },
+  advisor_marketing:    { tab: 'advisors',   type: null },
   lab_video:            { tab: 'lab',        type: null },
   lab_write:            { tab: 'lab',        type: null },
   lab_code:             { tab: 'lab',        type: null },
@@ -4357,14 +4352,19 @@ const ST = {
 };
 
 function switchStudio(tab, btn) {
-  switchTab(tab === 'podcast' ? 'studio' : 'characters', document.querySelector('.nav-btn[onclick*="\''+( tab==='podcast'?'studio':'characters' )+'\'"]'));
-  return;
+  switchTab('studio', document.querySelector('.nav-btn[onclick*="\'studio\'"]'));
+  const subtab = (tab === 'podcast') ? 'podcast' : 'characters';
+  switchStudioTab(subtab, document.querySelector(`#panel-studio .lab-tab[onclick*="${subtab}"]`));
+}
+
+function switchStudioTab(tab, btn) {
   ['podcast','characters'].forEach(t => {
-    const el = document.getElementById('lab-' + t);
+    const el = document.getElementById('stab-' + t);
     if (el) el.classList.remove('active');
   });
   document.querySelectorAll('#panel-studio > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
-  document.getElementById('lab-' + tab).classList.add('active');
+  const el = document.getElementById('stab-' + tab);
+  if (el) el.classList.add('active');
   if (btn) btn.classList.add('active');
   if (tab === 'characters') charRenderRoster();
 }
@@ -4377,15 +4377,18 @@ function switchBoard(tab, btn) {
 }
 
 function switchAdvisors(tab, btn) {
-  switchTab(tab, document.querySelector('.nav-btn[onclick*="\''+tab+'\'"]'));
-  return;
+  switchTab('advisors', document.querySelector('.nav-btn[onclick*="\'advisors\'"]'));
+  switchAdvisorsTab(tab, document.querySelector(`#panel-advisors .lab-tab[onclick*="${tab}"]`));
+}
+
+function switchAdvisorsTab(tab, btn) {
   ['legal','marketing'].forEach(t => {
-    const el = document.getElementById('adv-' + t);
+    const el = document.getElementById('adv-tab-' + t);
     if (el) el.classList.remove('active');
   });
-  // panel-advisors split into panel-legal / panel-marketing
-  const target = document.getElementById('adv-' + tab);
-  if (target) target.classList.add('active');
+  document.querySelectorAll('#panel-advisors > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('adv-tab-' + tab);
+  if (el) el.classList.add('active');
   if (btn) btn.classList.add('active');
 }
 
@@ -4848,8 +4851,8 @@ document.addEventListener('keydown', e => {
   const tag = document.activeElement?.tagName;
   if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT') return;
   const navBtns = document.querySelectorAll('.nav-btn');
-  const _tabs   = ['home','projects','board','lab-video','lab-write','lab-code','social','gorilla','studio','characters','brainstorm','legal','marketing','settings'];
-  const map = { '1':'home','2':'projects','3':'board','4':'lab-video','5':'lab-write','6':'lab-code','7':'social','8':'gorilla','9':'studio','0':'characters' };
+  const _tabs   = ['home','projects','board','lab-video','lab-write','lab-code','social','studio','brainstorm','advisors','settings'];
+  const map = { '1':'home','2':'projects','3':'board','4':'lab-video','5':'lab-write','6':'lab-code','7':'social','8':'studio','9':'brainstorm','0':'advisors' };
   if (map[e.key]) {
     const name = map[e.key];
     const idx  = _tabs.indexOf(name);

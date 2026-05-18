@@ -14,7 +14,7 @@
       background: #000;
       font-family: 'VT323', monospace;
       cursor: crosshair;
-      color: #00cccc;
+      color: #cc88ff;
     }
 
     body::before {
@@ -50,7 +50,7 @@
       width: 80%;
       max-width: 320px;
       height: auto;
-      filter: drop-shadow(0 0 16px #00cccc) drop-shadow(0 0 32px #006655) brightness(3) contrast(1.2);
+      filter: drop-shadow(0 0 16px #bb44ff) drop-shadow(0 0 32px #5500aa) brightness(2.5) contrast(1.2);
     }
 
     /* FIGURE — full composition */
@@ -87,13 +87,13 @@
       position: relative;
       display: flex;
       align-items: center;
-      border: 2px solid #008888;
+      border: 2px solid #5500aa;
       background: #000;
       overflow: hidden;
     }
     .field-wrap:focus-within {
-      border-color: #00cccc;
-      box-shadow: 0 0 12px rgba(0,200,200,0.4);
+      border-color: #bb44ff;
+      box-shadow: 0 0 12px rgba(187,68,255,0.4);
     }
 
     .field-input {
@@ -101,30 +101,30 @@
       background: transparent;
       border: none;
       outline: none;
-      color: #00cccc;
+      color: #bb44ff;
       font-family: 'VT323', monospace;
       font-size: 26px;
       padding: 10px 14px;
       letter-spacing: 2px;
-      caret-color: #00cccc;
+      caret-color: #bb44ff;
       width: 100%;
     }
     .field-input::placeholder {
-      color: #00cccc;
+      color: #bb44ff;
       opacity: 1;
-      text-shadow: 0 0 6px #008888;
+      text-shadow: 0 0 6px #5500aa;
     }
 
     /* DOS blinking cursor on focus+empty */
     @keyframes blink-cur { 0%,100%{opacity:1} 50%{opacity:0} }
     .field-cursor {
       display: none;
-      color: #ccffee;
+      color: #eebbff;
       font-size: 24px;
       animation: blink-cur 0.65s step-end infinite;
       padding-right: 10px;
       flex-shrink: 0;
-      text-shadow: 0 0 8px #00cccc;
+      text-shadow: 0 0 8px #bb44ff;
     }
     .field-input:focus:placeholder-shown ~ .field-cursor { display: inline; }
     .field-input:focus:placeholder-shown { caret-color: transparent; }
@@ -132,34 +132,34 @@
 
     /* USERNAME row — cosmetic prefix + input */
     .field-prefix {
-      color: #00cccc;
+      color: #bb44ff;
       font-size: 26px;
       padding: 10px 4px 10px 14px;
       flex-shrink: 0;
       letter-spacing: 2px;
-      text-shadow: 0 0 6px #008888;
+      text-shadow: 0 0 6px #5500aa;
       white-space: nowrap;
     }
 
     /* LOGIN button */
     .login-btn {
       width: 100%;
-      border: 2px solid #008888;
-      background: rgba(0,30,30,0.25);
-      color: #ccffee;
+      border: 2px solid #5500aa;
+      background: rgba(26,0,50,0.25);
+      color: #eebbff;
       font-family: 'VT323', monospace;
       font-size: 30px;
       padding: 10px;
       cursor: pointer;
       letter-spacing: 6px;
-      text-shadow: 0 0 12px #00cccc;
-      box-shadow: 0 0 14px rgba(0,200,200,0.25);
+      text-shadow: 0 0 12px #bb44ff;
+      box-shadow: 0 0 14px rgba(187,68,255,0.25);
       transition: background .15s, box-shadow .15s, border-color .15s;
     }
     .login-btn:hover {
-      background: rgba(0,80,80,0.45);
-      border-color: #00cccc;
-      box-shadow: 0 0 28px rgba(0,200,200,0.55);
+      background: rgba(80,0,130,0.45);
+      border-color: #bb44ff;
+      box-shadow: 0 0 28px rgba(187,68,255,0.55);
     }
 
     .err-msg {
@@ -177,7 +177,7 @@
       width: 100%;
       max-width: 380px;
       font-size: 20px;
-      color: #006655;
+      color: #553377;
       margin-top: 6px;
     }
     .remember-row {
@@ -188,17 +188,17 @@
     }
     .remember-row input[type="checkbox"] {
       width: 15px; height: 15px;
-      accent-color: #00cccc;
+      accent-color: #bb44ff;
       cursor: pointer;
       flex-shrink: 0;
     }
-    .forgot-row { font-size: 20px; color: #006655; }
+    .forgot-row { font-size: 20px; color: #553377; }
     .forgot-row a {
-      color: #00ffaa;
+      color: #ffffff;
       text-decoration: underline;
       cursor: pointer;
     }
-    .forgot-row a:hover { color: #ccffee; }
+    .forgot-row a:hover { color: #eebbff; }
 
     /* FOOTER */
     .footer {
@@ -208,11 +208,11 @@
       max-width: 460px;
       text-align: center;
       font-size: 15px;
-      color: #006655;
-      border-top: 1px solid #003333;
+      color: #553377;
+      border-top: 1px solid #1a0033;
     }
-    .footer a { color: #006655; text-decoration: none; }
-    .footer a:hover { color: #00cccc; }
+    .footer a { color: #553377; text-decoration: none; }
+    .footer a:hover { color: #bb44ff; }
 
     /* ── DESKTOP ── */
     @media (min-width: 700px) {
@@ -245,9 +245,9 @@
         width: 46%;
         min-height: 100vh;
         padding: 40px 48px;
-        background: rgba(0,8,8,0.88);
+        background: rgba(5,0,15,0.88);
         backdrop-filter: blur(2px);
-        border-left: 1px solid #008888;
+        border-left: 1px solid #5500aa;
       }
       .form-area {
         max-width: 360px;
@@ -261,7 +261,7 @@
       .footer {
         max-width: 360px;
         width: 100%;
-        border-top: 1px solid #003333;
+        border-top: 1px solid #1a0033;
         padding-top: 12px;
         margin-top: 24px;
       }
