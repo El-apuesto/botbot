@@ -6,5 +6,9 @@
   "naviseeonethree": {
     "password": "9fcc936a8b06649649a6fea0003e0b53c18f0b3c851375c40f393f9caf6b9b2c",
     "is_admin": false
+  },
+  "capi": {
+    "password": "5f2021d3e279b12809e349a25e0d100ab981d2668f65e824883385616565fa73",
+    "is_admin": true
   }
 }
