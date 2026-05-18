@@ -14,7 +14,7 @@
       background: #000;
       font-family: 'VT323', monospace;
       cursor: crosshair;
-      color: #cc44ff;
+      color: #00cccc;
     }
 
     body::before {
@@ -49,7 +49,7 @@
       width: 80%;
       max-width: 320px;
       height: auto;
-      filter: drop-shadow(0 0 16px #cc44ff) drop-shadow(0 0 32px #8800cc) brightness(3) contrast(1.2);
+      filter: drop-shadow(0 0 16px #00cccc) drop-shadow(0 0 32px #006655) brightness(3) contrast(1.2);
     }
 
     .figure-wrap {
@@ -83,13 +83,13 @@
       position: relative;
       display: flex;
       align-items: center;
-      border: 2px solid #9900cc;
+      border: 2px solid #008888;
       background: #000;
       overflow: hidden;
     }
     .field-wrap:focus-within {
-      border-color: #cc44ff;
-      box-shadow: 0 0 12px rgba(180,60,255,0.4);
+      border-color: #00cccc;
+      box-shadow: 0 0 12px rgba(0,200,200,0.4);
     }
 
     .field-input {
@@ -97,29 +97,29 @@
       background: transparent;
       border: none;
       outline: none;
-      color: #cc44ff;
+      color: #00cccc;
       font-family: 'VT323', monospace;
       font-size: 26px;
       padding: 10px 14px;
       letter-spacing: 2px;
-      caret-color: #cc44ff;
+      caret-color: #00cccc;
       width: 100%;
     }
     .field-input::placeholder {
-      color: #cc44ff;
+      color: #00cccc;
       opacity: 1;
-      text-shadow: 0 0 6px #9900cc;
+      text-shadow: 0 0 6px #008888;
     }
 
     @keyframes blink-cur { 0%,100%{opacity:1} 50%{opacity:0} }
     .field-cursor {
       display: none;
-      color: #f2eaff;
+      color: #ccffee;
       font-size: 24px;
       animation: blink-cur 0.65s step-end infinite;
       padding-right: 10px;
       flex-shrink: 0;
-      text-shadow: 0 0 8px #cc44ff;
+      text-shadow: 0 0 8px #00cccc;
     }
     .field-input:focus:placeholder-shown ~ .field-cursor { display: inline; }
     .field-input:focus:placeholder-shown { caret-color: transparent; }
@@ -127,33 +127,33 @@
 
     .section-label {
       font-size: 18px;
-      color: #6633aa;
+      color: #006655;
       letter-spacing: 2px;
       padding: 4px 0 2px;
     }
 
     .register-btn {
       width: 100%;
-      border: 2px solid #9900cc;
-      background: rgba(60,0,100,0.25);
-      color: #f2eaff;
+      border: 2px solid #008888;
+      background: rgba(0,30,30,0.25);
+      color: #ccffee;
       font-family: 'VT323', monospace;
       font-size: 30px;
       padding: 10px;
       cursor: pointer;
       letter-spacing: 6px;
-      text-shadow: 0 0 12px #cc44ff;
-      box-shadow: 0 0 14px rgba(180,60,255,0.25);
+      text-shadow: 0 0 12px #00cccc;
+      box-shadow: 0 0 14px rgba(0,200,200,0.25);
       transition: background .15s, box-shadow .15s, border-color .15s;
     }
     .register-btn:hover {
-      background: rgba(100,0,180,0.45);
-      border-color: #cc44ff;
-      box-shadow: 0 0 28px rgba(180,60,255,0.55);
+      background: rgba(0,80,80,0.45);
+      border-color: #00cccc;
+      box-shadow: 0 0 28px rgba(0,200,200,0.55);
     }
 
     .err-msg {
-      color: #ff44aa;
+      color: #ff4444;
       font-size: 20px;
       letter-spacing: 1px;
       text-align: center;
@@ -172,15 +172,15 @@
       width: 100%;
       max-width: 380px;
       font-size: 20px;
-      color: #9944bb;
+      color: #006655;
       margin-top: 6px;
     }
     .extras a {
-      color: #dd88ff;
+      color: #00ffaa;
       text-decoration: underline;
       cursor: pointer;
     }
-    .extras a:hover { color: #f2eaff; }
+    .extras a:hover { color: #ccffee; }
 
     .footer {
       margin-top: auto;
@@ -189,11 +189,11 @@
       max-width: 460px;
       text-align: center;
       font-size: 15px;
-      color: #440055;
-      border-top: 1px solid #1a0025;
+      color: #006655;
+      border-top: 1px solid #003333;
     }
-    .footer a { color: #6633aa; text-decoration: none; }
-    .footer a:hover { color: #cc44ff; }
+    .footer a { color: #006655; text-decoration: none; }
+    .footer a:hover { color: #00cccc; }
 
     .hint {
       font-size: 16px;
@@ -229,9 +229,9 @@
         width: 46%;
         min-height: 100vh;
         padding: 40px 48px;
-        background: rgba(4,0,12,0.72);
+        background: rgba(0,8,8,0.88);
         backdrop-filter: blur(2px);
-        border-left: 1px solid #2a0040;
+        border-left: 1px solid #008888;
         overflow-y: auto;
       }
       .form-area {
@@ -246,7 +246,7 @@
       .footer {
         max-width: 360px;
         width: 100%;
-        border-top: 1px solid #1a0025;
+        border-top: 1px solid #003333;
         padding-top: 12px;
         margin-top: 24px;
       }

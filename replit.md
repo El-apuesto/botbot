@@ -46,13 +46,31 @@ All source files inside `twin shadow flat/`:
 
 | Tab | Key | Content |
 |---|---|---|
-| HOME | 1 | Main chat (TWIN / SHADOW) |
-| PROJECTS | 2 | Pipeline job queue |
-| LABS | 3 | VIDEO / WRITE / CODE (BUILD + ARCHITECT mode) |
-| STUDIO | 4 | BRAINSTORM / PODCAST (full character + cast format system) |
-| BOARD | 5 | BOARDROOM (multi-agent board sessions) |
-| ADVISE | 6 | LEGAL + MARKETING advisor chat |
+| HOME | 1 | Main chat (TWIN / SHADOW) + [DASH] pipeline popup |
+| COMMITTEES | 2 | MISSIONS + COMMITTEE builder + BOARDROOM (multi-agent board sessions) |
+| SOCIAL | 3 | Social media content generation |
+| PODCASTS | 4 | PODCAST (full character + cast format system) + CHARS |
+| BRAINSTORM | 5 | Standalone brainstorm/riff sessions |
+| LEGAL/MKT | 6 | LEGAL + MARKETING advisor chat |
 | SETTINGS | 7 | User preferences, API settings |
+
+## Color Palette (BBS/ANSI — no purple)
+
+| Var | Value | Use |
+|---|---|---|
+| `--cyan` | `#00cccc` | Primary accent, borders |
+| `--cyan-dim` | `#003333` | Subtle backgrounds |
+| `--cyan-dark` | `#000d0d` | Dark tinted bg |
+| `--cyan-glow` | `rgba(0,200,200,0.45)` | Glow effects |
+| `--neon` | `#00ffaa` | Text labels |
+| `--neon-bright` | `#ccffee` | Active/highlighted text |
+| `--green` | `#00ff41` | Success, highlights |
+| `--yellow` | `#ffff00` | Nav numbers, warnings |
+| `--magenta` | `#ff00ff` | Special accents |
+| `--red` | `#ff4444` | Errors |
+| `--text` | `#00cc88` | Body text |
+| `--muted` | `#006655` | Dimmed text |
+| `--border` | `#008888` | All borders |
 
 ## Flask API Routes
 

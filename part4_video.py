@@ -14,6 +14,17 @@ import urllib.parse
 from pathlib import Path
 from openai import AsyncOpenAI
 
+# Ensure fal_client picks up the key before any call
+_fal_key = os.environ.get("FAL_KEY", "")
+if _fal_key:
+    os.environ["FAL_KEY"] = _fal_key
+    try:
+        import fal_client as _fal_pre
+        if hasattr(_fal_pre, "api_key"):
+            _fal_pre.api_key = _fal_key
+    except Exception:
+        pass
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # FFMPEG HELPERS

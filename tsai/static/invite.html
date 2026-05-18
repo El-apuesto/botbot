@@ -9,7 +9,7 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       width: 100%; min-height: 100%; background: #000;
-      font-family: 'VT323', monospace; cursor: crosshair; color: #cc44ff;
+      font-family: 'VT323', monospace; cursor: crosshair; color: #00cccc;
     }
     body::before {
       content: ''; position: fixed; inset: 0;
@@ -21,31 +21,31 @@
       justify-content: center; min-height: 100vh; padding: 32px 24px;
       position: relative; z-index: 1; gap: 24px;
     }
-    .title { font-size: 36px; letter-spacing: 6px; text-shadow: 0 0 16px #cc44ff; }
-    .sub   { font-size: 20px; color: #9944bb; letter-spacing: 2px; text-align: center; }
+    .title { font-size: 36px; letter-spacing: 6px; text-shadow: 0 0 16px #00cccc; }
+    .sub   { font-size: 20px; color: #006655; letter-spacing: 2px; text-align: center; }
     .box {
       width: 100%; max-width: 560px;
-      border: 2px solid #9900cc; background: rgba(20,0,40,0.7);
+      border: 2px solid #008888; background: rgba(20,0,40,0.7);
       padding: 20px 20px 16px; display: flex; flex-direction: column; gap: 10px;
     }
     .link-text {
-      font-size: 18px; color: #f2eaff; word-break: break-all;
+      font-size: 18px; color: #ccffee; word-break: break-all;
       letter-spacing: 1px; padding: 8px 10px;
       border: 1px solid #440066; background: #0a000f;
-      text-shadow: 0 0 6px #cc44ff;
+      text-shadow: 0 0 6px #00cccc;
     }
     .copy-btn {
-      width: 100%; border: 2px solid #9900cc; background: rgba(60,0,100,0.25);
-      color: #f2eaff; font-family: 'VT323', monospace; font-size: 26px;
+      width: 100%; border: 2px solid #008888; background: rgba(0,30,30,0.25);
+      color: #ccffee; font-family: 'VT323', monospace; font-size: 26px;
       padding: 8px; cursor: pointer; letter-spacing: 5px;
-      text-shadow: 0 0 10px #cc44ff; transition: background .15s, border-color .15s;
+      text-shadow: 0 0 10px #00cccc; transition: background .15s, border-color .15s;
     }
-    .copy-btn:hover { background: rgba(100,0,180,0.45); border-color: #cc44ff; }
+    .copy-btn:hover { background: rgba(0,80,80,0.45); border-color: #00cccc; }
     .copy-btn.copied { color: #44ffaa; border-color: #44ffaa; text-shadow: 0 0 10px #44ffaa; }
     .notice { font-size: 17px; color: #553377; letter-spacing: 1px; text-align: center; }
-    .back { font-size: 20px; color: #9944bb; }
-    .back a { color: #dd88ff; text-decoration: underline; }
-    .back a:hover { color: #f2eaff; }
+    .back { font-size: 20px; color: #006655; }
+    .back a { color: #00ffaa; text-decoration: underline; }
+    .back a:hover { color: #ccffee; }
     @media (min-width: 700px) {
       body {
         background-image: url('/static/desk_bg_login.jpeg');
