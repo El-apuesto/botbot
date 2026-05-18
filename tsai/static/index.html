@@ -939,28 +939,20 @@ audio { width: 100%; margin-top: 4px; }
       </div>
     </div>
 
-    <!-- [3] LABS — VIDEO / WRITE / CODE -->
-    <div class="panel" id="panel-lab">
+    <!-- [3] VIDEO LAB -->
+    <div class="panel" id="panel-lab-video">
+      <div class="panel-scroll">
+        <a href="/lab" target="_blank" class="btn" style="text-align:center;display:block;margin-bottom:10px">[ &#9658; OPEN VIDEO LAB ]</a>
+      </div>
+    </div>
+
+    <!-- [4] WRITE LAB — Bible / Reader / Book -->
+    <div class="panel" id="panel-lab-write">
       <div class="lab-tab-row">
-        <button class="lab-tab active" onclick="switchLab('video', this)">VIDEO</button>
-        <button class="lab-tab" onclick="switchLab('write', this)">WRITE</button>
-        <button class="lab-tab" onclick="switchLab('code', this)">CODE</button>
+        <button class="lab-tab active" onclick="switchWrite('bible', this)">BIBLE</button>
+        <button class="lab-tab" onclick="switchWrite('reader', this)">READER</button>
+        <button class="lab-tab" onclick="switchWrite('book', this)">BOOK</button>
       </div>
-
-      <!-- VIDEO LAB -->
-      <div class="lab-section active" id="lab-video">
-        <div class="panel-scroll">
-          <a href="/lab" target="_blank" class="btn" style="text-align:center;display:block;margin-bottom:10px">[ &#9658; OPEN VIDEO LAB ]</a>
-        </div>
-      </div>
-
-      <!-- WRITE LAB — Bible / Reader / Book -->
-      <div class="lab-section" id="lab-write">
-        <div class="lab-tab-row" style="border-top:1px solid var(--cyan-dim);margin-top:0">
-          <button class="lab-tab active" onclick="switchWrite('bible', this)">BIBLE</button>
-          <button class="lab-tab" onclick="switchWrite('reader', this)">READER</button>
-          <button class="lab-tab" onclick="switchWrite('book', this)">BOOK</button>
-        </div>
 
         <!-- BIBLE -->
         <div class="lab-section active" id="studio-bible">
@@ -1123,11 +1115,11 @@ audio { width: 100%; margin-top: 4px; }
           </div>
         </div>
 
-      </div><!-- /lab-write -->
+    </div><!-- /panel-lab-write -->
 
-      <!-- CODE LAB — Builder + Architect -->
-      <div class="lab-section" id="lab-code">
-        <div class="panel-scroll">
+    <!-- [5] CODE LAB — Builder + Architect -->
+    <div class="panel" id="panel-lab-code">
+      <div class="panel-scroll" id="lab-code">
           <div class="fg">
             <span class="fl">MODE</span>
             <div class="opt-row">
@@ -1194,12 +1186,10 @@ audio { width: 100%; margin-top: 4px; }
             </div>
             <div id="bot-output-lines" style="font-size:var(--font-size-sm);line-height:1.7;max-height:220px;overflow-y:auto;white-space:pre-wrap;color:var(--neon);font-family:monospace"></div>
           </div>
-        </div>
       </div>
+    </div><!-- /panel-lab-code -->
 
-    </div><!-- /panel-lab -->
-
-    <!-- [4] PODCASTS — PODCAST / CHARACTERS -->
+    <!-- [6] PODCASTS — PODCAST / CHARACTERS -->
     <div class="panel" id="panel-studio">
       <div class="lab-tab-row">
         <button class="lab-tab active" onclick="switchStudio('podcast', this)">PODCAST</button>
@@ -1705,12 +1695,13 @@ audio { width: 100%; margin-top: 4px; }
   <nav class="nav">
     <button class="nav-btn active" onclick="switchTab('home', this)"><span class="nav-num">[1]</span>HOME</button>
     <button class="nav-btn" onclick="switchTab('projects', this)"><span class="nav-num">[2]</span>COMMITTEES</button>
-    <button class="nav-btn" onclick="switchTab('lab', this)"><span class="nav-num">[3]</span>LABS</button>
-    <button class="nav-btn" onclick="switchTab('social', this)"><span class="nav-num">[4]</span>SOCIAL</button>
-    <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[5]</span>PODCASTS</button>
-    <button class="nav-btn" onclick="switchTab('brainstorm', this)"><span class="nav-num">[6]</span>BRAINSTORM</button>
-    <button class="nav-btn" onclick="switchTab('advisors', this)"><span class="nav-num">[7]</span>LEGAL/MKT</button>
-    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[8]</span>SETTINGS</button>
+    <button class="nav-btn" onclick="switchTab('lab-video', this)"><span class="nav-num">[3]</span>VIDEO LAB</button>
+    <button class="nav-btn" onclick="switchTab('lab-write', this)"><span class="nav-num">[4]</span>WRITE LAB</button>
+    <button class="nav-btn" onclick="switchTab('lab-code', this)"><span class="nav-num">[5]</span>CODE LAB</button>
+    <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[6]</span>PODCASTS</button>
+    <button class="nav-btn" onclick="switchTab('brainstorm', this)"><span class="nav-num">[7]</span>BRAINSTORM</button>
+    <button class="nav-btn" onclick="switchTab('advisors', this)"><span class="nav-num">[8]</span>LEGAL/MKT</button>
+    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[9]</span>SETTINGS</button>
     <span class="nav-user" style="width:100%;order:99;text-align:right;padding:2px 8px;font-size:7px">{{ session.get('username', '') | upper }}&nbsp;<a class="nav-logout" href="/logout">[ EXIT ]</a></span>
   </nav>
 
@@ -1965,13 +1956,7 @@ function switchTab(name, btn) {
 }
 
 function switchLab(name, btn) {
-  ['video','write','code'].forEach(t => {
-    const el = document.getElementById('lab-' + t);
-    if (el) el.classList.remove('active');
-  });
-  document.querySelectorAll('#panel-lab > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
-  document.getElementById('lab-' + name).classList.add('active');
-  if (btn) btn.classList.add('active');
+  switchTab('lab-' + name, btn);
   if (name === 'code') checkPendingBuilderJob();
 }
 
@@ -1980,7 +1965,7 @@ function switchWrite(name, btn) {
     const el = document.getElementById('studio-' + t);
     if (el) el.classList.remove('active');
   });
-  document.querySelectorAll('#lab-write > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#panel-lab-write > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
   document.getElementById('studio-' + name).classList.add('active');
   if (btn) btn.classList.add('active');
   if (name === 'reader') studioLoadList();
@@ -2105,8 +2090,7 @@ async function send() {
         const capturedMsg = msg;
         btn.onclick = () => {
           document.getElementById('builder-input').value = capturedMsg;
-          switchTab('lab', null);
-          switchLab('code', document.querySelector('#panel-lab .lab-tab:nth-child(3)'));
+          switchTab('lab-code', document.querySelector('.nav-btn[onclick*="lab-code"]'));
           document.getElementById('builder-input').focus();
         };
         body.parentElement.appendChild(btn);
@@ -3695,8 +3679,7 @@ function runPipelineJob(name, description) {
   const task = (description || name || '').trim();
   if (!task) return;
   // Switch tabs
-  switchTab('lab', document.querySelector('.nav-btn[onclick*="lab"]'));
-  switchLab('code', document.querySelector('#panel-lab .lab-tab[onclick*="code"]'));
+  switchTab('lab-code', document.querySelector('.nav-btn[onclick*="lab-code"]'));
   // Fill builder input
   const inp = document.getElementById('builder-input');
   if (inp) inp.value = task;
