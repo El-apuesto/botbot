@@ -14,16 +14,19 @@ import urllib.parse
 from pathlib import Path
 from openai import AsyncOpenAI
 
-# Ensure fal_client picks up the key before any call
-_fal_key = os.environ.get("FAL_KEY", "")
-if _fal_key:
-    os.environ["FAL_KEY"] = _fal_key
+def _fal_client():
+    """Return a fresh fal_client.AsyncClient per call.
+    The module-level async_client singleton binds asyncio.Lock objects to
+    the event loop that existed at import time.  Because _run_async() creates
+    a new event loop for every Flask request, those locks are always stale
+    and auth resolution deadlocks / raises RuntimeError.  A fresh instance
+    per call avoids that entirely."""
     try:
-        import fal_client as _fal_pre
-        if hasattr(_fal_pre, "api_key"):
-            _fal_pre.api_key = _fal_key
-    except Exception:
-        pass
+        from fal_client import AsyncClient
+    except ImportError:
+        return None
+    key = os.environ.get("FAL_KEY", "")
+    return AsyncClient(key=key if key else None)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -364,22 +367,28 @@ async def fal_generate_image(prompt: str, style: str = "", reference_frame_path:
       2. Use fal-ai/flux/dev/image-to-image for true visual continuity (strength=0.65)
       3. Fall back to text-only fal-ai/flux/schnell on failure
     Returns {"url": ..., "local_path": None} or {"error": ...}.
+
+    Uses a fresh AsyncClient per call — the module-level singleton binds
+    asyncio.Lock to the import-time event loop, which is always dead by the
+    time Flask's _run_async() creates a new loop per request.
     """
-    try:
-        import fal_client
-    except ImportError:
+    client = _fal_client()
+    if client is None:
         return {"error": "fal-client not installed"}
 
     import asyncio
+    from fal_client import SyncClient
 
     full_prompt = f"{prompt}, {style}" if style else prompt
 
     # Try img2img with reference frame (real pixel-level visual anchor)
     if reference_frame_path and Path(reference_frame_path).exists():
         try:
+            key = os.environ.get("FAL_KEY", "")
+            sync_client = SyncClient(key=key if key else None)
             loop    = asyncio.get_event_loop()
-            ref_url = await loop.run_in_executor(None, fal_client.upload_file, reference_frame_path)
-            result  = await fal_client.run_async(
+            ref_url = await loop.run_in_executor(None, sync_client.upload_file, reference_frame_path)
+            result  = await client.run(
                 "fal-ai/flux/dev/image-to-image",
                 arguments={
                     "prompt":              full_prompt[:500],
@@ -399,7 +408,7 @@ async def fal_generate_image(prompt: str, style: str = "", reference_frame_path:
 
     # Text-to-image (no reference or img2img failed)
     try:
-        result = await fal_client.run_async(
+        result = await client.run(
             "fal-ai/flux/schnell",
             arguments={
                 "prompt":              full_prompt[:500],
@@ -421,16 +430,15 @@ async def fal_generate_image(prompt: str, style: str = "", reference_frame_path:
 # ══════════════════════════════════════════════════════════════════════════════
 
 async def _fal_generate(prompt: str, model: str = "fal-ai/wan-2.1", image_url: str | None = None) -> str:
-    try:
-        import fal_client
-    except ImportError:
+    client = _fal_client()
+    if client is None:
         raise RuntimeError("fal-client not installed. Run: pip install fal-client")
 
     args: dict = {"prompt": prompt}
     if image_url:
         args["image_url"] = image_url
 
-    handler = await fal_client.submit_async(model, arguments=args)
+    handler = await client.submit(model, arguments=args)
     result  = await handler.get()
 
     if "video" in result:
