@@ -106,14 +106,12 @@ body::before {
 /* ── BANNER — hero 1/3 page ── */
 #app-banner {
   width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
+  position: relative;
   padding: 0;
 }
-#app-banner picture { display: block; width: 100%; height: 100%; }
 #app-banner img {
   width: 100%;
   height: 100%;
@@ -903,10 +901,7 @@ audio { width: 100%; margin-top: 4px; }
   <!-- ═══ HEADER ═══ -->
   <div class="header">
     <div id="app-banner">
-      <picture>
-        <source media="(max-width: 600px)" srcset="/static/header_mobile2.jpeg">
-        <img src="/static/header_mobile.JPEG" alt="Twin Shadow">
-      </picture>
+      <img id="banner-img" src="/static/home.jpg" alt="Twin Shadow">
     </div>
     <!-- MENU — bottom-left of hero -->
     <div class="menu-wrap" id="menu-wrap">
@@ -957,8 +952,7 @@ audio { width: 100%; margin-top: 4px; }
       <div class="lab-tab-row">
         <button class="lab-tab active" id="ptab-missions-btn" onclick="switchProjectsTab('missions',this)">MISSIONS</button>
         <button class="lab-tab" id="ptab-committees-btn" onclick="switchProjectsTab('committees',this)">COMMITTEE</button>
-        <button class="lab-tab" id="ptab-guerrilla-btn" onclick="switchProjectsTab('guerrilla',this)">GUERRILLA</button>
-        <button class="lab-tab" id="ptab-board-btn" onclick="switchTab('board', document.querySelector('.nav-btn[onclick*=\'board\']'))">BOARD →</button>
+        <button class="lab-tab" id="ptab-board-btn" onclick="menuNav('board')">BOARD →</button>
       </div>
 
       <!-- MISSIONS tab -->
@@ -2202,12 +2196,23 @@ async function loadDashStats() {
 /* ─────────────────────────────────────────
    TAB SWITCHING
 ───────────────────────────────────────── */
+const _BANNERS = {
+  'home':      '/static/home.jpg',
+  'lab-video': '/static/lab-video.jpg',
+  'lab-code':  '/static/lab-code.jpg',
+};
+function _updateBanner(name) {
+  const img = document.getElementById('banner-img');
+  if (img) img.src = _BANNERS[name] || '/static/home.jpg';
+}
+
 function switchTab(name, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
   document.getElementById('panel-' + name).classList.add('active');
   const mi = document.querySelector(`.menu-item[data-tab="${name}"]`);
   if (mi) mi.classList.add('active');
+  _updateBanner(name);
   if (name === 'settings') { loadAudioGallery(); loadTranscripts(); }
   if (name === 'projects') { loadMissions(); }
   if (name === 'social')   { loadSocialJobs(); }
