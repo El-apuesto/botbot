@@ -1677,7 +1677,10 @@ audio { width: 100%; margin-top: 4px; }
 
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
           <span style="color:var(--neon);font-size:var(--font-size-base);letter-spacing:.12em;font-weight:700">ARCHIVE</span>
-          <button class="btn" style="font-size:var(--font-size-sm);padding:3px 10px" onclick="loadArchive()">[ REFRESH ]</button>
+          <div style="display:flex;gap:6px">
+            <button class="btn" style="font-size:var(--font-size-sm);padding:3px 10px" onclick="downloadAllSessions()">[ DOWNLOAD ALL ]</button>
+            <button class="btn" style="font-size:var(--font-size-sm);padding:3px 10px" onclick="loadArchive()">[ REFRESH ]</button>
+          </div>
         </div>
 
         <!-- filter row -->
@@ -1734,6 +1737,7 @@ audio { width: 100%; margin-top: 4px; }
       <button class="menu-item" data-tab="brainstorm"       onclick="menuNav('brainstorm')"><span class="nav-num">[9]</span> BRAINSTORM</button>
       <button class="menu-item" data-tab="advisors"         onclick="menuNav('advisors')"><span class="nav-num">[10]</span> LEGAL/MKT</button>
       <button class="menu-item" data-tab="settings"         onclick="menuNav('settings')"><span class="nav-num">[11]</span> SETTINGS</button>
+      <button class="menu-item" data-tab="archive"          onclick="menuNav('archive')"><span class="nav-num">[12]</span> ARCHIVE</button>
       <span class="menu-user">{{ session.get('username', '') | upper }}&nbsp;<a href="/logout" style="color:var(--red);text-decoration:none;font-family:var(--font-head);font-size:7px;letter-spacing:.04em">[ EXIT ]</a></span>
     </div>
   </div>
@@ -3860,7 +3864,7 @@ async function loadTranscripts() {
       row.innerHTML =
         `<span class="gallery-row-name">${t.title || '(untitled)'}</span>` +
         `<span class="gallery-row-meta">${type} &nbsp;|&nbsp; ${dt}</span>` +
-        `<button class="btn" style="font-size:10px;padding:1px 6px;align-self:flex-start;margin-top:2px" onclick="(function(){ document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active')); document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active')); document.getElementById('panel-archive').classList.add('active'); loadArchive(); })()">[ → ARCHIVE ]</button>`;
+        `<button class="btn" style="font-size:10px;padding:1px 6px;align-self:flex-start;margin-top:2px" onclick="menuNav('archive')">[ → ARCHIVE ]</button>`;
       list.appendChild(row);
     });
   } catch(e) {
@@ -4043,6 +4047,33 @@ function reloadArchiveSession() {
   } else {
     alert('Cannot reload this session type into a panel.');
   }
+}
+
+function downloadAllSessions() {
+  if (!_archiveData.length) { alert('NO SESSIONS IN ARCHIVE YET.'); return; }
+  const lines = _archiveData.map(s => {
+    const dt  = s.created_at ? new Date(s.created_at).toLocaleString() : '';
+    const bar = '═'.repeat(60);
+    const hdr = `${bar}\n${(s.session_type || 'session').toUpperCase()} — ${s.title || '(untitled)'}${dt ? '  ·  ' + dt : ''}\n${bar}\n`;
+    let body  = '';
+    try {
+      const c = typeof s.content === 'string' ? JSON.parse(s.content) : s.content;
+      if (Array.isArray(c)) {
+        body = c.map(t => `${(t.speaker || t.role || '').toUpperCase()}: ${t.text || t.content || ''}`).join('\n\n');
+      } else {
+        body = JSON.stringify(c, null, 2);
+      }
+    } catch { body = String(s.content || ''); }
+    return hdr + body;
+  }).join('\n\n\n');
+
+  const blob = new Blob([lines], { type: 'text/plain' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `twin_shadow_archive_${new Date().toISOString().slice(0, 10)}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 async function deleteArchiveSession(id, btn) {
