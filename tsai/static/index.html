@@ -86,7 +86,7 @@ body::before {
 }
 @media (max-width: 600px) {
   .app { padding: 0 4px; }
-  .app { grid-template-rows: 25vh 1fr auto auto; }
+  .app { grid-template-rows: 16vh 1fr auto auto; }
 }
 
 /* ── HEADER ── */
@@ -1080,6 +1080,8 @@ audio { width: 100%; margin-top: 4px; }
         <div class="action-row">
           <button class="btn" id="gorilla-run-btn" onclick="gorillaRun()">[ DEPLOY COMMITTEE ]</button>
           <button class="btn" onclick="gorillaClear()">[ CLEAR ]</button>
+          <button class="btn" id="gorilla-audio-btn" style="display:none" onclick="renderGorillaTTS()">[ PLAY AUDIO ]</button>
+          <a id="gorilla-mp3-btn" class="action-link" style="display:none" download="guerrilla_audio.mp3">[ DL MP3 ]</a>
           <button class="btn" id="gorilla-pipeline-btn" style="display:none" onclick="gorillaPushPipeline()">[ PUSH BLUEPRINT TO PIPELINE ]</button>
         </div>
         <div class="fg" id="gorilla-progress" style="display:none">
@@ -1592,6 +1594,8 @@ audio { width: 100%; margin-top: 4px; }
           <button class="btn" id="legal-go-btn" onclick="runAdvisor('legal')">[ ASK LEGAL ]</button>
           <button class="btn" id="legal-clear-btn" onclick="clearAdvisor('legal')">[ NEW MATTER ]</button>
           <a id="legal-export-btn" class="action-link" style="display:none" download="legal_advice.txt">[ EXPORT ]</a>
+          <button class="btn" id="legal-audio-btn" style="display:none" onclick="renderAdvisorTTS('legal')">[ PLAY AUDIO ]</button>
+          <a id="legal-mp3-btn" class="action-link" style="display:none" download="legal_audio.mp3">[ DL MP3 ]</a>
         </div>
         <div id="legal-out" class="session-out"></div>
       </div>
@@ -1604,6 +1608,8 @@ audio { width: 100%; margin-top: 4px; }
           <button class="btn" id="marketing-go-btn" onclick="runAdvisor('marketing')">[ ASK MARKETING ]</button>
           <button class="btn" id="marketing-clear-btn" onclick="clearAdvisor('marketing')">[ NEW MATTER ]</button>
           <a id="marketing-export-btn" class="action-link" style="display:none" download="marketing_advice.txt">[ EXPORT ]</a>
+          <button class="btn" id="marketing-audio-btn" style="display:none" onclick="renderAdvisorTTS('marketing')">[ PLAY AUDIO ]</button>
+          <a id="marketing-mp3-btn" class="action-link" style="display:none" download="marketing_audio.mp3">[ DL MP3 ]</a>
         </div>
         <div id="marketing-out" class="session-out"></div>
       </div>
@@ -1817,9 +1823,12 @@ audio { width: 100%; margin-top: 4px; }
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <button class="btn" onclick="closeArchiveViewer()" style="padding:3px 10px;font-size:var(--font-size-sm)">[ ← CLOSE ]</button>
               <span id="archive-viewer-title" style="color:var(--neon);font-size:var(--font-size-base);font-weight:700;flex:1"></span>
+              <button class="btn" id="archive-tts-btn" onclick="renderArchiveTTS()" style="padding:3px 10px;font-size:var(--font-size-sm)">[ GENERATE MP3 ]</button>
+              <a id="archive-mp3-btn" class="action-link" style="display:none;font-size:var(--font-size-sm)" download="session_audio.mp3">[ DL MP3 ]</a>
               <button class="btn" id="archive-reload-btn" onclick="reloadArchiveSession()" style="padding:3px 10px;font-size:var(--font-size-sm)">[ RELOAD INTO TAB ]</button>
             </div>
             <div id="archive-viewer-meta" style="color:var(--muted);font-size:var(--font-size-sm)"></div>
+            <audio id="archive-audio" controls style="display:none;width:100%;margin-top:4px"></audio>
             <div id="archive-viewer-body" style="display:flex;flex-direction:column;gap:6px;padding-bottom:40px"></div>
           </div>
         </div>
@@ -3293,6 +3302,89 @@ async function renderPodcastTTS() {
   btn.textContent = '[ PLAY AUDIO ]'; btn.disabled = false;
 }
 
+/* ─────────────────────────────────────────
+   ARCHIVE VIEWER — TTS / MP3
+───────────────────────────────────────── */
+async function renderArchiveTTS() {
+  const s = _archiveViewSession;
+  if (!s) { alert('No session open.'); return; }
+  const btn = document.getElementById('archive-tts-btn');
+  const mp3 = document.getElementById('archive-mp3-btn');
+  const aud = document.getElementById('archive-audio');
+  btn.disabled = true; btn.textContent = '[ RENDERING... ]';
+  const raw = s.content || [];
+  let turns = [];
+  if (Array.isArray(raw) && raw.length) {
+    if (raw[0].speaker !== undefined) {
+      turns = raw.map(t => ({ speaker: t.speaker || 'SPEAKER', text: t.text || '' }));
+    } else if (raw[0].role !== undefined) {
+      turns = raw.map(m => ({ speaker: (m.role || 'SPEAKER').toUpperCase(), text: m.content || '' }));
+    }
+  } else if (typeof raw === 'string' && raw.trim()) {
+    turns = [{ speaker: 'NARRATOR', text: raw.trim() }];
+  }
+  if (!turns.length) { alert('Nothing to render as audio.'); btn.disabled = false; btn.textContent = '[ GENERATE MP3 ]'; return; }
+  try {
+    const res  = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ turns }) });
+    const data = await res.json();
+    if (data.url) {
+      aud.src = data.url; aud.style.display = 'block'; aud.play().catch(() => {});
+      mp3.href = data.url; mp3.download = (s.title || 'session') + '.mp3'; mp3.style.display = '';
+    } else { alert('TTS failed: ' + (data.error || 'unknown')); }
+  } catch(e) { alert('TTS error: ' + e); }
+  btn.disabled = false; btn.textContent = '[ GENERATE MP3 ]';
+}
+
+/* ─────────────────────────────────────────
+   ADVISOR (LEGAL / MARKETING) — TTS / MP3
+───────────────────────────────────────── */
+async function renderAdvisorTTS(type) {
+  const history = _advHistory[type] || '';
+  if (!history.trim()) { alert('No conversation yet.'); return; }
+  const btn = document.getElementById(type + '-audio-btn');
+  const mp3 = document.getElementById(type + '-mp3-btn');
+  btn.disabled = true; btn.textContent = '[ RENDERING... ]';
+  const label = type === 'legal' ? 'LEGAL' : 'MARKETING';
+  const turns = history.split(/\n\n/).filter(Boolean).map(p => {
+    if (p.startsWith('USER: '))    return { speaker: 'USER',  text: p.slice(6).trim() };
+    if (p.startsWith('ADVISOR: ')) return { speaker: label,   text: p.slice(9).trim() };
+    return { speaker: label, text: p.trim() };
+  }).filter(t => t.text);
+  if (!turns.length) { alert('Nothing to render.'); btn.disabled = false; btn.textContent = '[ PLAY AUDIO ]'; return; }
+  try {
+    const res  = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ turns }) });
+    const data = await res.json();
+    if (data.url) {
+      new Audio(data.url).play().catch(() => {});
+      mp3.href = data.url; mp3.style.display = '';
+    } else { alert('TTS failed: ' + (data.error || 'unknown')); }
+  } catch(e) { alert('TTS error: ' + e); }
+  btn.disabled = false; btn.textContent = '[ PLAY AUDIO ]';
+}
+
+/* ─────────────────────────────────────────
+   GUERRILLA WAR ROOM — TTS / MP3
+───────────────────────────────────────── */
+async function renderGorillaTTS() {
+  const transcript = (document.getElementById('gorilla-transcript') || {}).textContent || '';
+  const blueprint  = (document.getElementById('gorilla-blueprint')  || {}).textContent || '';
+  const combined   = [transcript, blueprint].filter(Boolean).join('\n\n').trim();
+  if (!combined) { alert('No committee output yet.'); return; }
+  const btn = document.getElementById('gorilla-audio-btn');
+  const mp3 = document.getElementById('gorilla-mp3-btn');
+  btn.disabled = true; btn.textContent = '[ RENDERING... ]';
+  const turns = [{ speaker: 'COMMITTEE', text: combined }];
+  try {
+    const res  = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ turns }) });
+    const data = await res.json();
+    if (data.url) {
+      new Audio(data.url).play().catch(() => {});
+      mp3.href = data.url; mp3.style.display = '';
+    } else { alert('TTS failed: ' + (data.error || 'unknown')); }
+  } catch(e) { alert('TTS error: ' + e); }
+  btn.disabled = false; btn.textContent = '[ PLAY AUDIO ]';
+}
+
 async function savePodcastTranscript() {
   if (!POD.turns.length) return;
   const topic = document.getElementById('pod-topic').value.trim() || 'podcast';
@@ -3339,6 +3431,7 @@ async function runAdvisor(type) {
       const blob = new Blob([_advHistory[type]], { type: 'text/plain' });
       exp.href = URL.createObjectURL(blob);
       exp.style.display = '';
+      document.getElementById(type + '-audio-btn').style.display = '';
     }
   } catch(e) {
     out.innerHTML += '<p style="color:var(--red)">' + e + '</p>';
@@ -3353,6 +3446,8 @@ function clearAdvisor(type) {
   _advHistory[type] = '';
   document.getElementById(type + '-out').innerHTML = '';
   document.getElementById(type + '-export-btn').style.display = 'none';
+  document.getElementById(type + '-audio-btn').style.display = 'none';
+  document.getElementById(type + '-mp3-btn').style.display = 'none';
 }
 
 /* ─────────────────────────────────────────
@@ -5253,7 +5348,9 @@ function charLoadToCast(name) {
   list.appendChild(_podMakeCard(char.name, char.role, char.personality || '', char.voice, char.pitch, char.speed, char.model || 'twin'));
   POD.numSpeakers = list.querySelectorAll('.pod-speaker-card').length;
   document.getElementById('pod-cast-count').textContent = `(${POD.numSpeakers} speaker${POD.numSpeakers !== 1 ? 's' : ''})`;
-  switchTab('studio', document.querySelector('.nav-btn[onclick*="\'studio\'"]'));
+  // Stay in CHARACTERS tab so user can keep loading characters; just confirm with a flash
+  const btn = document.querySelector(`#char-roster [onclick="charLoadToCast('${name}')"]`);
+  if (btn) { const orig = btn.textContent; btn.textContent = '[ ADDED ]'; setTimeout(() => btn.textContent = orig, 1200); }
 }
 
 function charEditPrefill(name) {
@@ -5426,6 +5523,7 @@ async function gorillaRun() {
     _gorillaTranscriptText = transcriptFull;
     if (blueprintFull) {
       document.getElementById('gorilla-pipeline-btn').style.display = '';
+      document.getElementById('gorilla-audio-btn').style.display = '';
     }
     _GORILLA_MEMBERS.forEach(n => _gorillaMemberBadge(n, 'done'));
 
