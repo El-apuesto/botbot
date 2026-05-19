@@ -623,8 +623,9 @@ def register_routes(app: Flask):
         if not turns:
             return jsonify({"error": "no turns"}), 400
 
-        fname = f"tts_{uuid.uuid4().hex[:8]}.mp3"
-        out   = _AUDIO_DIR / fname
+        fname   = f"tts_{uuid.uuid4().hex[:8]}.mp3"
+        out     = _AUDIO_DIR / fname
+        _ffmpeg = shutil.which("ffmpeg") or "/nix/store/3zc5jbvqzrn8zmva4fx5p19goxxa8bm-ffmpeg-7.1/bin/ffmpeg"
 
         # ── resolve ElevenLabs key + voice map ───────────────────────────────
         el_key    = None
@@ -695,19 +696,22 @@ def register_routes(app: Flask):
                     list_file.write_text("\n".join(f"file '{p}'" for p in clip_paths))
                     try:
                         subprocess.run(
-                            ["ffmpeg", "-y", "-f", "concat", "-safe", "0",
+                            [_ffmpeg, "-y", "-f", "concat", "-safe", "0",
                              "-i", str(list_file), "-c", "copy", str(out)],
                             capture_output=True, timeout=120,
                         )
                     except Exception:
-                        pass
+                        # ffmpeg failed — serve first clip only
+                        shutil.copy(clip_paths[0], str(out))
                 shutil.rmtree(str(tmpdir), ignore_errors=True)
                 if out.exists():
                     return jsonify({"url": f"/audio/{fname}", "engine": "elevenlabs"})
 
         # ── gTTS per-turn clips → ffmpeg concat (multi-speaker, natural pauses) ─
         import tempfile as _tf, shutil as _sh
+        import logging as _log
         tmpdir2 = Path(_tf.mkdtemp())
+        _gtts_errors: list = []
         try:
             from gtts import gTTS as _gTTS
             clips2 = []
@@ -719,7 +723,8 @@ def register_routes(app: Flask):
                 try:
                     _gTTS(text=txt, lang="en").save(str(cp))
                     clips2.append(str(cp))
-                except Exception:
+                except Exception as _ge:
+                    _gtts_errors.append(str(_ge))
                     continue
             if clips2:
                 if len(clips2) == 1:
@@ -727,19 +732,24 @@ def register_routes(app: Flask):
                 else:
                     lf = tmpdir2 / "list.txt"
                     lf.write_text("\n".join(f"file '{p}'" for p in clips2))
-                    subprocess.run(
-                        ["ffmpeg", "-y", "-f", "concat", "-safe", "0",
-                         "-i", str(lf), "-c", "copy", str(out)],
-                        capture_output=True, timeout=120,
-                    )
+                    try:
+                        subprocess.run(
+                            [_ffmpeg, "-y", "-f", "concat", "-safe", "0",
+                             "-i", str(lf), "-c", "copy", str(out)],
+                            capture_output=True, timeout=120,
+                        )
+                    except Exception:
+                        # ffmpeg failed — serve first clip only
+                        _sh.copy(clips2[0], str(out))
                 _sh.rmtree(str(tmpdir2), ignore_errors=True)
                 if out.exists():
                     return jsonify({"url": f"/audio/{fname}", "engine": "gtts"})
-        except Exception:
-            pass
+        except Exception as _outer:
+            _gtts_errors.append(str(_outer))
         finally:
             _sh.rmtree(str(tmpdir2), ignore_errors=True)
-        return jsonify({"error": "TTS generation failed"}), 500
+        _log.error("TTS all engines failed. gTTS errors: %s", _gtts_errors)
+        return jsonify({"error": "TTS generation failed", "detail": _gtts_errors}), 500
 
     # ── builder ───────────────────────────────────────────────────────────────
     @app.route("/api/builder", methods=["POST"])
