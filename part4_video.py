@@ -7,12 +7,18 @@ FFMPEG utils: extract_last_frame, assemble_lab_video, download_file
 
 from __future__ import annotations
 import os
+import shutil
 import subprocess
 import tempfile
 import urllib.request
 import urllib.parse
 from pathlib import Path
 from openai import AsyncOpenAI
+
+_FFMPEG = (
+    shutil.which("ffmpeg")
+    or "/nix/store/3zc5jbvqzrn8zmva4fx5p19goxxa8bm-ffmpeg-7.1/bin/ffmpeg"
+)
 
 def _fal_client():
     """Return a fresh fal_client.AsyncClient per call.
@@ -36,12 +42,12 @@ def _fal_client():
 def _run_ffmpeg(args: list[str], timeout: int = 180) -> tuple[bool, str]:
     try:
         result = subprocess.run(
-            ["ffmpeg", "-y"] + args,
+            [_FFMPEG, "-y"] + args,
             capture_output=True, text=True, timeout=timeout,
         )
         return result.returncode == 0, result.stderr
     except FileNotFoundError:
-        return False, "ffmpeg not found — check your PATH"
+        return False, f"ffmpeg not found at {_FFMPEG}"
     except subprocess.TimeoutExpired:
         return False, "ffmpeg timed out"
 
@@ -595,12 +601,8 @@ async def run_video(task: dict) -> dict:
     image_url = task["input"].get("image_url")
     errors: dict = {}
 
-    # Build provider list — skip any provider whose key is absent
+    # Build provider list — FAL first (fastest), Replicate second, HuggingFace last
     providers = []
-    if os.environ.get("HUGGINGFACE_API_KEY", "") or os.environ.get("HF_TOKEN", ""):
-        providers.append(("huggingface", lambda p: _hf_generate(p)))
-    else:
-        print("[VIDEO] HUGGINGFACE_API_KEY not set — skipping HuggingFace")
     if os.environ.get("FAL_KEY", ""):
         providers.append(("fal", lambda p: _fal_generate(p, image_url=image_url)))
     else:
@@ -609,6 +611,10 @@ async def run_video(task: dict) -> dict:
         providers.append(("replicate", lambda p: _replicate_generate(p, image_url=image_url)))
     else:
         print("[VIDEO] REPLICATE_API_TOKEN not set — skipping Replicate")
+    if os.environ.get("HUGGINGFACE_API_KEY", "") or os.environ.get("HF_TOKEN", ""):
+        providers.append(("huggingface", lambda p: _hf_generate(p)))
+    else:
+        print("[VIDEO] HUGGINGFACE_API_KEY not set — skipping HuggingFace")
 
     for provider, fn in providers:
         try:
