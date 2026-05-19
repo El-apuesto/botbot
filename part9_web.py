@@ -707,47 +707,34 @@ def register_routes(app: Flask):
                 if out.exists():
                     return jsonify({"url": f"/audio/{fname}", "engine": "elevenlabs"})
 
-        # ── gTTS per-turn clips → ffmpeg concat (multi-speaker, natural pauses) ─
-        import tempfile as _tf, shutil as _sh
+        # ── gTTS — single call on full concatenated transcript ────────────────
+        # One HTTP session handles chunking internally; avoids per-turn rate
+        # limits and the fragile ffmpeg-concat-or-first-clip fallback.
         import logging as _log
-        tmpdir2 = Path(_tf.mkdtemp())
         _gtts_errors: list = []
         try:
             from gtts import gTTS as _gTTS
-            clips2 = []
-            for i, turn in enumerate(turns):
-                txt = (turn.get("text") or "").strip()
+
+            # Build full text: "SPEAKER: text\n\n" for every non-empty turn
+            parts = []
+            for turn in turns:
+                spk = (turn.get("speaker") or "").strip()
+                txt = (turn.get("text")    or "").strip()
                 if not txt:
                     continue
-                cp = tmpdir2 / f"t_{i:04d}.mp3"
-                try:
-                    _gTTS(text=txt, lang="en").save(str(cp))
-                    clips2.append(str(cp))
-                except Exception as _ge:
-                    _gtts_errors.append(str(_ge))
-                    continue
-            if clips2:
-                if len(clips2) == 1:
-                    _sh.copy(clips2[0], str(out))
-                else:
-                    lf = tmpdir2 / "list.txt"
-                    lf.write_text("\n".join(f"file '{p}'" for p in clips2))
-                    try:
-                        subprocess.run(
-                            [_ffmpeg, "-y", "-f", "concat", "-safe", "0",
-                             "-i", str(lf), "-c", "copy", str(out)],
-                            capture_output=True, timeout=120,
-                        )
-                    except Exception:
-                        # ffmpeg failed — serve first clip only
-                        _sh.copy(clips2[0], str(out))
-                _sh.rmtree(str(tmpdir2), ignore_errors=True)
-                if out.exists():
-                    return jsonify({"url": f"/audio/{fname}", "engine": "gtts"})
+                parts.append(f"{spk + ': ' if spk else ''}{txt}")
+            full_text = "\n\n".join(parts)
+
+            if not full_text:
+                return jsonify({"error": "TTS generation failed", "detail": ["no text"]}), 500
+
+            # gTTS chunks long text automatically; no length cap needed
+            _gTTS(text=full_text, lang="en").save(str(out))
+            if out.exists():
+                return jsonify({"url": f"/audio/{fname}", "engine": "gtts"})
+            _gtts_errors.append("gTTS wrote no file")
         except Exception as _outer:
             _gtts_errors.append(str(_outer))
-        finally:
-            _sh.rmtree(str(tmpdir2), ignore_errors=True)
         _log.error("TTS all engines failed. gTTS errors: %s", _gtts_errors)
         return jsonify({"error": "TTS generation failed", "detail": _gtts_errors}), 500
 

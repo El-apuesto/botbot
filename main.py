@@ -36,7 +36,7 @@ def text_to_mp3(text: str, filename: str, model_key=None):
         return None
     try:
         os.makedirs("audio", exist_ok=True)
-        tts = gTTS(text=text[:1500], lang='en')
+        tts = gTTS(text=text, lang='en')
         path = f"audio/{filename}.mp3"
         tts.save(path)
         return f"/audio/{filename}.mp3"
