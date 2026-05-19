@@ -495,7 +495,8 @@ async def lab_generate_image(prompt: str, style: str = "", reference_frame_path:
     if aiml_keys:
         import asyncio as _asyncio2
         _loop2 = _asyncio2.get_event_loop()
-        for aiml_key in aiml_keys:
+        for _ki, aiml_key in enumerate(aiml_keys, start=1):
+            _ekey = f"aiml_key{_ki}"
             try:
                 body = _json.dumps({
                     "model":  "flux/dev",
@@ -519,14 +520,14 @@ async def lab_generate_image(prompt: str, style: str = "", reference_frame_path:
                 url = (data.get("data") or [{}])[0].get("url", "")
                 if url:
                     return {"url": url, "local_path": None, "provider": "aiml"}
-                errors["aiml"] = "no url in response"
+                errors[_ekey] = "no url in response"
             except Exception as e:
                 err_str = str(e)
-                errors[f"aiml"] = err_str
-                print(f"[IMAGE] AIML failed: {e}")
+                errors[_ekey] = err_str
+                print(f"[IMAGE] AIML key{_ki} failed: {e}")
                 if "429" in err_str or "401" in err_str or "auth" in err_str.lower():
                     continue  # rate-limited or auth error — try next key
-                break         # other error — don't retry
+                break         # other error — don't retry remaining keys
     else:
         print("[IMAGE] No AIML keys set — skipping AIML")
 
@@ -646,11 +647,17 @@ async def run_video(task: dict) -> dict:
             if local_paths:
                 renders_dir = Path(__file__).parent / "renders"
                 renders_dir.mkdir(parents=True, exist_ok=True)
-                out_path = str(renders_dir / f"grok_slide_{_uv.uuid4().hex[:8]}.mp4")
-                ok, result_path = images_to_slideshow(local_paths, out_path, duration=4.0)
+                _hex      = _uv.uuid4().hex[:8]
+                slide_raw = str(renders_dir / f"grok_raw_{_hex}.mp4")
+                out_path  = str(renders_dir / f"grok_slide_{_hex}.mp4")
+                ok, result_path = images_to_slideshow(local_paths, slide_raw, duration=4.0)
                 if ok:
+                    # Pass through mix_audio_onto_video — with no audio supplied it does
+                    # a fast shutil.copy2, keeping the pipeline consistent for future audio
+                    ok2, final_path = mix_audio_onto_video(slide_raw, None, None, out_path)
+                    final = final_path if ok2 else slide_raw
                     return {
-                        "output":   f"/renders/{Path(out_path).name}",
+                        "output":   f"/renders/{Path(final).name}",
                         "module":   "video",
                         "provider": "grok_slideshow",
                         "shadow":   True,
