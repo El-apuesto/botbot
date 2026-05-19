@@ -642,11 +642,28 @@ def register_routes(app: Flask):
             if el_voices and not _el_voice_cache:
                 _el_voice_cache.extend(el_voices)
 
-        # ── per-speaker clips ─────────────────────────────────────────────────
+        # ── ElevenLabs per-speaker clips ──────────────────────────────────────
         if el_key and el_voices:
-            tmpdir     = Path(tempfile.mkdtemp())
+            import requests as _req
+            import tempfile as _tf2, shutil as _sh2
+            tmpdir     = Path(_tf2.mkdtemp())
             clip_paths = []
             all_ok     = True
+            # Spread board members across the first few EL voices for variety
+            _default_voices = [v["voice_id"] for v in el_voices[:6]]
+            _speaker_voice_map: dict[str, str] = {}
+
+            def _pick_voice(speaker: str) -> str:
+                """Return voice_id for speaker: override → assigned default → next in pool."""
+                override = voice_overrides.get(speaker, voice_overrides.get(speaker.title(), ""))
+                if override:
+                    vid = _el_voice_id(override, el_voices)
+                    if vid:
+                        return vid
+                if speaker not in _speaker_voice_map:
+                    idx = len(_speaker_voice_map) % max(len(_default_voices), 1)
+                    _speaker_voice_map[speaker] = _default_voices[idx] if _default_voices else el_voices[0]["voice_id"]
+                return _speaker_voice_map[speaker]
 
             for i, turn in enumerate(turns):
                 speaker  = (turn.get("speaker") or "SPEAKER").upper()
@@ -655,57 +672,46 @@ def register_routes(app: Flask):
                     continue
 
                 clip_path = tmpdir / f"clip_{i:04d}.mp3"
-                override  = voice_overrides.get(speaker, voice_overrides.get(speaker.title(), ""))
-                voice_id  = _el_voice_id(override, el_voices) if override else None
-
-                if voice_id:
-                    import requests as _req
-                    try:
-                        r = _req.post(
-                            f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
-                            headers={"xi-api-key": el_key, "Content-Type": "application/json"},
-                            json={
-                                "text": text,
-                                "model_id": "eleven_multilingual_v2",
-                                "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
-                            },
-                            timeout=30,
-                        )
-                        if r.status_code == 200:
-                            clip_path.write_bytes(r.content)
-                        else:
-                            all_ok = False
-                    except Exception:
+                voice_id  = _pick_voice(speaker)
+                try:
+                    r = _req.post(
+                        f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
+                        headers={"xi-api-key": el_key, "Content-Type": "application/json"},
+                        json={
+                            "text": text,
+                            "model_id": "eleven_multilingual_v2",
+                            "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
+                        },
+                        timeout=60,
+                    )
+                    if r.status_code == 200:
+                        clip_path.write_bytes(r.content)
+                        clip_paths.append(str(clip_path))
+                    else:
                         all_ok = False
-                else:
-                    try:
-                        from gtts import gTTS
-                        gTTS(text=f"{speaker}: {text}", lang="en").save(str(clip_path))
-                    except Exception:
-                        all_ok = False
-
-                if not all_ok:
+                        break
+                except Exception:
+                    all_ok = False
                     break
-                clip_paths.append(str(clip_path))
 
             if all_ok and clip_paths:
                 if len(clip_paths) == 1:
-                    shutil.copy(clip_paths[0], str(out))
+                    _sh2.copy(clip_paths[0], str(out))
                 else:
                     list_file = tmpdir / "list.txt"
                     list_file.write_text("\n".join(f"file '{p}'" for p in clip_paths))
-                    try:
-                        subprocess.run(
-                            [_ffmpeg, "-y", "-f", "concat", "-safe", "0",
-                             "-i", str(list_file), "-c", "copy", str(out)],
-                            capture_output=True, timeout=120,
-                        )
-                    except Exception:
-                        # ffmpeg failed — serve first clip only
-                        shutil.copy(clip_paths[0], str(out))
-                shutil.rmtree(str(tmpdir), ignore_errors=True)
-                if out.exists():
+                    result = subprocess.run(
+                        [_ffmpeg, "-y", "-f", "concat", "-safe", "0",
+                         "-i", str(list_file), "-c", "copy", str(out)],
+                        capture_output=True, timeout=300,
+                    )
+                    if result.returncode != 0:
+                        all_ok = False  # fall through to gTTS
+                _sh2.rmtree(str(tmpdir), ignore_errors=True)
+                if all_ok and out.exists():
                     return jsonify({"url": f"/audio/{fname}", "engine": "elevenlabs"})
+            else:
+                _sh2.rmtree(str(tmpdir), ignore_errors=True)
 
         # ── gTTS — single call on full concatenated transcript ────────────────
         # One HTTP session handles chunking internally; avoids per-turn rate
