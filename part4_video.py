@@ -503,48 +503,47 @@ async def lab_generate_image(prompt: str, style: str = "", reference_frame_path:
     else:
         print("[IMAGE] HUGGINGFACE_API_KEY not set — skipping HuggingFace")
 
-    # ── 4. AIML Flux (key rotation ×3) ────────────────────────────────────────
+    # ── 4. AIML (key rotation ×3, model cascade) ──────────────────────────────
     import json as _json
     aiml_keys = [
         v for k in ("AIML_API_KEY_1", "AIML_API_KEY_2", "AIML_API_KEY_3")
         if (v := os.environ.get(k, ""))
     ]
+    _aiml_models = ["flux-dev", "dall-e-3", "stable-diffusion-xl-base-1.0"]
     if aiml_keys:
         import asyncio as _asyncio2
         _loop2 = _asyncio2.get_event_loop()
         for _ki, aiml_key in enumerate(aiml_keys, start=1):
-            _ekey = f"aiml_key{_ki}"
-            try:
-                body = _json.dumps({
-                    "model":  "flux/dev",
-                    "prompt": full_prompt[:500],
-                    "n":      1,
-                    "size":   "1920x1080",
-                }).encode()
-                req = urllib.request.Request(
-                    "https://api.aimlapi.com/v1/images/generations",
-                    data=body,
-                    headers={
-                        "Authorization": f"Bearer {aiml_key}",
-                        "Content-Type":  "application/json",
-                    },
-                    method="POST",
-                )
-                data = await _loop2.run_in_executor(
-                    None,
-                    lambda r=req: _json.loads(urllib.request.urlopen(r, timeout=60).read()),
-                )
-                url = (data.get("data") or [{}])[0].get("url", "")
-                if url:
-                    return {"url": url, "local_path": None, "provider": "aiml"}
-                errors[_ekey] = "no url in response"
-            except Exception as e:
-                err_str = str(e)
-                errors[_ekey] = err_str
-                print(f"[IMAGE] AIML key{_ki} failed: {e}")
-                if "429" in err_str or "401" in err_str or "auth" in err_str.lower():
-                    continue  # rate-limited or auth error — try next key
-                break         # other error — don't retry remaining keys
+            for _model in _aiml_models:
+                _ekey = f"aiml_key{_ki}_{_model}"
+                try:
+                    body = _json.dumps({
+                        "model":  _model,
+                        "prompt": full_prompt[:500],
+                        "n":      1,
+                        "size":   "1024x576",
+                    }).encode()
+                    req = urllib.request.Request(
+                        "https://api.aimlapi.com/v1/images/generations",
+                        data=body,
+                        headers={
+                            "Authorization": f"Bearer {aiml_key}",
+                            "Content-Type":  "application/json",
+                        },
+                        method="POST",
+                    )
+                    data = await _loop2.run_in_executor(
+                        None,
+                        lambda r=req: _json.loads(urllib.request.urlopen(r, timeout=60).read()),
+                    )
+                    url = (data.get("data") or [{}])[0].get("url", "")
+                    if url:
+                        return {"url": url, "local_path": None, "provider": f"aiml/{_model}"}
+                    errors[_ekey] = "no url in response"
+                except Exception as e:
+                    errors[_ekey] = str(e)
+                    print(f"[IMAGE] AIML key{_ki}/{_model} failed: {e}")
+                    continue  # always try next model / next key
     else:
         print("[IMAGE] No AIML keys set — skipping AIML")
 

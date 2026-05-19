@@ -829,7 +829,7 @@ async function doImages() {
   if (!labState.storyboard?.length) { log('err', '> RUN STORYBOARD FIRST'); return; }
   setBusy('images', true, '[ GENERATING... ]');
   setStatus('GENERATING IMAGES');
-  log('hdr', `> GENERATING ${labState.storyboard.length} SCENE IMAGES VIA FAL...`);
+  log('hdr', `> GENERATING ${labState.storyboard.length} SCENE IMAGES — FAL → GROK → HF → AIML...`);
 
   for (let i = 0; i < labState.storyboard.length; i++) {
     const sc = labState.storyboard[i];
@@ -851,7 +851,8 @@ async function doImages() {
       });
       const data = await res.json();
       if (data.error) {
-        logStep('img-' + sc.id, '✗', `SCENE ${i+1} — FAILED: ${data.error}`, 'error');
+        const detail = data.errors ? ' — ' + Object.entries(data.errors).map(([k,v])=>`${k}: ${String(v).slice(0,60)}`).join(' | ') : '';
+        logStep('img-' + sc.id, '✗', `SCENE ${i+1} — ALL PROVIDERS FAILED${detail}`, 'error');
         continue;
       }
       labState.images[sc.id] = data;
