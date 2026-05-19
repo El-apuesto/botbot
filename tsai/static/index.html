@@ -3083,35 +3083,43 @@ function _podModelOpts(sel) {
 function _podMakeCard(name, role, pers, voice, pitch, speed, model) {
   const card = document.createElement('div');
   card.className = 'pod-speaker-card';
-  card.style.cssText = 'border:1px solid var(--cyan-dim);padding:8px;margin-bottom:6px';
+  card.style.cssText = 'border:1px solid var(--cyan-dim);padding:5px 8px;margin-bottom:4px';
   const voiceOpts = _buildVoiceOpts(voice);
   const pitchFmt  = parseFloat(pitch || 1.0).toFixed(2);
   const speedFmt  = parseFloat(speed || 1.0).toFixed(2);
   const modelKey  = model || 'twin';
+  const persEsc   = (pers || '').replace(/"/g, '&quot;');
   card.innerHTML = `
-    <div style="display:flex;gap:6px;margin-bottom:4px">
-      <input class="fi pod-sp-name" type="text" value="${name}" placeholder="NAME" style="flex:0 0 90px;text-transform:uppercase">
-      <input class="fi pod-sp-role" type="text" value="${role}" placeholder="Role/title" style="flex:1">
+    <div style="display:flex;gap:5px;align-items:center">
+      <input class="fi pod-sp-name" type="text" value="${name}" placeholder="NAME"
+        style="flex:0 0 76px;text-transform:uppercase;font-size:var(--font-size-sm);padding:3px 5px">
+      <input class="fi pod-sp-role" type="text" value="${role}" placeholder="Role"
+        style="flex:1;font-size:var(--font-size-sm);padding:3px 5px">
+      <button class="btn" style="font-size:10px;padding:2px 7px;flex-shrink:0;line-height:1.4"
+        onclick="(function(btn){var d=btn.closest('.pod-speaker-card').querySelector('.pod-sp-detail');var open=d.style.display!=='none';d.style.display=open?'none':'block';btn.textContent=open?'[ ▼ ]':'[ ▲ ]';})(this)">[ ▼ ]</button>
     </div>
-    <input class="fi pod-sp-pers" type="text" value="${pers}" placeholder="Personality / voice description" style="width:100%;box-sizing:border-box;margin-bottom:4px">
-    <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
-      <select class="fi pod-sp-voice" style="flex:1;font-size:var(--font-size-sm)">${voiceOpts}</select>
-      <button class="btn" style="font-size:var(--font-size-sm);padding:3px 7px;white-space:nowrap" onclick="charSaveFromCard(this)">[ SAVE CHAR ]</button>
-    </div>
-    <div style="margin-bottom:4px">
-      <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:1px">AI MODEL</label>
-      <select class="fi pod-sp-model" style="width:100%;font-size:var(--font-size-sm)">${_podModelOpts(modelKey)}</select>
-    </div>
-    <div style="display:flex;gap:8px">
-      <div style="flex:1">
-        <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:1px">PITCH <span class="pod-pitch-val" style="color:var(--cyan)">${pitchFmt}</span></label>
-        <input type="range" class="pod-sp-pitch" min="0.5" max="2.0" step="0.05" value="${pitch || 1.0}" style="width:100%;accent-color:var(--cyan)"
-          oninput="this.closest('.pod-speaker-card').querySelector('.pod-pitch-val').textContent=parseFloat(this.value).toFixed(2)">
+    <div class="pod-sp-detail" style="display:none;margin-top:6px">
+      <input class="fi pod-sp-pers" type="text" value="${persEsc}" placeholder="Personality / voice description"
+        style="width:100%;box-sizing:border-box;margin-bottom:4px;font-size:var(--font-size-sm)">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+        <select class="fi pod-sp-voice" style="flex:1;font-size:var(--font-size-sm)">${voiceOpts}</select>
+        <button class="btn" style="font-size:var(--font-size-sm);padding:3px 7px;white-space:nowrap" onclick="charSaveFromCard(this)">[ SAVE CHAR ]</button>
       </div>
-      <div style="flex:1">
-        <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:1px">SPEED <span class="pod-speed-val" style="color:var(--cyan)">${speedFmt}</span></label>
-        <input type="range" class="pod-sp-speed" min="0.5" max="2.0" step="0.05" value="${speed || 1.0}" style="width:100%;accent-color:var(--cyan)"
-          oninput="this.closest('.pod-speaker-card').querySelector('.pod-speed-val').textContent=parseFloat(this.value).toFixed(2)">
+      <div style="margin-bottom:4px">
+        <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:1px">AI MODEL</label>
+        <select class="fi pod-sp-model" style="width:100%;font-size:var(--font-size-sm)">${_podModelOpts(modelKey)}</select>
+      </div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1">
+          <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:1px">PITCH <span class="pod-pitch-val" style="color:var(--cyan)">${pitchFmt}</span></label>
+          <input type="range" class="pod-sp-pitch" min="0.5" max="2.0" step="0.05" value="${pitch || 1.0}" style="width:100%;accent-color:var(--cyan)"
+            oninput="this.closest('.pod-speaker-card').querySelector('.pod-pitch-val').textContent=parseFloat(this.value).toFixed(2)">
+        </div>
+        <div style="flex:1">
+          <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:1px">SPEED <span class="pod-speed-val" style="color:var(--cyan)">${speedFmt}</span></label>
+          <input type="range" class="pod-sp-speed" min="0.5" max="2.0" step="0.05" value="${speed || 1.0}" style="width:100%;accent-color:var(--cyan)"
+            oninput="this.closest('.pod-speaker-card').querySelector('.pod-speed-val').textContent=parseFloat(this.value).toFixed(2)">
+        </div>
       </div>
     </div>
   `;
