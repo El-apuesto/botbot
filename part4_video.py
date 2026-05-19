@@ -425,6 +425,114 @@ async def fal_generate_image(prompt: str, style: str = "", reference_frame_path:
         return {"error": str(e)}
 
 
+async def lab_generate_image(prompt: str, style: str = "", reference_frame_path: str | None = None) -> dict:
+    """
+    Multi-provider image generation with waterfall fallback:
+    FAL → Grok Aurora → HuggingFace FLUX.1-schnell → AIML Flux (key rotation).
+
+    Each provider is skipped instantly if its key env var is not set.
+    Returns {"url": ..., "local_path": None, "provider": "fal"|"grok"|"hf"|"aiml"}
+    or {"error": "All image providers failed", "errors": {...}}.
+    """
+    full_prompt = f"{prompt}, {style}" if style else prompt
+    errors: dict = {}
+
+    # ── 1. FAL ────────────────────────────────────────────────────────────────
+    if os.environ.get("FAL_KEY", ""):
+        try:
+            result = await fal_generate_image(prompt, style, reference_frame_path)
+            if result.get("url"):
+                result.setdefault("provider", "fal")
+                return result
+            errors["fal"] = result.get("error", "no url returned")
+        except Exception as e:
+            errors["fal"] = str(e)
+            print(f"[IMAGE] FAL failed: {e}")
+    else:
+        print("[IMAGE] FAL_KEY not set — skipping FAL")
+
+    # ── 2. Grok Aurora ────────────────────────────────────────────────────────
+    if os.environ.get("GROK_API_KEY", ""):
+        try:
+            urls = await grok_imagine(full_prompt[:500], n=1)
+            if urls:
+                return {"url": urls[0], "local_path": None, "provider": "grok"}
+            errors["grok"] = "no images returned"
+        except Exception as e:
+            errors["grok"] = str(e)
+            print(f"[IMAGE] Grok Aurora failed: {e}")
+    else:
+        print("[IMAGE] GROK_API_KEY not set — skipping Grok Aurora")
+
+    # ── 3. HuggingFace FLUX.1-schnell ─────────────────────────────────────────
+    hf_key = os.environ.get("HUGGINGFACE_API_KEY", "") or os.environ.get("HF_TOKEN", "")
+    if hf_key:
+        try:
+            import asyncio as _asyncio, uuid as _uuid, tempfile as _tf
+            from huggingface_hub import InferenceClient
+            _hfc  = InferenceClient(token=hf_key)
+            _loop = _asyncio.get_event_loop()
+            img   = await _loop.run_in_executor(
+                None,
+                lambda: _hfc.text_to_image(full_prompt[:500], model="black-forest-labs/FLUX.1-schnell"),
+            )
+            tmp = Path(_tf.gettempdir()) / f"hf_img_{_uuid.uuid4().hex[:8]}.jpg"
+            img.save(str(tmp), format="JPEG")
+            # Return as file:// URI — urlretrieve in the route handles the copy
+            return {"url": tmp.as_uri(), "local_path": None, "provider": "hf"}
+        except Exception as e:
+            errors["hf"] = str(e)
+            print(f"[IMAGE] HuggingFace failed: {e}")
+    else:
+        print("[IMAGE] HUGGINGFACE_API_KEY not set — skipping HuggingFace")
+
+    # ── 4. AIML Flux (key rotation ×3) ────────────────────────────────────────
+    import json as _json
+    aiml_keys = [
+        v for k in ("AIML_API_KEY_1", "AIML_API_KEY_2", "AIML_API_KEY_3")
+        if (v := os.environ.get(k, ""))
+    ]
+    if aiml_keys:
+        import asyncio as _asyncio2
+        _loop2 = _asyncio2.get_event_loop()
+        for aiml_key in aiml_keys:
+            try:
+                body = _json.dumps({
+                    "model":  "flux/dev",
+                    "prompt": full_prompt[:500],
+                    "n":      1,
+                    "size":   "1920x1080",
+                }).encode()
+                req = urllib.request.Request(
+                    "https://api.aimlapi.com/v1/images/generations",
+                    data=body,
+                    headers={
+                        "Authorization": f"Bearer {aiml_key}",
+                        "Content-Type":  "application/json",
+                    },
+                    method="POST",
+                )
+                data = await _loop2.run_in_executor(
+                    None,
+                    lambda r=req: _json.loads(urllib.request.urlopen(r, timeout=60).read()),
+                )
+                url = (data.get("data") or [{}])[0].get("url", "")
+                if url:
+                    return {"url": url, "local_path": None, "provider": "aiml"}
+                errors["aiml"] = "no url in response"
+            except Exception as e:
+                err_str = str(e)
+                errors[f"aiml"] = err_str
+                print(f"[IMAGE] AIML failed: {e}")
+                if "429" in err_str or "401" in err_str or "auth" in err_str.lower():
+                    continue  # rate-limited or auth error — try next key
+                break         # other error — don't retry
+    else:
+        print("[IMAGE] No AIML keys set — skipping AIML")
+
+    return {"error": "All image providers failed", "errors": errors}
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # VIDEO LAB — fal primary, Replicate secondary (background thread jobs)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -484,19 +592,76 @@ async def _replicate_generate(prompt: str, image_url: str | None = None) -> str:
 async def run_video(task: dict) -> dict:
     prompt    = task["input"].get("prompt", "")
     image_url = task["input"].get("image_url")
-    errors    = {}
+    errors: dict = {}
 
-    for provider, fn in [
-        ("huggingface", _hf_generate),
-        ("fal",         lambda p: _fal_generate(p, image_url=image_url)),
-        ("replicate",   lambda p: _replicate_generate(p, image_url=image_url)),
-    ]:
+    # Build provider list — skip any provider whose key is absent
+    providers = []
+    if os.environ.get("HUGGINGFACE_API_KEY", "") or os.environ.get("HF_TOKEN", ""):
+        providers.append(("huggingface", lambda p: _hf_generate(p)))
+    else:
+        print("[VIDEO] HUGGINGFACE_API_KEY not set — skipping HuggingFace")
+    if os.environ.get("FAL_KEY", ""):
+        providers.append(("fal", lambda p: _fal_generate(p, image_url=image_url)))
+    else:
+        print("[VIDEO] FAL_KEY not set — skipping FAL")
+    if os.environ.get("REPLICATE_API_TOKEN", ""):
+        providers.append(("replicate", lambda p: _replicate_generate(p, image_url=image_url)))
+    else:
+        print("[VIDEO] REPLICATE_API_TOKEN not set — skipping Replicate")
+
+    for provider, fn in providers:
         try:
             url = await fn(prompt)
             return {"output": url, "module": "video", "provider": provider, "shadow": False}
         except Exception as e:
             errors[provider] = str(e)
             print(f"[VIDEO LAB] {provider} failed: {e}")
+
+    # ── Grok Aurora last resort: generate 4 stills → slideshow MP4 ────────────
+    if os.environ.get("GROK_API_KEY", ""):
+        try:
+            import asyncio as _av, uuid as _uv, tempfile as _tv
+            _lv   = _av.get_event_loop()
+            _tdir = Path(_tv.gettempdir()) / f"grok_vid_{_uv.uuid4().hex[:8]}"
+            _tdir.mkdir(parents=True, exist_ok=True)
+            shot_prompts = [
+                f"{prompt} — establishing shot",
+                f"{prompt} — midpoint action",
+                f"{prompt} — dramatic climax",
+                f"{prompt} — closing frame",
+            ]
+            local_paths: list[str] = []
+            for i, sp in enumerate(shot_prompts):
+                try:
+                    urls = await grok_imagine(sp, n=1)
+                    if urls:
+                        img_path = str(_tdir / f"shot_{i:02d}.jpg")
+                        await _lv.run_in_executor(
+                            None,
+                            lambda u=urls[0], p=img_path: urllib.request.urlretrieve(u, p),
+                        )
+                        local_paths.append(img_path)
+                except Exception as ge:
+                    print(f"[VIDEO FALLBACK] Grok shot {i} failed: {ge}")
+            if local_paths:
+                renders_dir = Path(__file__).parent / "renders"
+                renders_dir.mkdir(parents=True, exist_ok=True)
+                out_path = str(renders_dir / f"grok_slide_{_uv.uuid4().hex[:8]}.mp4")
+                ok, result_path = images_to_slideshow(local_paths, out_path, duration=4.0)
+                if ok:
+                    return {
+                        "output":   f"/renders/{Path(out_path).name}",
+                        "module":   "video",
+                        "provider": "grok_slideshow",
+                        "shadow":   True,
+                        "note":     "Assembled from Grok Aurora stills (no live video provider available)",
+                    }
+                errors["grok_slideshow"] = result_path
+        except Exception as e:
+            errors["grok"] = str(e)
+            print(f"[VIDEO LAB] Grok fallback failed: {e}")
+    else:
+        print("[VIDEO] GROK_API_KEY not set — no fallback available")
 
     return {"output": "All video providers failed.", "module": "video", "shadow": True, "errors": errors}
 

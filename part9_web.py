@@ -1352,7 +1352,7 @@ def register_routes(app: Flask):
     @_login_required
     def api_lab_image():
         import urllib.request as _ur
-        from part4_video import fal_generate_image
+        from part4_video import lab_generate_image
         d = request.get_json(force=True) or {}
         # Frontend sends 'description'; support both field names
         prompt = d.get("prompt") or d.get("description", "")
@@ -1361,12 +1361,12 @@ def register_routes(app: Flask):
         if not prompt:
             return jsonify({"error": "No prompt or description provided"}), 400
         try:
-            result = _run_async(fal_generate_image(prompt, style, ref))
-            # fal_generate_image returns local_path=None — download the image locally
-            # so the render slideshow step has real filesystem paths to work with
+            result = _run_async(lab_generate_image(prompt, style, ref))
+            # Download image locally so the render slideshow step has real filesystem paths
             if result.get("url") and not result.get("local_path"):
                 try:
-                    img_fname = f"fal_{uuid.uuid4().hex[:8]}.jpg"
+                    provider  = result.get("provider", "img")
+                    img_fname = f"{provider}_{uuid.uuid4().hex[:8]}.jpg"
                     img_local = _UPLOADS_DIR / img_fname
                     _ur.urlretrieve(result["url"], str(img_local))
                     result["local_path"] = f"/uploads/{img_fname}"
