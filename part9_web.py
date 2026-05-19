@@ -696,14 +696,41 @@ def register_routes(app: Flask):
                 if out.exists():
                     return jsonify({"url": f"/audio/{fname}", "engine": "elevenlabs"})
 
-        # ── gTTS full-transcript fallback ─────────────────────────────────────
+        # ── gTTS per-turn clips → ffmpeg concat (multi-speaker, natural pauses) ─
+        import tempfile as _tf, shutil as _sh
+        tmpdir2 = Path(_tf.mkdtemp())
         try:
-            from gtts import gTTS
-            text = " ".join(f"{t.get('speaker','')}: {t.get('text','')}" for t in turns)
-            gTTS(text=text, lang="en").save(str(out))
-            return jsonify({"url": f"/audio/{fname}", "engine": "gtts"})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            from gtts import gTTS as _gTTS
+            clips2 = []
+            for i, turn in enumerate(turns):
+                txt = (turn.get("text") or "").strip()
+                if not txt:
+                    continue
+                cp = tmpdir2 / f"t_{i:04d}.mp3"
+                try:
+                    _gTTS(text=txt, lang="en").save(str(cp))
+                    clips2.append(str(cp))
+                except Exception:
+                    continue
+            if clips2:
+                if len(clips2) == 1:
+                    _sh.copy(clips2[0], str(out))
+                else:
+                    lf = tmpdir2 / "list.txt"
+                    lf.write_text("\n".join(f"file '{p}'" for p in clips2))
+                    subprocess.run(
+                        ["ffmpeg", "-y", "-f", "concat", "-safe", "0",
+                         "-i", str(lf), "-c", "copy", str(out)],
+                        capture_output=True, timeout=120,
+                    )
+                _sh.rmtree(str(tmpdir2), ignore_errors=True)
+                if out.exists():
+                    return jsonify({"url": f"/audio/{fname}", "engine": "gtts"})
+        except Exception:
+            pass
+        finally:
+            _sh.rmtree(str(tmpdir2), ignore_errors=True)
+        return jsonify({"error": "TTS generation failed"}), 500
 
     # ── builder ───────────────────────────────────────────────────────────────
     @app.route("/api/builder", methods=["POST"])

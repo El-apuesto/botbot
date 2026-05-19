@@ -468,14 +468,20 @@ textarea.fi { resize: vertical; min-height: 58px; line-height: 1.7; }
   font-size: var(--font-size-sm);
   padding: 5px 12px;
   background: transparent;
-  border: 1px solid var(--border);
-  color: var(--neon);
+  border: 1px solid var(--muted);
+  color: var(--muted);
   font-family: var(--font);
   cursor: pointer;
   transition: all .12s;
   letter-spacing: 0.05em;
 }
-.opt.on { border-color: var(--cyan); color: var(--neon); box-shadow: 0 0 8px var(--cyan-glow); }
+.opt.on {
+  background: rgba(187,68,255,0.18);
+  border-color: var(--cyan);
+  color: var(--neon-bright);
+  font-weight: 700;
+  box-shadow: 0 0 10px var(--cyan-glow), inset 0 0 6px rgba(187,68,255,0.12);
+}
 
 .btn {
   align-self: flex-start;
