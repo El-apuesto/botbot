@@ -104,6 +104,15 @@ def _run_async(coro):
     try:
         return loop.run_until_complete(coro)
     finally:
+        try:
+            # Drain any pending cleanup tasks (e.g. httpx AsyncClient.aclose)
+            # so we don't get "RuntimeError: Event loop is closed" on GC
+            pending = asyncio.all_tasks(loop)
+            if pending:
+                loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            loop.run_until_complete(loop.shutdown_asyncgens())
+        except Exception:
+            pass
         loop.close()
 
 def _stream_to_queue(async_gen, q: Q.Queue):

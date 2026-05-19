@@ -730,22 +730,34 @@ def _grok_client() -> AsyncOpenAI:
 
 
 async def grok_imagine(prompt: str, n: int = 1) -> list[str]:
-    client   = _grok_client()
-    response = await client.images.generate(model="aurora", prompt=prompt, n=n)
-    return [img.url for img in response.data]
+    client = _grok_client()
+    try:
+        response = await client.images.generate(model="aurora", prompt=prompt, n=n)
+        return [img.url for img in response.data]
+    finally:
+        try:
+            await client.close()
+        except Exception:
+            pass
 
 
 async def grok_direct(prompt: str) -> str:
     client = _grok_client()
-    resp   = await client.chat.completions.create(
-        model="grok-3",
-        messages=[
-            {"role": "system", "content": "You are a creative video director. Raw, visual, precise."},
-            {"role": "user",   "content": prompt},
-        ],
-        max_tokens=2000,
-    )
-    return resp.choices[0].message.content
+    try:
+        resp = await client.chat.completions.create(
+            model="grok-3",
+            messages=[
+                {"role": "system", "content": "You are a creative video director. Raw, visual, precise."},
+                {"role": "user",   "content": prompt},
+            ],
+            max_tokens=2000,
+        )
+        return resp.choices[0].message.content
+    finally:
+        try:
+            await client.close()
+        except Exception:
+            pass
 
 
 async def run_shadow_video(task: dict) -> dict:
