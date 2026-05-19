@@ -365,67 +365,78 @@ def add_text_overlay(video_path: str, text: str, output_path: str) -> tuple[bool
 # FAL IMAGE GENERATION
 # ══════════════════════════════════════════════════════════════════════════════
 
+def _fal_http(endpoint: str, payload: dict) -> dict:
+    """
+    Call a FAL inference endpoint directly via urllib (synchronous).
+    Bypasses fal_client's AsyncClient entirely — fal_client uses
+    async_cached_property(asyncio.Lock) which binds to the import-time event
+    loop and deadlocks / raises 401 when _run_async() creates a fresh loop
+    per Flask request.
+    Returns the parsed JSON response dict, or raises on HTTP error.
+    """
+    import json as _j
+    key = os.environ.get("FAL_KEY", "")
+    body = _j.dumps(payload).encode()
+    req = urllib.request.Request(
+        f"https://fal.run/{endpoint}",
+        data=body,
+        headers={
+            "Authorization": f"Key {key}",
+            "Content-Type":  "application/json",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=90) as resp:
+        return _j.loads(resp.read())
+
+
 async def fal_generate_image(prompt: str, style: str = "", reference_frame_path: str | None = None) -> dict:
     """
-    Generate an image via FAL.
-    When reference_frame_path is given:
-      1. Upload the frame to FAL CDN via fal_client.upload_file()
-      2. Use fal-ai/flux/dev/image-to-image for true visual continuity (strength=0.65)
-      3. Fall back to text-only fal-ai/flux/schnell on failure
+    Generate an image via FAL using direct HTTP (no fal_client asyncio issues).
+    Falls back to text-to-image if img2img fails.
     Returns {"url": ..., "local_path": None} or {"error": ...}.
-
-    Uses a fresh AsyncClient per call — the module-level singleton binds
-    asyncio.Lock to the import-time event loop, which is always dead by the
-    time Flask's _run_async() creates a new loop per request.
     """
-    client = _fal_client()
-    if client is None:
-        return {"error": "fal-client not installed"}
-
     import asyncio
-    from fal_client import SyncClient
+
+    key = os.environ.get("FAL_KEY", "")
+    if not key:
+        return {"error": "FAL_KEY not set"}
 
     full_prompt = f"{prompt}, {style}" if style else prompt
+    loop = asyncio.get_event_loop()
 
-    # Try img2img with reference frame (real pixel-level visual anchor)
+    # Try img2img with reference frame
     if reference_frame_path and Path(reference_frame_path).exists():
         try:
-            key = os.environ.get("FAL_KEY", "")
-            sync_client = SyncClient(key=key if key else None)
-            loop    = asyncio.get_event_loop()
+            from fal_client import SyncClient
+            sync_client = SyncClient(key=key)
             ref_url = await loop.run_in_executor(None, sync_client.upload_file, reference_frame_path)
-            result  = await client.run(
-                "fal-ai/flux/dev/image-to-image",
-                arguments={
-                    "prompt":              full_prompt[:500],
-                    "image_url":           ref_url,
-                    "strength":            0.65,
-                    "num_inference_steps": 28,
-                    "num_images":          1,
-                    "image_size":          "landscape_16_9",
-                },
-            )
-            images = result.get("images", [])
+            data = await loop.run_in_executor(None, _fal_http, "fal-ai/flux/dev/image-to-image", {
+                "prompt":              full_prompt[:500],
+                "image_url":           ref_url,
+                "strength":            0.65,
+                "num_inference_steps": 28,
+                "num_images":          1,
+                "image_size":          "landscape_16_9",
+            })
+            images = data.get("images", [])
             if images:
                 return {"url": images[0]["url"], "local_path": None, "reference_used": True}
         except Exception as e:
-            print(f"[VIDEO LAB] img2img failed ({e}), falling back to T2I")
+            print(f"[FAL] img2img failed ({e}), falling back to T2I")
             full_prompt += " — seamless continuation, matching visual style and lighting"
 
-    # Text-to-image (no reference or img2img failed)
+    # Text-to-image
     try:
-        result = await client.run(
-            "fal-ai/flux/schnell",
-            arguments={
-                "prompt":              full_prompt[:500],
-                "image_size":          "landscape_16_9",
-                "num_images":          1,
-                "num_inference_steps": 4,
-            },
-        )
-        images = result.get("images", [])
+        data = await loop.run_in_executor(None, _fal_http, "fal-ai/flux/schnell", {
+            "prompt":              full_prompt[:500],
+            "image_size":          "landscape_16_9",
+            "num_images":          1,
+            "num_inference_steps": 4,
+        })
+        images = data.get("images", [])
         if not images:
-            return {"error": "No images returned"}
+            return {"error": "No images returned", "raw": str(data)[:200]}
         return {"url": images[0]["url"], "local_path": None}
     except Exception as e:
         return {"error": str(e)}
@@ -545,16 +556,30 @@ async def lab_generate_image(prompt: str, style: str = "", reference_frame_path:
 # ══════════════════════════════════════════════════════════════════════════════
 
 async def _fal_generate(prompt: str, model: str = "fal-ai/wan-2.1", image_url: str | None = None) -> str:
-    client = _fal_client()
-    if client is None:
-        raise RuntimeError("fal-client not installed. Run: pip install fal-client")
+    import asyncio, json as _j
+    key = os.environ.get("FAL_KEY", "")
+    if not key:
+        raise RuntimeError("FAL_KEY not set")
 
-    args: dict = {"prompt": prompt}
+    payload: dict = {"prompt": prompt}
     if image_url:
-        args["image_url"] = image_url
+        payload["image_url"] = image_url
 
-    handler = await client.submit(model, arguments=args)
-    result  = await handler.get()
+    def _call():
+        body = _j.dumps(payload).encode()
+        req = urllib.request.Request(
+            f"https://fal.run/{model}",
+            data=body,
+            headers={
+                "Authorization": f"Key {key}",
+                "Content-Type":  "application/json",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            return _j.loads(resp.read())
+
+    result = await asyncio.get_event_loop().run_in_executor(None, _call)
 
     if "video" in result:
         url = result["video"].get("url") or result["video"]
@@ -738,7 +763,7 @@ def _grok_client() -> AsyncOpenAI:
 async def grok_imagine(prompt: str, n: int = 1) -> list[str]:
     client = _grok_client()
     try:
-        response = await client.images.generate(model="aurora", prompt=prompt, n=n)
+        response = await client.images.generate(model="grok-2-image-1212", prompt=prompt)
         return [img.url for img in response.data]
     finally:
         try:
