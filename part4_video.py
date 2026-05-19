@@ -760,15 +760,31 @@ def _grok_client() -> AsyncOpenAI:
 
 
 async def grok_imagine(prompt: str, n: int = 1) -> list[str]:
-    client = _grok_client()
-    try:
-        response = await client.images.generate(model="grok-2-image-1212", prompt=prompt)
-        return [img.url for img in response.data]
-    finally:
-        try:
-            await client.close()
-        except Exception:
-            pass
+    """Direct HTTP to xAI image API — avoids AsyncOpenAI asyncio.Lock conflicts."""
+    import json as _json, asyncio as _asyncio
+    key = os.environ.get("GROK_API_KEY", "")
+    if not key:
+        return []
+    body = _json.dumps({
+        "model":  "grok-2-image-1212",
+        "prompt": prompt,
+        "n":      n,
+    }).encode()
+    req = urllib.request.Request(
+        "https://api.x.ai/v1/images/generations",
+        data=body,
+        headers={
+            "Authorization": f"Bearer {key}",
+            "Content-Type":  "application/json",
+        },
+        method="POST",
+    )
+    loop = _asyncio.get_event_loop()
+    data = await loop.run_in_executor(
+        None,
+        lambda: _json.loads(urllib.request.urlopen(req, timeout=60).read()),
+    )
+    return [img["url"] for img in data.get("data", [])]
 
 
 async def grok_direct(prompt: str) -> str:

@@ -860,12 +860,13 @@ async function doImages() {
       sessionSave();
 
       const card = document.getElementById('scene-card-' + sc.id);
-      if (card && data.url) {
+      const imgSrc = data.local_path || data.url;
+      if (card && imgSrc) {
         const img = document.createElement('img');
         img.className = 'scene-img';
-        img.src = data.url;
-        img.title = 'Click to use as reference';
-        img.onclick = () => log('ok', `> REFERENCE SET: scene ${i+1}`);
+        img.src = imgSrc;
+        img.title = 'Click to open full size';
+        img.onclick = () => window.open(imgSrc, '_blank');
         card.appendChild(img);
       }
     } catch(e) {
@@ -906,10 +907,11 @@ async function doVideo() {
     if (data.error) { log('err', '✗ ' + data.error); setBusy('video', false, '[ VIDEO ]'); return; }
 
     labState.videoJobId = data.job_id;
-    log('ok', `✓ JOB SUBMITTED: ${data.job_id} (${data.provider})`);
+    const prov = data.provider || 'video';
+    log('ok', `✓ JOB SUBMITTED: ${data.job_id} (${prov})`);
     log('dim', '  POLLING FOR RESULT EVERY 8 SECONDS...');
     setStatus('VIDEO GENERATING...');
-    logStep('video-job', '⟳', `${data.provider.toUpperCase()} JOB RUNNING...`, 'active');
+    logStep('video-job', '⟳', `${prov.toUpperCase()} JOB RUNNING...`, 'active');
 
     _pollTimer = setInterval(() => pollVideoJob(data.job_id), 8000);
     setBusy('video', false, '[ VIDEO ]');
