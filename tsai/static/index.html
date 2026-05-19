@@ -1094,6 +1094,7 @@ audio { width: 100%; margin-top: 4px; }
           <span class="fl" style="color:var(--cyan)">WAR ROOM IN SESSION</span>
           <div id="gorilla-member-bar" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px"></div>
         </div>
+        <audio id="gorilla-audio-player" controls style="display:none;width:100%;margin-top:4px"></audio>
         <div id="gorilla-output" style="display:none">
           <div class="fg" id="gorilla-transcript-box">
             <span class="fl">COMMITTEE TRANSCRIPT</span>
@@ -1603,6 +1604,7 @@ audio { width: 100%; margin-top: 4px; }
           <button class="btn" id="legal-audio-btn" style="display:none" onclick="renderAdvisorTTS('legal')">[ PLAY AUDIO ]</button>
           <a id="legal-mp3-btn" class="action-link" style="display:none" download="legal_audio.mp3">[ DL MP3 ]</a>
         </div>
+        <audio id="legal-audio" controls style="display:none;width:100%;margin-top:4px"></audio>
         <div id="legal-out" class="session-out"></div>
       </div>
       <div id="adv-tab-marketing" class="lab-section panel-scroll">
@@ -1617,6 +1619,7 @@ audio { width: 100%; margin-top: 4px; }
           <button class="btn" id="marketing-audio-btn" style="display:none" onclick="renderAdvisorTTS('marketing')">[ PLAY AUDIO ]</button>
           <a id="marketing-mp3-btn" class="action-link" style="display:none" download="marketing_audio.mp3">[ DL MP3 ]</a>
         </div>
+        <audio id="marketing-audio" controls style="display:none;width:100%;margin-top:4px"></audio>
         <div id="marketing-out" class="session-out"></div>
       </div>
     </div><!-- /panel-advisors -->
@@ -1992,16 +1995,12 @@ async function speakText(text, voice) {
     audio.src = data.url;
     audio.onended = cleanup;
     setTimeout(cleanup, 120000);
-    const p = audio.play();
-    if (p) p.catch(e => {
-      console.warn('Audio play blocked:', e);
-      const spk = document.createElement('button');
-      spk.className = 'btn';
-      spk.style.cssText = 'font-size:var(--font-size-sm);padding:2px 8px;margin-top:4px;display:inline-block';
-      spk.textContent = '[ ▶ PLAY ]';
-      spk.onclick = () => { audio.play(); spk.remove(); };
-      document.getElementById('msgs').lastElementChild?.appendChild(spk);
-    });
+    const spk = document.createElement('button');
+    spk.className = 'btn';
+    spk.style.cssText = 'font-size:var(--font-size-sm);padding:2px 8px;margin-top:4px;display:inline-block';
+    spk.textContent = '[ ▶ PLAY ]';
+    spk.onclick = () => { audio.play(); spk.textContent = '[ ■ STOP ]'; spk.onclick = () => { audio.pause(); audio.currentTime = 0; spk.textContent = '[ ▶ PLAY ]'; spk.onclick = () => { audio.play(); }; }; };
+    document.getElementById('msgs').lastElementChild?.appendChild(spk);
   } catch(e) { console.warn('TTS failed:', e); }
 }
 
@@ -2772,7 +2771,6 @@ async function renderTTS(mode) {
       const el = document.getElementById(mode + '-audio');
       el.src = data.url;
       el.style.display = 'block';
-      el.play();
       const mp3btn = document.getElementById(mode + '-mp3-btn');
       mp3btn.href = data.url;
       mp3btn.style.display = '';
@@ -3308,7 +3306,7 @@ async function renderPodcastTTS() {
     const data = await res.json();
     if (data.url) {
       const el = document.getElementById('pod-audio');
-      el.src = data.url; el.style.display = 'block'; el.play();
+      el.src = data.url; el.style.display = 'block';
       document.getElementById('pod-mp3-btn').href = data.url;
       document.getElementById('pod-mp3-btn').style.display = '';
     } else { alert('TTS failed: ' + (data.error || 'unknown')); }
@@ -3342,7 +3340,7 @@ async function renderArchiveTTS() {
     const res  = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ turns }) });
     const data = await res.json();
     if (data.url) {
-      aud.src = data.url; aud.style.display = 'block'; aud.play().catch(() => {});
+      aud.src = data.url; aud.style.display = 'block';
       mp3.href = data.url; mp3.download = (s.title || 'session') + '.mp3'; mp3.style.display = '';
     } else { alert('TTS failed: ' + (data.error || 'unknown')); }
   } catch(e) { alert('TTS error: ' + e); }
@@ -3369,7 +3367,8 @@ async function renderAdvisorTTS(type) {
     const res  = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ turns }) });
     const data = await res.json();
     if (data.url) {
-      new Audio(data.url).play().catch(() => {});
+      const aud = document.getElementById(type + '-audio');
+      if (aud) { aud.src = data.url; aud.style.display = 'block'; }
       mp3.href = data.url; mp3.style.display = '';
     } else { alert('TTS failed: ' + (data.error || 'unknown')); }
   } catch(e) { alert('TTS error: ' + e); }
@@ -3392,7 +3391,8 @@ async function renderGorillaTTS() {
     const res  = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ turns }) });
     const data = await res.json();
     if (data.url) {
-      new Audio(data.url).play().catch(() => {});
+      const aud = document.getElementById('gorilla-audio-player');
+      if (aud) { aud.src = data.url; aud.style.display = 'block'; }
       mp3.href = data.url; mp3.style.display = '';
     } else { alert('TTS failed: ' + (data.error || 'unknown')); }
   } catch(e) { alert('TTS error: ' + e); }
