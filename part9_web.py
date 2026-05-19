@@ -1318,10 +1318,26 @@ def register_routes(app: Flask):
         f = request.files.get("file")
         if not f:
             return jsonify({"error": "no file"}), 400
-        fname = f"{uuid.uuid4().hex[:12]}{Path(f.filename).suffix.lower()}"
+        ext   = Path(f.filename).suffix.lower()
+        fname = f"{uuid.uuid4().hex[:12]}{ext}"
         dest  = _UPLOADS_DIR / fname
         f.save(str(dest))
-        return jsonify({"ok": True, "path": str(dest), "url": f"/uploads/{fname}", "name": f.filename})
+        _vid_exts   = {".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v"}
+        _audio_exts = {".mp3", ".wav", ".ogg", ".m4a", ".aac"}
+        if ext in _vid_exts:
+            file_type = "video"
+        elif ext in _audio_exts:
+            file_type = "audio"
+        else:
+            file_type = "image"
+        url_path = f"/uploads/{fname}"
+        return jsonify({
+            "ok":        True,
+            "path":      url_path,
+            "url":       url_path,
+            "name":      f.filename,
+            "file_type": file_type,
+        })
 
     @app.route("/api/lab/music")
     @_login_required
