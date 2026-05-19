@@ -116,10 +116,24 @@ body::before {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center top;
+  object-position: center 8%;
   display: block;
   mix-blend-mode: screen;
   filter: brightness(1.6) contrast(1.1);
+}
+/* TWIN CHAT corner label */
+#banner-label {
+  position: absolute;
+  bottom: 4px;
+  right: 6px;
+  font-family: var(--font-head);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  color: #ffffff;
+  text-shadow: 0 0 12px var(--cyan), 0 0 4px #fff;
+  pointer-events: none;
+  line-height: 1;
 }
 
 /* ── PIPELINE POPUP OVERLAY ── */
@@ -745,29 +759,28 @@ audio { width: 100%; margin-top: 4px; }
 .deploy-row .fi { flex: 1; min-width: 0; }
 
 /* ── DROPDOWN MENU ── */
-.menu-wrap { position: absolute; top: 0; left: 0; z-index: 9999; }
+.menu-wrap { position: absolute; top: 0; right: 0; z-index: 9999; }
 .menu-toggle {
-  background: rgba(187,68,255,0.92);
+  background: rgba(187,68,255,0.88);
   color: #ffffff;
   font-family: var(--font-head);
-  font-size: 11px;
-  letter-spacing: .1em;
+  font-size: 10px;
+  letter-spacing: .12em;
   cursor: pointer;
-  padding: 8px 18px;
-  text-shadow: 0 0 10px #ffffff, 0 0 20px var(--cyan-glow);
-  box-shadow: 0 0 20px var(--cyan-glow), 0 0 6px rgba(187,68,255,0.5);
-  transition: all .15s;
+  padding: 3px 8px;
+  text-shadow: none;
+  box-shadow: none;
+  transition: background .15s;
 }
 .menu-toggle:hover {
   background: var(--cyan);
-  text-shadow: 0 0 14px #ffffff;
-  box-shadow: 0 0 32px var(--cyan-glow), 0 0 12px var(--cyan-glow);
 }
 .menu-dropdown {
   display: none;
   position: absolute;
-  left: 0;
-  top: calc(100% + 4px);
+  right: 0;
+  left: auto;
+  top: calc(100% + 2px);
   background: rgba(8,0,15,.97);
   backdrop-filter: blur(10px);
   min-width: 270px;
@@ -908,8 +921,9 @@ audio { width: 100%; margin-top: 4px; }
   <div class="header">
     <div id="app-banner">
       <img id="banner-img" src="/static/home.jpg" alt="Twin Shadow">
+      <div id="banner-label">TWIN&nbsp;&nbsp;CHAT</div>
     </div>
-    <!-- MENU — bottom-left of hero -->
+    <!-- MENU — top-right of hero -->
     <div class="menu-wrap" id="menu-wrap">
       <button class="menu-toggle" id="menu-toggle" onclick="toggleMenu(event)">[ ≡ MENU ]</button>
       <div class="menu-dropdown" id="menu-dropdown">
@@ -2292,6 +2306,8 @@ async function clearChat() {
 function applyBot(b) {
   document.getElementById('sw').classList.toggle('on', b === 'shadow');
   document.getElementById('toggle-name').textContent = b.toUpperCase();
+  const lbl = document.getElementById('banner-label');
+  if (lbl) lbl.innerHTML = b === 'shadow' ? 'SHADOW&nbsp;&nbsp;CHAT' : 'TWIN&nbsp;&nbsp;CHAT';
   _updateGuidePanelVoice();
   const spkBtn = document.getElementById('speak-toggle');
   if (spkBtn) spkBtn.style.color = autoSpeak ? 'var(--cyan)' : 'var(--muted)';
