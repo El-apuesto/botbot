@@ -379,7 +379,7 @@ def register_routes(app: Flask):
     def api_tts_chat():
         import os as _os, requests as _req
         d     = request.get_json(force=True) or {}
-        text  = (d.get("text") or "")[:3000]
+        text  = (d.get("text") or "")
         voice = d.get("voice", "twin").lower()
         if not text:
             return jsonify({"error": "no text"}), 400
@@ -655,7 +655,7 @@ def register_routes(app: Flask):
                             f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
                             headers={"xi-api-key": el_key, "Content-Type": "application/json"},
                             json={
-                                "text": text[:3000],
+                                "text": text,
                                 "model_id": "eleven_multilingual_v2",
                                 "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
                             },
@@ -670,7 +670,7 @@ def register_routes(app: Flask):
                 else:
                     try:
                         from gtts import gTTS
-                        gTTS(text=f"{speaker}: {text}"[:3000], lang="en").save(str(clip_path))
+                        gTTS(text=f"{speaker}: {text}", lang="en").save(str(clip_path))
                     except Exception:
                         all_ok = False
 
@@ -700,7 +700,7 @@ def register_routes(app: Flask):
         try:
             from gtts import gTTS
             text = " ".join(f"{t.get('speaker','')}: {t.get('text','')}" for t in turns)
-            gTTS(text=text[:3000], lang="en").save(str(out))
+            gTTS(text=text, lang="en").save(str(out))
             return jsonify({"url": f"/audio/{fname}", "engine": "gtts"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
@@ -1413,7 +1413,7 @@ def register_routes(app: Flask):
         out   = _AUDIO_DIR / fname
         try:
             from gtts import gTTS
-            gTTS(text=script[:3000], lang="en").save(str(out))
+            gTTS(text=script, lang="en").save(str(out))
             return jsonify({"url": f"/audio/{fname}", "path": f"/audio/{fname}"})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
