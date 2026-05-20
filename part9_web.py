@@ -2814,6 +2814,28 @@ def register_routes(app: Flask):
         delete_template(name)
         return jsonify({"ok": True, "name": name})
 
+    @app.route("/api/admin/offline", methods=["GET"])
+    @_login_required
+    def api_admin_offline_get():
+        from part_llm_config import get_full_config
+        cfg = get_full_config()
+        return jsonify({
+            "offline_mode":  cfg.get("offline_mode", False),
+            "offline_model": cfg.get("offline_model", "llama3"),
+            "ollama_base_url": cfg.get("ollama_base_url", "http://localhost:11434"),
+        })
+
+    @app.route("/api/admin/offline", methods=["POST"])
+    @_login_required
+    def api_admin_offline_set():
+        from part_llm_config import set_offline
+        d = request.get_json(force=True) or {}
+        enabled  = bool(d.get("enabled", False))
+        model    = d.get("model", None)
+        base_url = d.get("base_url", None)
+        set_offline(enabled, model=model, base_url=base_url)
+        return jsonify({"ok": True, "offline_mode": enabled})
+
     @app.route("/api/admin/ollama/assign", methods=["POST"])
     @_login_required
     def api_admin_ollama_assign():

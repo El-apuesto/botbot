@@ -980,6 +980,7 @@ audio { width: 100%; margin-top: 4px; }
     </div>
     <!-- MENU — top-right of hero -->
     <div class="menu-wrap" id="menu-wrap">
+      <span id="offline-badge" style="display:none;font-size:10px;letter-spacing:1px;color:var(--green);padding:3px 7px;margin-right:6px;animation:blink 2s step-end infinite;font-family:var(--font-head)">&#9632; OFFLINE</span>
       <button class="menu-toggle" id="menu-toggle" onclick="toggleMenu(event)">[ ≡ MENU ]</button>
       <div class="menu-dropdown" id="menu-dropdown">
         <button class="menu-item active" data-tab="home"      onclick="menuNav('home')"><span class="nav-num">[1]</span> HOME</button>
@@ -1806,6 +1807,34 @@ audio { width: 100%; margin-top: 4px; }
         </div>
 
         <button class="btn" style="font-size:var(--font-size-base);padding:10px 20px;letter-spacing:2px;align-self:stretch;text-align:center" onclick="saveSettings()">[ SAVE SETTINGS ]</button>
+
+        <!-- ═══════════════ OFFLINE MODE ═══════════════ -->
+        <div class="fg" style="border:1px solid var(--green);padding:10px;margin-top:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span class="fl" style="color:var(--green);margin:0">OFFLINE MODE</span>
+            <span id="offline-status-label" style="font-size:var(--font-size-xs);color:var(--muted)">LOADING...</span>
+          </div>
+          <p style="font-size:var(--font-size-xs);color:var(--muted);margin:0 0 8px 0;line-height:1.5">
+            Routes ALL AI calls through your local Ollama instance. No internet or API keys needed.
+          </p>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <button class="opt" id="offline-btn-off" onclick="offlineSetEnabled(false)" style="flex:1;border-color:var(--green)">ONLINE</button>
+            <button class="opt" id="offline-btn-on"  onclick="offlineSetEnabled(true)"  style="flex:1;border-color:var(--green);color:var(--green)">OFFLINE</button>
+          </div>
+          <div class="fg" style="margin:0 0 6px 0">
+            <label class="fl" style="font-size:var(--font-size-xs)">OLLAMA URL</label>
+            <input class="fi" id="offline-url" placeholder="http://localhost:11434" style="font-size:var(--font-size-sm)">
+          </div>
+          <div class="fg" style="margin:0 0 8px 0">
+            <label class="fl" style="font-size:var(--font-size-xs)">MODEL NAME</label>
+            <input class="fi" id="offline-model" placeholder="e.g. llama3, mistral, qwen2.5-coder" style="font-size:var(--font-size-sm)">
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="btn" style="font-size:var(--font-size-sm);padding:5px 14px;border-color:var(--green);color:var(--green)" onclick="offlineSave()">[ SAVE ]</button>
+            <span id="offline-save-status" style="font-size:var(--font-size-xs);color:var(--muted)"></span>
+          </div>
+        </div>
+        <!-- ═══════════════ /OFFLINE MODE ═══════════════ -->
 
         <!-- ═══════════════ LLM ADMIN ═══════════════ -->
         <button class="btn" id="adm-toggle-btn" style="font-size:var(--font-size-base);padding:10px 20px;letter-spacing:2px;align-self:stretch;text-align:center;margin-top:6px;border:1px solid var(--cyan)" onclick="adminToggle()">[ LLM ADMIN ]</button>
@@ -5946,6 +5975,7 @@ function charRenderRoster() {
 document.addEventListener('DOMContentLoaded', () => {
   _podRebuildCast(2);
   _fetchElVoices();
+  offlineLoad();
 });
 
 /* ─────────────────────────────────────────
@@ -6116,6 +6146,66 @@ async function continueBuilderJob(jobId) {
     if (btn) { btn.disabled = false; btn.textContent = codeMode === 'architect' ? '[ ARCHITECT + BUILD ]' : '[ RUN BUILDER ]'; }
   } catch(e) {
     if (row) row.innerHTML = '<span style="color:var(--red)">[ ERROR: ' + e.message + ' ]</span>';
+  }
+}
+
+/* ─────────────────────────────────────────
+   OFFLINE MODE
+───────────────────────────────────────── */
+let _offlineEnabled = false;
+
+function _offlineApplyUI(data) {
+  _offlineEnabled = !!data.offline_mode;
+  document.getElementById('offline-btn-off').classList.toggle('on', !_offlineEnabled);
+  document.getElementById('offline-btn-on').classList.toggle('on',  _offlineEnabled);
+  document.getElementById('offline-status-label').textContent = _offlineEnabled ? '● OFFLINE — OLLAMA ACTIVE' : '○ ONLINE — EXTERNAL APIS';
+  document.getElementById('offline-status-label').style.color = _offlineEnabled ? 'var(--green)' : 'var(--muted)';
+  document.getElementById('offline-url').value   = data.ollama_base_url || 'http://localhost:11434';
+  document.getElementById('offline-model').value = data.offline_model   || 'llama3';
+  const badge = document.getElementById('offline-badge');
+  if (badge) { badge.style.display = _offlineEnabled ? 'inline' : 'none'; }
+}
+
+async function offlineLoad() {
+  try {
+    const r = await fetch('/api/admin/offline');
+    if (!r.ok) return;
+    _offlineApplyUI(await r.json());
+  } catch(e) { console.warn('[offline] load error', e); }
+}
+
+function offlineSetEnabled(on) {
+  _offlineEnabled = on;
+  document.getElementById('offline-btn-off').classList.toggle('on', !on);
+  document.getElementById('offline-btn-on').classList.toggle('on',  on);
+}
+
+async function offlineSave() {
+  const st = document.getElementById('offline-save-status');
+  st.textContent = 'SAVING...'; st.style.color = 'var(--muted)';
+  try {
+    const r = await fetch('/api/admin/offline', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        enabled:  _offlineEnabled,
+        model:    document.getElementById('offline-model').value.trim(),
+        base_url: document.getElementById('offline-url').value.trim(),
+      }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      st.textContent = _offlineEnabled ? '✓ OFFLINE MODE ON — all calls → Ollama' : '✓ ONLINE MODE — external APIs active';
+      st.style.color = _offlineEnabled ? 'var(--green)' : 'var(--cyan)';
+      document.getElementById('offline-status-label').textContent = _offlineEnabled ? '● OFFLINE — OLLAMA ACTIVE' : '○ ONLINE — EXTERNAL APIS';
+      document.getElementById('offline-status-label').style.color = _offlineEnabled ? 'var(--green)' : 'var(--muted)';
+      const badge = document.getElementById('offline-badge');
+      if (badge) badge.style.display = _offlineEnabled ? 'inline' : 'none';
+    } else {
+      st.textContent = 'ERROR: ' + (d.error || 'unknown'); st.style.color = 'var(--red)';
+    }
+  } catch(e) {
+    st.textContent = 'ERROR: ' + e.message; st.style.color = 'var(--red)';
   }
 }
 

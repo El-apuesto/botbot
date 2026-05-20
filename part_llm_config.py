@@ -16,6 +16,8 @@ _DEFAULTS: dict = {
     "prompt_overrides": {},
     "templates":        {},
     "ollama_base_url":  "http://localhost:11434",
+    "offline_mode":     False,
+    "offline_model":    "llama3",
 }
 
 
@@ -117,6 +119,27 @@ def delete_template(name: str) -> None:
 def list_templates() -> list[str]:
     with _lock:
         return list(_load().get("templates", {}).keys())
+
+
+def get_offline_mode() -> bool:
+    with _lock:
+        return bool(_load().get("offline_mode", False))
+
+
+def get_offline_model() -> str:
+    with _lock:
+        return _load().get("offline_model", "llama3")
+
+
+def set_offline(enabled: bool, model: str | None = None, base_url: str | None = None) -> None:
+    with _lock:
+        data = _load()
+        data["offline_mode"] = bool(enabled)
+        if model is not None:
+            data["offline_model"] = model.strip()
+        if base_url is not None:
+            data["ollama_base_url"] = base_url.rstrip("/")
+        _save(data)
 
 
 def get_full_config() -> dict:

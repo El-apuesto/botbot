@@ -231,6 +231,32 @@ async def _with_provider_fallback(
             yield chunk
 
 
+async def _offline_stream(
+    messages: list[dict],
+    max_tokens: int,
+) -> AsyncGenerator[str, None]:
+    """Stream directly from the local Ollama instance (offline mode)."""
+    try:
+        from part_llm_config import get_offline_model as _gom, get_ollama_base_url as _gobu
+        model_name = _gom() or "llama3"
+        base_url   = _gobu().rstrip("/") + "/v1"
+    except Exception:
+        model_name = "llama3"
+        base_url   = "http://localhost:11434/v1"
+
+    client = AsyncOpenAI(base_url=base_url, api_key="ollama")
+    stream = await client.chat.completions.create(
+        model=model_name,
+        messages=messages,
+        max_tokens=max_tokens,
+        stream=True,
+    )
+    async for ev in stream:
+        delta = ev.choices[0].delta.content if ev.choices else None
+        if delta:
+            yield delta
+
+
 async def stream_task(
     task_type: str,
     messages: list[dict],
@@ -238,6 +264,15 @@ async def stream_task(
     max_tokens: int = 4000,
 ) -> AsyncGenerator[str, None]:
     """Stream response chunks for a task type. Uses key rotation + provider fallback."""
+    # ── Offline mode — route everything through local Ollama ──────────────────
+    try:
+        from part_llm_config import get_offline_mode as _gom
+        if _gom():
+            async for chunk in _offline_stream(messages, max_tokens):
+                yield chunk
+            return
+    except Exception:
+        pass
     provider_key, model_key = get_task_routing(task_type)
     # ── LLM config override (admin panel) ─────────────────────────────────────
     try:
@@ -263,6 +298,15 @@ async def direct_stream(
     max_tokens: int = 4000,
 ) -> AsyncGenerator[str, None]:
     """Stream directly from a provider+model pair. Used for boardroom/brainstorm/committee."""
+    # ── Offline mode — route everything through local Ollama ──────────────────
+    try:
+        from part_llm_config import get_offline_mode as _gom
+        if _gom():
+            async for chunk in _offline_stream(messages, max_tokens):
+                yield chunk
+            return
+    except Exception:
+        pass
     cfg = get_provider_cfg(provider_key)
     model_name = cfg["models"][model_key]
     async for chunk in _with_provider_fallback(provider_key, model_name, messages, max_tokens):
