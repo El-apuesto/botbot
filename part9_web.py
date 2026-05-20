@@ -834,12 +834,143 @@ def register_routes(app: Flask):
         job = _builder_jobs.get(job_id)
         if not job:
             return jsonify({"error": "not found"}), 404
-        return jsonify({
+        base = {
             "status":            job["status"],
             "chunks":            job["chunks"],
             "error":             job["error"],
             "output_incomplete": job.get("output_incomplete", False),
-        })
+        }
+        if job.get("project"):
+            base.update({
+                "project":          True,
+                "phase":            job.get("phase", ""),
+                "files":            job.get("files", []),
+                "current_file_idx": job.get("current_file_idx", -1),
+                "total_files":      job.get("total_files", 0),
+            })
+        return jsonify(base)
+
+    # ── Project Build — multi-file pipeline ───────────────────────────────────
+    def _run_project_pipeline(job_id: str, task: str, stack: str) -> None:
+        import asyncio as _aio
+        import re as _re
+        import json as _jj
+        from part2_router import stream_task as _st
+
+        job = _builder_jobs[job_id]
+
+        # ── Phase 1: PLAN ─────────────────────────────────────────────────────
+        plan_sys  = "You output only valid JSON arrays. No other text ever."
+        plan_user = (
+            "You are a software architect. Output ONLY a valid JSON array — no markdown, no explanation.\n"
+            "Each element: {\"path\": \"relative/path/to/file.ext\", \"description\": \"one-line purpose\", \"order\": 1}\n"
+            "Rules: maximum 12 files, minimum 2. Order by dependency (core/models first, entry points last).\n"
+            "Include EVERY file needed for the project to run. Realistic paths for the chosen stack.\n\n"
+            f"TASK: {task}\n" + (f"STACK: {stack}\n" if stack else "")
+        )
+        plan_msgs = [{"role": "system", "content": plan_sys}, {"role": "user", "content": plan_user}]
+
+        plan_raw = ""
+        loop = _aio.new_event_loop()
+        try:
+            async def _get_plan():
+                nonlocal plan_raw
+                async for chunk in _st("builder", plan_msgs, max_tokens=1500):
+                    plan_raw += chunk
+                    job["chunks"].append(chunk)
+            loop.run_until_complete(_get_plan())
+        except Exception as exc:
+            job["error"] = f"Planning failed: {exc}"; job["status"] = "error"; return
+        finally:
+            loop.close()
+
+        raw_c = plan_raw.strip()
+        m = _re.search(r'\[[\s\S]*\]', raw_c)
+        if not m:
+            job["error"] = f"No JSON array in plan: {plan_raw[:300]}"; job["status"] = "error"; return
+        try:
+            files_plan = _jj.loads(m.group(0))
+            if not isinstance(files_plan, list) or not files_plan:
+                raise ValueError("empty plan")
+            files_plan = sorted(files_plan[:12], key=lambda x: x.get("order", 99))
+        except Exception as exc:
+            job["error"] = f"Plan parse error: {exc} — {plan_raw[:200]}"; job["status"] = "error"; return
+
+        job["files"]       = [{"path": f["path"], "description": f.get("description",""), "content":"", "status":"pending"} for f in files_plan]
+        job["total_files"] = len(job["files"])
+        job["status"]      = "implementing"
+        job["chunks"]      = []
+        file_list_txt = "\n".join(f"  {f['path']} — {f.get('description','')}" for f in files_plan)
+
+        # ── Phase 2: implement each file ──────────────────────────────────────
+        for idx, fplan in enumerate(files_plan):
+            fpath = fplan["path"]
+            fdesc = fplan.get("description", "")
+            job["current_file_idx"] = idx
+            job["phase"]            = f"FILE {idx+1}/{len(files_plan)}: {fpath}"
+            job["files"][idx]["status"] = "building"
+            job["chunks"]           = []
+
+            done_ctx = ""
+            if idx > 0:
+                snips = []
+                for di in range(max(0, idx-3), idx):
+                    prev = job["files"][di]
+                    snips.append(f"### {prev['path']}\n" + prev["content"][:400] + ("..." if len(prev["content"]) > 400 else ""))
+                done_ctx = "\n\n".join(snips)
+
+            impl_sys  = "You are an elite code generator. Output ONLY complete file content. No markdown fences, no explanation. Start with the first character of the file."
+            impl_user = (
+                f"PROJECT: {task}\n" + (f"STACK: {stack}\n" if stack else "") +
+                f"\nFILE TO WRITE: {fpath}\nPURPOSE: {fdesc}\n\n"
+                f"ALL FILES IN PROJECT (for correct imports):\n{file_list_txt}\n\n" +
+                (f"ALREADY IMPLEMENTED (import context):\n{done_ctx}\n\n" if done_ctx else "") +
+                f"Write the COMPLETE content of {fpath} now. Start immediately — first character is the first character of the file:"
+            )
+            impl_msgs = [{"role": "system", "content": impl_sys}, {"role": "user", "content": impl_user}]
+
+            file_content = ""
+            loop2 = _aio.new_event_loop()
+            try:
+                async def _get_file():
+                    nonlocal file_content
+                    async for chunk in _st("builder", impl_msgs, max_tokens=6000):
+                        file_content += chunk
+                        job["chunks"].append(chunk)
+                loop2.run_until_complete(_get_file())
+            except Exception as exc:
+                job["files"][idx]["content"] = f"# ERROR: {exc}"
+                job["files"][idx]["status"]  = "error"
+                loop2.close()
+                continue
+            loop2.close()
+            job["files"][idx]["content"] = file_content
+            job["files"][idx]["status"]  = "done"
+
+        job["status"] = "done"
+        job["phase"]  = "COMPLETE"
+        job["chunks"] = []
+
+    @app.route("/api/builder/project", methods=["POST"])
+    @_login_required
+    def api_builder_project_start():
+        from part8_personas import get_system_prompt
+        d     = request.get_json(force=True) or {}
+        task  = d.get("task", "").strip()
+        stack = d.get("stack", "").strip()
+        if not task:
+            return jsonify({"error": "task required"}), 400
+        job_id = uuid.uuid4().hex[:12]
+        _builder_jobs[job_id] = {
+            "status": "planning", "project": True,
+            "phase": "PLANNING FILE STRUCTURE",
+            "files": [], "current_file_idx": -1, "total_files": 0,
+            "chunks": [], "error": None, "output_incomplete": False,
+            "task": task, "stack": stack,
+            "sys_p": get_system_prompt("builder"), "role": "builder",
+        }
+        Thread(target=_run_project_pipeline, args=(job_id, task, stack), daemon=True).start()
+        return jsonify({"ok": True, "job_id": job_id})
 
     @app.route("/api/builder/job/<job_id>/continue", methods=["POST"])
     @_login_required

@@ -1403,6 +1403,7 @@ audio { width: 100%; margin-top: 4px; }
               <div class="opt-row">
                 <button class="opt on" id="code-m-build"     onclick="setCodeMode('build')">BUILD</button>
                 <button class="opt"    id="code-m-architect" onclick="setCodeMode('architect')">ARCHITECT</button>
+                <button class="opt"    id="code-m-project"   onclick="setCodeMode('project')" style="color:var(--green)">PROJECT</button>
               </div>
             </div>
             <div>
@@ -3186,6 +3187,9 @@ async function builderAttachFile() {
 async function runBuilder() {
   const rawTask = document.getElementById('builder-input').value.trim();
   if (!rawTask) return;
+
+  if (codeMode === 'project') { runProjectBuild(rawTask); return; }
+
   const out = document.getElementById('builder-out');
   const btn = document.getElementById('builder-go-btn');
   const isArch = codeMode === 'architect';
@@ -3234,6 +3238,200 @@ async function runBuilder() {
   }
   btn.disabled = false;
   btn.textContent = isArch ? '[ ARCHITECT + BUILD ]' : '[ RUN BUILDER ]';
+}
+
+/* ─────────────────────────────────────────
+   PROJECT BUILD — multi-file pipeline
+───────────────────────────────────────── */
+async function runProjectBuild(rawTask) {
+  const out = document.getElementById('builder-out');
+  const btn = document.getElementById('builder-go-btn');
+  const stack = document.getElementById('code-stack').value.trim();
+  btn.disabled = true; btn.textContent = '[ PLANNING... ]';
+  out.innerHTML = '';
+  const dlRow = document.getElementById('builder-dl-row');
+  if (dlRow) dlRow.style.display = 'none';
+
+  // Progress header
+  const hdr = document.createElement('div');
+  hdr.id = 'proj-header';
+  hdr.style.cssText = 'padding:8px 0;border-bottom:1px solid var(--cyan-dim);margin-bottom:8px';
+  hdr.innerHTML =
+    '<div style="color:var(--cyan);letter-spacing:2px;font-size:var(--font-size-sm)">PROJECT BUILD PIPELINE</div>'
+    + '<div id="proj-phase" style="color:var(--yellow);font-size:var(--font-size-sm);margin-top:4px;animation:blink 1s step-end infinite">&#9608; PLANNING FILE STRUCTURE...</div>'
+    + '<div id="proj-bar" style="height:3px;background:var(--cyan-dim);margin-top:6px"><div id="proj-bar-fill" style="height:3px;background:var(--cyan);width:0%;transition:width 0.4s"></div></div>';
+  out.appendChild(hdr);
+
+  // File slots container
+  const filesDiv = document.createElement('div');
+  filesDiv.id = 'proj-files';
+  filesDiv.style.cssText = 'display:flex;flex-direction:column;gap:4px;margin-top:8px';
+  out.appendChild(filesDiv);
+
+  try {
+    const res = await fetch('/api/builder/project', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task: rawTask, stack }),
+    });
+    if (!res.ok) {
+      out.innerHTML = '<p style="color:var(--red)">ERROR ' + res.status + '</p>';
+      btn.disabled = false; btn.textContent = '[ BUILD PROJECT ]'; return;
+    }
+    const { job_id } = await res.json();
+    _saveBuilderJob(job_id, rawTask);
+    await _pollProjectJob(job_id, out, rawTask);
+  } catch(e) {
+    out.innerHTML += '<p style="color:var(--red)">' + e.message + '</p>';
+  }
+  btn.disabled = false; btn.textContent = '[ BUILD PROJECT ]';
+}
+
+async function _pollProjectJob(jobId, out, rawTask) {
+  let lastFileCount = 0;
+  let lastChunkCount = 0;
+  let knownFiles = {};
+
+  return new Promise(resolve => {
+    const poll = setInterval(async () => {
+      try {
+        const res = await fetch('/api/builder/job/' + jobId);
+        if (!res.ok) { clearInterval(poll); resolve(); return; }
+        const data = await res.json();
+
+        // Update phase label
+        const phaseEl = document.getElementById('proj-phase');
+        if (phaseEl) {
+          phaseEl.textContent = data.phase || data.status.toUpperCase();
+          phaseEl.style.animation = data.status === 'done' ? 'none' : 'blink 1s step-end infinite';
+          if (data.status === 'done') phaseEl.style.color = 'var(--green)';
+        }
+
+        // Progress bar
+        if (data.total_files > 0) {
+          const pct = data.status === 'done' ? 100 : Math.round((data.current_file_idx / data.total_files) * 100);
+          const bar = document.getElementById('proj-bar-fill');
+          if (bar) bar.style.width = pct + '%';
+        }
+
+        const filesDiv = document.getElementById('proj-files');
+
+        // Render or update file slots
+        (data.files || []).forEach((f, i) => {
+          let card = document.getElementById('proj-file-' + i);
+          if (!card) {
+            card = document.createElement('div');
+            card.id = 'proj-file-' + i;
+            card.style.cssText = 'border:1px solid var(--cyan-dim);padding:0';
+            const hdr2 = document.createElement('div');
+            hdr2.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:5px 8px;cursor:pointer;user-select:none';
+            hdr2.innerHTML =
+              '<span style="font-family:monospace;font-size:var(--font-size-sm);color:var(--neon)">' + _esc(f.path) + '</span>'
+              + '<span id="proj-file-status-' + i + '" style="font-size:var(--font-size-xs);color:var(--muted)">PENDING</span>';
+            hdr2.onclick = () => {
+              const body = document.getElementById('proj-file-body-' + i);
+              if (body) body.style.display = body.style.display === 'none' ? 'block' : 'none';
+            };
+            const desc = document.createElement('div');
+            desc.style.cssText = 'font-size:var(--font-size-xs);color:var(--muted);padding:0 8px 4px 8px';
+            desc.textContent = f.description;
+            const body = document.createElement('pre');
+            body.id = 'proj-file-body-' + i;
+            body.style.cssText = 'display:none;margin:0;padding:8px;background:var(--cyan-dark);font-size:var(--font-size-xs);line-height:1.5;white-space:pre-wrap;overflow-x:auto;max-height:400px;overflow-y:auto;color:var(--neon)';
+            card.appendChild(hdr2); card.appendChild(desc); card.appendChild(body);
+            filesDiv.appendChild(card);
+          }
+
+          const statusEl = document.getElementById('proj-file-status-' + i);
+          const bodyEl   = document.getElementById('proj-file-body-' + i);
+          const st = f.status;
+
+          if (statusEl) {
+            const colors = { pending:'var(--muted)', building:'var(--cyan)', done:'var(--green)', error:'var(--red)' };
+            const labels = { pending:'PENDING', building:'BUILDING...', done:'DONE', error:'ERROR' };
+            statusEl.style.color = colors[st] || 'var(--muted)';
+            statusEl.textContent = labels[st] || st.toUpperCase();
+          }
+
+          // Show live chunks for the currently-building file
+          if (st === 'building' && bodyEl) {
+            const newChunks = (data.chunks || []).slice(lastChunkCount);
+            if (newChunks.length) {
+              lastChunkCount = data.chunks.length;
+              bodyEl.style.display = 'block';
+              bodyEl.textContent = (bodyEl.textContent || '') + newChunks.join('');
+              bodyEl.scrollTop = bodyEl.scrollHeight;
+            }
+          }
+
+          // When done, set final content
+          if (st === 'done' && bodyEl && f.content && bodyEl.textContent !== f.content) {
+            bodyEl.textContent = f.content;
+            lastChunkCount = 0;
+          }
+        });
+
+        if (data.status === 'done') {
+          clearInterval(poll);
+          _clearBuilderJob();
+          // Build ZIP download
+          _projectBuildDownload(data.files || [], rawTask);
+          resolve();
+        } else if (data.status === 'error') {
+          clearInterval(poll);
+          _clearBuilderJob();
+          const errEl = document.createElement('div');
+          errEl.style.color = 'var(--red)';
+          errEl.style.padding = '8px 0';
+          errEl.textContent = '[ ERROR ] ' + (data.error || 'unknown error');
+          out.appendChild(errEl);
+          resolve();
+        }
+      } catch(e) { console.warn('[project poll]', e); }
+    }, 2000);
+  });
+}
+
+function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function _projectBuildDownload(files, task) {
+  if (!files.length) return;
+  let dlRow = document.getElementById('builder-dl-row');
+  if (!dlRow) {
+    dlRow = document.createElement('div');
+    dlRow.id = 'builder-dl-row';
+    dlRow.style.cssText = 'display:flex;gap:6px;margin-top:10px;flex-wrap:wrap';
+    document.getElementById('builder-out').before(dlRow);
+  }
+  dlRow.innerHTML = '';
+  dlRow.style.display = 'flex';
+
+  // Individual file downloads
+  files.forEach(f => {
+    if (!f.content || f.status === 'error') return;
+    const a = document.createElement('a');
+    a.className = 'btn';
+    a.style.cssText = 'font-size:var(--font-size-xs);padding:3px 8px;cursor:pointer;text-decoration:none';
+    const fname = f.path.split('/').pop();
+    a.textContent = '[ \u2193 ' + fname + ' ]';
+    a.href = URL.createObjectURL(new Blob([f.content], {type:'text/plain'}));
+    a.download = fname;
+    dlRow.appendChild(a);
+  });
+
+  // Combined download — all files concatenated with headers
+  const allContent = files
+    .filter(f => f.content && f.status !== 'error')
+    .map(f => `${'='.repeat(60)}\n// FILE: ${f.path}\n// ${f.description}\n${'='.repeat(60)}\n\n${f.content}\n`)
+    .join('\n');
+  const aAll = document.createElement('a');
+  aAll.className = 'btn';
+  aAll.style.cssText = 'font-size:var(--font-size-sm);padding:4px 12px;cursor:pointer;text-decoration:none;border-color:var(--green);color:var(--green)';
+  aAll.textContent = '[ \u2193 ALL FILES (' + files.filter(f=>f.status==='done').length + ') ]';
+  aAll.href = URL.createObjectURL(new Blob([allContent], {type:'text/plain'}));
+  const safeName = (task.slice(0,40).replace(/[^a-zA-Z0-9_-]/g,'_') || 'project') + '_all_files.txt';
+  aAll.download = safeName;
+  dlRow.prepend(aAll);
 }
 
 function _showBuilderDownload(txt, task) {
@@ -5151,14 +5349,21 @@ function setCodeMode(m) {
   codeMode = m;
   document.getElementById('code-m-build').classList.toggle('on', m === 'build');
   document.getElementById('code-m-architect').classList.toggle('on', m === 'architect');
-  document.getElementById('code-arch-note').style.display   = m === 'architect' ? 'block' : 'none';
-  document.getElementById('code-stack-row').style.display   = m === 'architect' ? 'flex'  : 'none';
-  document.getElementById('builder-input').placeholder      =
-    m === 'architect'
-      ? 'Describe the application you want to build (purpose, features, users)...'
-      : 'Describe what to build...';
-  document.getElementById('builder-go-btn').textContent     =
-    m === 'architect' ? '[ ARCHITECT + BUILD ]' : '[ RUN BUILDER ]';
+  document.getElementById('code-m-project').classList.toggle('on', m === 'project');
+  document.getElementById('code-arch-note').style.display = m === 'architect' ? 'block' : 'none';
+  document.getElementById('code-stack-row').style.display = (m === 'architect' || m === 'project') ? 'flex' : 'none';
+  const placeholders = {
+    build:     'Describe what to build...',
+    architect: 'Describe the application you want to build (purpose, features, users)...',
+    project:   'Describe the full project to build — ecommerce store, API, dashboard, bot... (gets planned then built file-by-file)',
+  };
+  const labels = {
+    build:     '[ RUN BUILDER ]',
+    architect: '[ ARCHITECT + BUILD ]',
+    project:   '[ BUILD PROJECT ]',
+  };
+  document.getElementById('builder-input').placeholder  = placeholders[m] || placeholders.build;
+  document.getElementById('builder-go-btn').textContent = labels[m] || labels.build;
 }
 
 function setBuilderEngine(mode, btn) {
