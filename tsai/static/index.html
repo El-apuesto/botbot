@@ -20,21 +20,20 @@
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --bg:          #000;
-  --cyan:        #bb44ff;
-  --cyan-dim:    #1a0033;
-  --cyan-dark:   #08000f;
-  --cyan-glow:   rgba(187,68,255,0.45);
-  --neon:        #ffffff;
-  --neon-bright: #eebbff;
-  --terminal-bg: rgba(5,0,12,0.92);
-  --border:      transparent;
-  --text:        #cc88ff;
-  --muted:       #553377;
-  --green:       #00ff41;
-  --yellow:      #ffff00;
-  --magenta:     #ff00ff;
-  --red:         #ff4444;
+  --bg:          #040008;
+  --purple:      #cc44ff;
+  --purple-dim:  #4a0080;
+  --purple-dark: #0d0018;
+  --purple-glow: rgba(180,60,255,0.55);
+  --neon:        #dd99ff;
+  --neon-bright: #f2eaff;
+  --terminal-bg: rgba(8,0,20,0.82);
+  --border:      #bb22ff;
+  --text:        #e8d8ff;
+  --muted:       #cc88ff;
+  --green:       #cc44ff;
+  --cyan:        #ee99ff;
+  --red:         #ff44aa;
   --font:        'VT323', monospace;
   --font-head:   'Press Start 2P', monospace;
   --font-size-base: 28px;
@@ -77,7 +76,7 @@ body::before {
 /* ── APP GRID ── */
 .app {
   display: grid;
-  grid-template-rows: 33vh 1fr auto auto;
+  grid-template-rows: auto 1fr auto auto;
   height: 100vh;
   height: 100dvh;
   max-width: 900px;
@@ -86,7 +85,6 @@ body::before {
 }
 @media (max-width: 600px) {
   .app { padding: 0 4px; }
-  .app { grid-template-rows: 16vh 1fr auto auto; }
 }
 
 /* ── HEADER ── */
@@ -94,111 +92,29 @@ body::before {
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: 0;
-  overflow: visible;
-  position: relative;
+  padding: 6px 0 0;
+  flex-shrink: 0;
 }
 
 .wizard-wrap { display: none !important; }
 .header-right { display: flex; flex-direction: column; gap: 0; }
 .logo { display: none; }
 
-/* ── HEADER CORNER BUTTONS (top-left of banner) ── */
-#header-btns {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-#header-btns button {
-  background: rgba(187,68,255,0.88);
-  color: #ffffff;
-  font-family: var(--font-head);
-  font-size: 10px;
-  letter-spacing: .10em;
-  cursor: pointer;
-  padding: 3px 7px;
-  transition: background .15s;
-}
-#header-btns button:hover { background: var(--cyan); }
-
-/* ── BANNER — hero 1/3 page ── */
+/* ── BANNER — logo/figure above the terminal ── */
 #app-banner {
   width: 100%;
-  flex: 1;
-  min-height: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
   overflow: hidden;
-  position: relative;
   padding: 0;
 }
 #app-banner img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 8%;
+  height: auto;
   display: block;
   mix-blend-mode: screen;
-  filter: brightness(1.6) contrast(1.1);
-}
-/* TWIN CHAT corner label */
-#banner-label {
-  position: absolute;
-  bottom: 4px;
-  right: 6px;
-  font-family: var(--font-head);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: .18em;
-  color: #ffffff;
-  text-shadow: 0 0 12px var(--cyan), 0 0 4px #fff;
-  pointer-events: none;
-  line-height: 1;
-}
-
-/* ── PIPELINE POPUP OVERLAY ── */
-#pipeline-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.93);
-  z-index: 8888;
-  overflow-y: auto;
-  padding: 16px 12px;
-}
-#pipeline-overlay.open { display: block; }
-.pipe-overlay-inner {
-  max-width: 860px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.pipe-overlay-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 8px;
-  margin-bottom: 4px;
-}
-.pipe-overlay-head span {
-  color: var(--yellow);
-  font-family: var(--font-head);
-  font-size: 10px;
-  letter-spacing: .1em;
-  flex: 1;
-}
-.pipe-close-btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--red);
-  font-family: var(--font);
-  font-size: var(--font-size-sm);
-  padding: 3px 10px;
-  cursor: pointer;
+  filter: brightness(1.8);
 }
 
 /* BBS system info line — sits above the frame */
@@ -212,7 +128,7 @@ body::before {
   padding: 2px 4px 3px;
   letter-spacing: 0.05em;
 }
-.bbs-sysline span { color: var(--cyan); }
+.bbs-sysline span { color: var(--purple); }
 
 /* BBS frame top — hidden */
 .titlebar { display: none; }
@@ -227,12 +143,12 @@ body::before {
   min-height: 0;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 0 24px var(--cyan-glow);
+  box-shadow: 0 0 24px var(--purple-glow);
 }
 
 @keyframes glow-pulse {
-  0%,100% { box-shadow: 0 0 16px var(--cyan-glow); }
-  50%      { box-shadow: 0 0 36px var(--cyan-glow), 0 0 60px rgba(187,68,255,0.10); }
+  0%,100% { box-shadow: 0 0 16px var(--purple-glow); }
+  50%      { box-shadow: 0 0 36px var(--purple-glow), 0 0 60px rgba(140,0,220,0.12); }
 }
 .terminal { animation: glow-pulse 6s ease-in-out infinite; }
 
@@ -271,12 +187,12 @@ body::before {
   display: flex; align-items: center; gap: 6px;
   cursor: pointer; user-select: none;
 }
-#toggle-name { font-size: var(--font-size-base); color: var(--cyan); text-shadow: 0 0 6px var(--cyan); letter-spacing: 1px; min-width: 60px; text-align: right; }
-.sw { position: relative; width: 32px; height: 14px; background: #000d0d; border: 1px solid var(--cyan); }
-.sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 8px; height: 8px; background: var(--cyan); box-shadow: 0 0 4px var(--cyan); transition: transform .15s; }
+#toggle-name { font-size: var(--font-size-base); color: var(--purple); text-shadow: 0 0 6px var(--purple); letter-spacing: 1px; min-width: 60px; text-align: right; }
+.sw { position: relative; width: 32px; height: 14px; background: #0a0018; border: 1px solid var(--purple); }
+.sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 8px; height: 8px; background: var(--purple); box-shadow: 0 0 4px var(--purple); transition: transform .15s; }
 .sw.on::after { transform: translateX(18px); }
 #upload-btn { flex-shrink: 0; background: transparent; border: 1px solid var(--border); color: var(--neon); font-size: var(--font-size-sm); padding: 0 8px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: color .15s, border-color .15s; font-family: var(--font); }
-#upload-btn:hover { border-color: var(--cyan); color: var(--neon-bright); }
+#upload-btn:hover { border-color: var(--purple); color: var(--neon-bright); }
 #file-input { display: none; }
 
 #msgs {
@@ -288,21 +204,21 @@ body::before {
   gap: 4px;
   min-height: 0;
   scrollbar-width: thin;
-  scrollbar-color: var(--cyan-dim) transparent;
+  scrollbar-color: var(--purple-dim) transparent;
   position: relative;
   z-index: 1;
 }
 #msgs::-webkit-scrollbar { width: 3px; }
-#msgs::-webkit-scrollbar-thumb { background: var(--cyan-dim); }
+#msgs::-webkit-scrollbar-thumb { background: var(--purple-dim); }
 
 /* BBS-style: inline prefix `NAME > text` on one line when possible */
 .msg { display: flex; flex-direction: row; flex-wrap: wrap; gap: 0 6px; align-items: baseline; animation: fadeInUp .15s ease both; }
 .msg-who {
   font-size: var(--font-size-lg);
-  color: var(--cyan);
+  color: var(--purple);
   letter-spacing: 1px;
   flex-shrink: 0;
-  text-shadow: 0 0 6px var(--cyan);
+  text-shadow: 0 0 6px var(--purple);
   white-space: nowrap;
   font-weight: 700;
 }
@@ -319,15 +235,15 @@ body::before {
 }
 @media (min-width: 700px) { .msg-who { font-size: var(--font-size-xl); } .msg-body { font-size: var(--font-size-xl); line-height: 1.65; } }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-.typing::after { content: '█'; animation: blink .7s step-end infinite; color: var(--cyan); }
+.typing::after { content: '█'; animation: blink .7s step-end infinite; color: var(--purple); }
 @keyframes fadeInUp { from { opacity:0; transform:translateY(2px); } to { opacity:1; transform:translateY(0); } }
 
 #file-hint {
   display: none;
   font-size: var(--font-size-sm);
-  color: var(--cyan);
+  color: var(--purple);
   padding: 3px 14px;
-  background: rgba(0,10,10,.8);
+  background: rgba(10,0,20,.8);
   border-top: 1px solid var(--border);
   flex-shrink: 0;
 }
@@ -341,23 +257,23 @@ body::before {
   border-top: none;
   background: #000;
   flex-shrink: 0;
-  box-shadow: 0 4px 20px var(--cyan-glow);
+  box-shadow: 0 4px 20px var(--purple-glow);
 }
 /* MS-DOS command prompt prefix */
 .input-row::before {
   content: '►';
-  color: var(--cyan);
+  color: var(--purple);
   font-size: var(--font-size-lg);
   line-height: 1;
   align-self: center;
   flex-shrink: 0;
-  text-shadow: 0 0 8px var(--cyan);
+  text-shadow: 0 0 8px var(--purple);
   transition: color .1s;
 }
 .input-row:focus-within::before {
   content: 'C:\\>';
   color: var(--neon-bright);
-  text-shadow: 0 0 12px var(--cyan);
+  text-shadow: 0 0 12px var(--purple);
 }
 /* Blinking block cursor — shown when input focused + empty */
 @keyframes blink-cur { 0%,100%{opacity:1} 50%{opacity:0} }
@@ -369,7 +285,7 @@ body::before {
   align-self: center;
   flex-shrink: 0;
   line-height: 1;
-  text-shadow: 0 0 8px var(--cyan);
+  text-shadow: 0 0 8px var(--purple);
 }
 #txt:focus:placeholder-shown ~ .dos-cursor { display: inline; }
 #txt:focus:placeholder-shown { color: transparent; caret-color: transparent; }
@@ -387,7 +303,7 @@ body::before {
   min-height: 28px;
   max-height: 100px;
   overflow-y: auto;
-  caret-color: var(--cyan);
+  caret-color: var(--purple);
   padding: 2px 0;
   scrollbar-width: none;
   text-shadow: 0 0 4px rgba(200,160,255,0.25);
@@ -416,7 +332,7 @@ body::before {
   opacity: 0.88;
   transition: opacity .15s;
 }
-#send-btn:hover { border-color: var(--cyan); box-shadow: 0 0 14px var(--cyan-glow); }
+#send-btn:hover { border-color: var(--purple); box-shadow: 0 0 14px var(--purple-glow); }
 #send-btn:hover img { opacity: 1; }
 
 /* ── CHAT WATERMARK ── */
@@ -449,10 +365,10 @@ body::before {
   flex-direction: column;
   gap: 12px;
   scrollbar-width: thin;
-  scrollbar-color: var(--cyan-dim) transparent;
+  scrollbar-color: var(--purple-dim) transparent;
 }
 .panel-scroll::-webkit-scrollbar { width: 3px; }
-.panel-scroll::-webkit-scrollbar-thumb { background: var(--cyan-dim); }
+.panel-scroll::-webkit-scrollbar-thumb { background: var(--purple-dim); }
 
 /* ── LAB SUB-TABS ── */
 .lab-tab-row {
@@ -475,8 +391,9 @@ body::before {
   transition: all .15s;
 }
 .lab-tab.active, .lab-tab:hover {
+  border-color: var(--neon);
   color: var(--neon-bright);
-  background: rgba(187,68,255,0.12);
+  background: rgba(123,47,255,0.15);
 }
 .lab-section { display: none; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }
 .lab-section.active { display: flex; }
@@ -495,7 +412,7 @@ body::before {
   width: 100%;
   transition: border-color .2s, box-shadow .2s;
 }
-.fi:focus { border-color: var(--neon); box-shadow: 0 0 10px var(--cyan-glow); }
+.fi:focus { border-color: var(--neon); box-shadow: 0 0 10px var(--purple-glow); }
 .fi::placeholder { color: var(--muted); }
 textarea.fi { resize: vertical; min-height: 58px; line-height: 1.7; }
 
@@ -504,24 +421,18 @@ textarea.fi { resize: vertical; min-height: 58px; line-height: 1.7; }
   font-size: var(--font-size-sm);
   padding: 5px 12px;
   background: transparent;
-  border: 1px solid var(--muted);
-  color: var(--muted);
+  border: 1px solid var(--border);
+  color: var(--neon);
   font-family: var(--font);
   cursor: pointer;
   transition: all .12s;
   letter-spacing: 0.05em;
 }
-.opt.on {
-  background: rgba(187,68,255,0.18);
-  border-color: var(--cyan);
-  color: var(--neon-bright);
-  font-weight: 700;
-  box-shadow: 0 0 10px var(--cyan-glow), inset 0 0 6px rgba(187,68,255,0.12);
-}
+.opt.on { border-color: var(--purple); color: var(--neon); box-shadow: 0 0 8px var(--purple-glow); }
 
 .btn {
   align-self: flex-start;
-  background: var(--cyan-dim);
+  background: var(--purple-dim);
   border: 1px solid var(--border);
   color: var(--neon-bright);
   font-family: var(--font);
@@ -535,7 +446,7 @@ textarea.fi { resize: vertical; min-height: 58px; line-height: 1.7; }
   text-decoration: none;
   display: inline-block;
 }
-.btn:hover { background: var(--cyan); box-shadow: 0 0 12px var(--cyan-glow); }
+.btn:hover { background: var(--purple); box-shadow: 0 0 12px var(--purple-glow); }
 .btn:disabled { opacity: .4; cursor: not-allowed; }
 
 /* ── SESSION OUTPUT (boardroom / brainstorm / builder) ── */
@@ -548,15 +459,15 @@ textarea.fi { resize: vertical; min-height: 58px; line-height: 1.7; }
   padding: 8px 0;
   min-height: 60px;
   scrollbar-width: thin;
-  scrollbar-color: var(--cyan-dim) transparent;
+  scrollbar-color: var(--purple-dim) transparent;
 }
 .session-out::-webkit-scrollbar { width: 3px; }
-.session-out::-webkit-scrollbar-thumb { background: var(--cyan-dim); }
+.session-out::-webkit-scrollbar-thumb { background: var(--purple-dim); }
 
 .turn { display: flex; flex-direction: row; flex-wrap: wrap; gap: 0 6px; align-items: baseline; animation: fadeInUp .15s ease both; }
-.turn-who { font-size: var(--font-size-base); color: var(--cyan); letter-spacing: 1px; flex-shrink: 0; text-shadow: 0 0 6px var(--cyan); white-space: nowrap; font-weight: 700; }
+.turn-who { font-size: var(--font-size-base); color: var(--purple); letter-spacing: 1px; flex-shrink: 0; text-shadow: 0 0 6px var(--purple); white-space: nowrap; font-weight: 700; }
 .turn-who::after { content: ' ►'; margin-left: 2px; opacity: 0.7; }
-.turn-body { font-size: var(--font-size-base); color: var(--neon-bright); line-height: 1.65; white-space: pre-wrap; overflow-wrap: break-word; word-break: normal; flex: 1; min-width: 0; text-shadow: 0 0 4px rgba(200,160,255,0.25); }
+.turn-body { font-size: var(--font-size-base); color: var(--neon-bright); line-height: 1.65; white-space: pre-wrap; word-break: break-word; flex: 1; min-width: 0; text-shadow: 0 0 4px rgba(200,160,255,0.25); }
 @media (min-width: 700px) { .turn-who { font-size: var(--font-size-lg); } .turn-body { font-size: var(--font-size-lg); } }
 
 /* ── ACTION ROW ── */
@@ -571,14 +482,14 @@ textarea.fi { resize: vertical; min-height: 58px; line-height: 1.7; }
   font-family: var(--font);
   font-size: var(--font-size-sm);
   font-weight: 700;
-  color: var(--cyan);
+  color: var(--purple);
   text-decoration: none;
-  border: 1px solid var(--cyan-dim);
+  border: 1px solid var(--purple-dim);
   padding: 7px 16px;
   letter-spacing: 0.08em;
   transition: border-color .15s, color .15s;
 }
-.action-link:hover { border-color: var(--cyan); color: var(--neon); }
+.action-link:hover { border-color: var(--purple); color: var(--neon); }
 
 /* ── AUDIO ── */
 audio { width: 100%; margin-top: 4px; }
@@ -589,7 +500,7 @@ audio { width: 100%; margin-top: 4px; }
   display: none;
   flex-direction: column;
   gap: 8px;
-  border: 1px solid var(--cyan-dim);
+  border: 1px solid var(--purple-dim);
   padding: 10px 12px;
   background: rgba(0,0,0,0.3);
 }
@@ -603,11 +514,11 @@ audio { width: 100%; margin-top: 4px; }
   gap: 4px;
   transition: border-color .15s;
 }
-.job-row:hover { border-color: var(--cyan-dim); }
+.job-row:hover { border-color: var(--purple-dim); }
 .job-top { display: flex; align-items: center; gap: 8px; }
 .job-name { font-size: var(--font-size-base); color: var(--neon-bright); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
 .job-desc { font-size: var(--font-size-sm); color: var(--neon); padding-left: 2px; white-space: pre-wrap; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.job-meta { font-size: var(--font-size-sm); color: var(--cyan); padding-left: 2px; }
+.job-meta { font-size: var(--font-size-sm); color: var(--purple); padding-left: 2px; }
 .job-status {
   font-size: 12px;
   font-family: var(--font);
@@ -619,15 +530,15 @@ audio { width: 100%; margin-top: 4px; }
   transition: all .15s;
   flex-shrink: 0;
 }
-.job-status[data-s="queued"]      { color: var(--cyan); }
+.job-status[data-s="queued"]      { color: var(--purple); }
 .job-status[data-s="in-progress"] { color: var(--cyan); }
 .job-status[data-s="done"]        { color: #44cc88; }
 .job-status[data-s="blocked"]     { color: var(--red); }
 .job-status:hover { opacity: .7; }
 .job-del {
   background: transparent;
-  border: 1px solid rgba(0,100,100,.6);
-  color: #44ccaa;
+  border: 1px solid rgba(123,0,80,.6);
+  color: #cc4488;
   font-family: var(--font);
   font-size: 12px;
   font-weight: 700;
@@ -648,13 +559,13 @@ audio { width: 100%; margin-top: 4px; }
   gap: 5px;
   margin-bottom: 6px;
   transition: border-color .15s;
-  background: rgba(20,0,35,.3);
+  background: rgba(30,0,40,.3);
 }
-.mission-row:hover { border-color: var(--cyan-dim); }
+.mission-row:hover { border-color: var(--purple-dim); }
 .mission-top { display: flex; align-items: flex-start; gap: 8px; }
 .mission-name { font-size: var(--font-size-base); color: var(--neon-bright); flex: 1; font-weight: 700; line-height: 1.3; }
 .mission-status { font-size: var(--font-size-sm); font-weight: 700; white-space: nowrap; flex-shrink: 0; letter-spacing: .06em; }
-.mission-meta { font-size: var(--font-size-sm); color: var(--cyan); letter-spacing: .07em; }
+.mission-meta { font-size: var(--font-size-sm); color: var(--purple); letter-spacing: .07em; }
 .mission-brief { font-size: var(--font-size-sm); color: var(--neon); line-height: 1.5; }
 .mission-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
 @keyframes mission-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
@@ -677,20 +588,20 @@ audio { width: 100%; margin-top: 4px; }
   flex-direction: column;
   gap: 4px;
 }
-.gallery-row-name { font-size: var(--font-size-sm); color: var(--cyan); font-weight: 700; }
+.gallery-row-name { font-size: var(--font-size-sm); color: var(--purple); font-weight: 700; }
 .gallery-row-meta { font-size: var(--font-size-sm); color: var(--neon); }
 
-/* ── NAV — 7-tab BBS strip ── */
+/* ── NAV — BBS frame bottom ╚══[1]══╪══[2]══╝ ── */
 .nav {
   display: flex;
-  justify-content: stretch;
+  justify-content: center;
   align-items: center;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 0;
   flex-shrink: 0;
   background: #000;
   border-top: 2px solid var(--border);
-  padding: 0;
+  padding: 4px 0 4px;
   font-family: var(--font-head);
 }
 .nav::before { content: none; }
@@ -698,30 +609,30 @@ audio { width: 100%; margin-top: 4px; }
 .nav-btn {
   background: none;
   border: none;
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--purple);
   color: var(--neon);
   font-family: var(--font-head);
-  font-size: 7px;
-  letter-spacing: 0.01em;
+  font-size: 8px;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  padding: 6px 0;
-  width: calc(100% / 11);
+  padding: 5px 0;
+  width: 25%;
   text-align: center;
   transition: color .1s, text-shadow .1s, background .1s;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.nav-btn:last-of-type { border-right: none; }
+.nav-btn:nth-child(5n) { border-right: none; }
 .nav-btn + .nav-btn::before { content: none; }
-.nav-btn .nav-num { color: var(--yellow); margin-right: 2px; }
+.nav-btn .nav-num { color: var(--purple); margin-right: 2px; }
 .nav-btn:hover, .nav-btn.active {
   color: var(--neon-bright);
-  background: var(--cyan-dark);
-  text-shadow: 0 0 8px var(--cyan);
+  background: var(--purple-dark);
+  text-shadow: 0 0 8px var(--purple);
 }
-.nav-btn.active { border-bottom: 2px solid var(--yellow); }
-.nav-btn.active .nav-num { color: var(--yellow); }
+.nav-btn.active { border-bottom: 2px solid var(--purple); }
+.nav-btn.active .nav-num { color: var(--neon-bright); }
 .nav-user {
   font-size: 12px;
   font-weight: 700;
@@ -732,7 +643,7 @@ audio { width: 100%; margin-top: 4px; }
   letter-spacing: 0.05em;
 }
 .nav-logout {
-  color: #bb77ff;
+  color: #cc4488;
   text-decoration: none;
   font-size: 12px;
   font-weight: 700;
@@ -748,17 +659,17 @@ audio { width: 100%; margin-top: 4px; }
     --font-size-xl:   26px;
   }
 
-  /* banner fills its 25vh grid row on mobile */
-  #app-banner { height: 100%; overflow: hidden; }
+  /* banner — portrait mobile image, fixed height, top-aligned */
+  #app-banner { height: 68px; overflow: hidden; }
   #app-banner picture { display: block; width: 100%; height: 100%; }
   #app-banner img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
 
   /* hide username/exit — no room with tabs */
   .nav-user { display: none; }
 
-  /* two-row nav — 4 per row, wraps for 7 tabs */
-  .nav { padding: 3px 0 env(safe-area-inset-bottom, 3px); flex-wrap: wrap; }
-  .nav-btn { font-size: 6px; padding: 5px 0; width: calc(100% / 4); }
+  /* two-row nav — 4 across each row, tighter on mobile */
+  .nav { padding: 3px 0 env(safe-area-inset-bottom, 3px); }
+  .nav-btn { font-size: 7px; padding: 6px 0; width: 25%; }
   .nav-btn .nav-num { display: none; }
 
   /* tighten app padding */
@@ -774,166 +685,11 @@ audio { width: 100%; margin-top: 4px; }
 
 /* ── CURSOR ── */
 @keyframes blink-cur { 0%,100%{opacity:1} 50%{opacity:0} }
-.cursor { display: inline-block; width: 7px; height: 12px; background: var(--cyan); animation: blink-cur 1s step-end infinite; vertical-align: middle; margin-left: 2px; }
+.cursor { display: inline-block; width: 7px; height: 12px; background: var(--purple); animation: blink-cur 1s step-end infinite; vertical-align: middle; margin-left: 2px; }
 
 /* ── DEPLOY ROW ── */
 .deploy-row { display: none; flex-direction: row; gap: 6px; margin-top: 2px; }
 .deploy-row .fi { flex: 1; min-width: 0; }
-
-/* ── DROPDOWN MENU ── */
-.menu-wrap { position: absolute; top: 0; right: 0; z-index: 9999; }
-.menu-toggle {
-  background: rgba(187,68,255,0.88);
-  color: #ffffff;
-  font-family: var(--font-head);
-  font-size: 10px;
-  letter-spacing: .12em;
-  cursor: pointer;
-  padding: 3px 8px;
-  text-shadow: none;
-  box-shadow: none;
-  transition: background .15s;
-}
-.menu-toggle:hover {
-  background: var(--cyan);
-}
-.menu-dropdown {
-  display: none;
-  position: absolute;
-  right: 0;
-  left: auto;
-  top: calc(100% + 2px);
-  background: rgba(8,0,15,.97);
-  backdrop-filter: blur(10px);
-  min-width: 270px;
-  flex-direction: column;
-  box-shadow: 0 0 40px var(--cyan-glow), 0 0 2px var(--cyan);
-}
-.menu-dropdown.open { display: flex; }
-.menu-item {
-  background: none;
-  color: var(--text);
-  font-family: var(--font-head);
-  font-size: 13px;
-  text-align: left;
-  cursor: pointer;
-  padding: 11px 18px;
-  letter-spacing: .06em;
-  transition: color .1s, background .1s;
-}
-.menu-item:hover, .menu-item.active {
-  color: var(--neon-bright);
-  background: rgba(187,68,255,0.18);
-  text-shadow: 0 0 10px var(--cyan);
-}
-.menu-item .nav-num { color: var(--yellow); margin-right: 10px; }
-.menu-user {
-  font-family: var(--font-head);
-  font-size: 11px;
-  color: var(--muted);
-  padding: 11px 18px;
-  display: block;
-  letter-spacing: .04em;
-}
-
-/* ── DASHBOARD ── */
-#pipeline-overlay { background: rgba(4,0,10,.97); }
-.dash-header-bar {
-  color: var(--cyan);
-  font-family: var(--font-head);
-  font-size: 11px;
-  letter-spacing: .14em;
-  text-shadow: 0 0 12px var(--cyan);
-  margin-bottom: 14px;
-  padding-bottom: 6px;
-}
-.dash-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-@media (max-width: 480px) { .dash-grid { grid-template-columns: 1fr; } }
-.dash-block {
-  background: rgba(187,68,255,0.05);
-  padding: 10px 14px;
-}
-.dash-block-title {
-  color: var(--cyan);
-  font-family: var(--font-head);
-  font-size: 9px;
-  letter-spacing: .14em;
-  text-shadow: 0 0 8px var(--cyan);
-  margin-bottom: 8px;
-}
-.dash-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 3px 0;
-  gap: 8px;
-}
-.dash-key {
-  color: var(--muted);
-  font-family: var(--font-head);
-  font-size: 8px;
-  letter-spacing: .08em;
-  white-space: nowrap;
-}
-.dash-val {
-  color: #ffffff;
-  font-family: var(--font-head);
-  font-size: 9px;
-  font-weight: 700;
-  text-shadow: 0 0 8px rgba(255,255,255,0.6);
-  white-space: nowrap;
-}
-.dash-bar {
-  flex: 1;
-  font-family: var(--font-head);
-  font-size: 8px;
-  color: var(--cyan);
-  text-shadow: 0 0 6px var(--cyan);
-  overflow: hidden;
-  letter-spacing: 0;
-  white-space: nowrap;
-}
-.dash-divider {
-  color: var(--muted);
-  font-family: var(--font-head);
-  font-size: 7px;
-  overflow: hidden;
-  white-space: nowrap;
-  margin: 10px 0;
-  letter-spacing: .02em;
-}
-.dash-loading {
-  color: var(--cyan);
-  font-family: var(--font-head);
-  font-size: 9px;
-  letter-spacing: .12em;
-  animation: blink .7s step-end infinite;
-}
-.dash-recent-item {
-  font-family: var(--font-head);
-  font-size: 8px;
-  color: var(--text);
-  padding: 3px 0;
-  letter-spacing: .04em;
-}
-.dash-recent-item .dr-type {
-  color: var(--yellow);
-  margin-right: 6px;
-}
-.dash-recent-item .dr-time {
-  color: var(--muted);
-  margin-left: 6px;
-  font-size: 7px;
-}
-
-/* ── NO BORDERS — user override ── */
-*, *::before, *::after { border-width: 0 !important; }
-.terminal { box-shadow: 0 0 24px var(--cyan-glow) !important; }
 </style>
 </head>
 <body>
@@ -942,34 +698,10 @@ audio { width: 100%; margin-top: 4px; }
   <!-- ═══ HEADER ═══ -->
   <div class="header">
     <div id="app-banner">
-      <img id="banner-img" src="/static/home.jpg" alt="Twin Shadow">
-      <div id="banner-label">TWIN&nbsp;&nbsp;CHAT</div>
-      <!-- corner buttons — top-left -->
-      <div id="header-btns">
-        <button onclick="document.getElementById('file-input').click()" title="Attach file">[FILE]</button>
-        <button id="speak-toggle" onclick="toggleAutoSpeak()" title="Auto-speak responses">[SND]</button>
-        <button onclick="clearChat()" title="Clear conversation history">[CLR]</button>
-        <button onclick="openPipelineDash()" title="Pipeline dashboard" style="color:var(--yellow)">[DASH]</button>
-      </div>
-    </div>
-    <!-- MENU — top-right of hero -->
-    <div class="menu-wrap" id="menu-wrap">
-      <button class="menu-toggle" id="menu-toggle" onclick="toggleMenu(event)">[ ≡ MENU ]</button>
-      <div class="menu-dropdown" id="menu-dropdown">
-        <button class="menu-item active" data-tab="home"      onclick="menuNav('home')"><span class="nav-num">[1]</span> HOME</button>
-        <button class="menu-item" data-tab="projects"         onclick="menuNav('projects')"><span class="nav-num">[2]</span> COMMITTEES</button>
-        <button class="menu-item" data-tab="board"            onclick="menuNav('board')"><span class="nav-num">[3]</span> BOARDROOM</button>
-        <button class="menu-item" data-tab="lab-video"        onclick="menuNav('lab-video')"><span class="nav-num">[4]</span> VIDEO LAB</button>
-        <button class="menu-item" data-tab="lab-write"        onclick="menuNav('lab-write')"><span class="nav-num">[5]</span> WRITE LAB</button>
-        <button class="menu-item" data-tab="lab-code"         onclick="menuNav('lab-code')"><span class="nav-num">[6]</span> CODE LAB</button>
-        <button class="menu-item" data-tab="social"           onclick="menuNav('social')"><span class="nav-num">[7]</span> SOCIAL</button>
-        <button class="menu-item" data-tab="studio"           onclick="menuNav('studio')"><span class="nav-num">[8]</span> PODCASTS</button>
-        <button class="menu-item" data-tab="brainstorm"       onclick="menuNav('brainstorm')"><span class="nav-num">[9]</span> BRAINSTORM</button>
-        <button class="menu-item" data-tab="advisors"         onclick="menuNav('advisors')"><span class="nav-num">[10]</span> LEGAL/MKT</button>
-        <button class="menu-item" data-tab="settings"         onclick="menuNav('settings')"><span class="nav-num">[11]</span> SETTINGS</button>
-        <button class="menu-item" data-tab="archive"          onclick="menuNav('archive')"><span class="nav-num">[12]</span> ARCHIVE</button>
-        <span class="menu-user">{{ session.get('username', '') | upper }}&nbsp;<a href="/logout" style="color:var(--red);text-decoration:none;font-family:var(--font-head);font-size:11px;letter-spacing:.04em">[ EXIT ]</a></span>
-      </div>
+      <picture>
+        <source media="(max-width: 600px)" srcset="/static/header_mobile2.jpeg">
+        <img src="/static/header_mobile.JPEG" alt="Twin Shadow">
+      </picture>
     </div>
   </div>
 
@@ -978,9 +710,13 @@ audio { width: 100%; margin-top: 4px; }
 
     <!-- [1] HOME — CHAT -->
     <div class="panel active" id="panel-home" style="position:relative">
-      <input id="file-input" type="file" accept="image/*,audio/*,video/*" onchange="onFile(this)" style="display:none">
       <div class="bot-strip">
-        <div class="bot-strip-left"></div>
+        <div class="bot-strip-left">
+          <button id="upload-btn" onclick="document.getElementById('file-input').click()" title="Attach file">[FILE]</button>
+          <input id="file-input" type="file" accept="image/*,audio/*,video/*" onchange="onFile(this)">
+          <button id="speak-toggle" onclick="toggleAutoSpeak()" title="Auto-speak responses" style="background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:var(--font-size-sm);padding:1px 6px;letter-spacing:.08em;font-family:inherit">[SND]</button>
+          <button onclick="clearChat()" title="Clear conversation history" style="background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:var(--font-size-sm);padding:1px 6px;letter-spacing:.08em;font-family:inherit">[CLR]</button>
+        </div>
         <div id="bot-toggle" onclick="toggleBot()">
           <span id="toggle-name">TWIN</span>
           <div class="sw" id="sw"></div>
@@ -990,13 +726,13 @@ audio { width: 100%; margin-top: 4px; }
       <div id="file-hint"></div>
     </div>
 
-    <!-- [2] COMMITTEES — MISSIONS / COMMITTEE BUILDER / BOARDROOM -->
+    <!-- [2] PROJECTS — PIPELINE -->
     <div class="panel" id="panel-projects">
       <!-- sub-tabs -->
       <div class="lab-tab-row">
         <button class="lab-tab active" id="ptab-missions-btn" onclick="switchProjectsTab('missions',this)">MISSIONS</button>
-        <button class="lab-tab" id="ptab-committees-btn" onclick="switchProjectsTab('committees',this)">COMMITTEE</button>
-        <button class="lab-tab" id="ptab-board-btn" onclick="menuNav('board')">BOARD →</button>
+        <button class="lab-tab" id="ptab-committees-btn" onclick="switchProjectsTab('committees',this)">COMMITTEES</button>
+        <button class="lab-tab" id="ptab-pipeline-btn" onclick="switchProjectsTab('pipeline',this)">PIPELINE</button>
       </div>
 
       <!-- MISSIONS tab -->
@@ -1005,7 +741,7 @@ audio { width: 100%; margin-top: 4px; }
           <span class="fl" style="color:var(--neon)">AUTONOMOUS RESEARCH MISSIONS</span>
         </div>
         <!-- ASK TWIN consult panel -->
-        <div style="border:1px solid var(--cyan);padding:8px 12px;margin-bottom:10px;background:rgba(26,0,50,.15)">
+        <div style="border:1px solid var(--purple);padding:8px 12px;margin-bottom:10px;background:rgba(60,0,80,.15)">
           <div id="guide-header" style="color:var(--cyan);font-size:var(--font-size-sm);letter-spacing:.1em;margin-bottom:6px">── ASK TWIN WHAT TO DO ──</div>
           <div id="guide-subtext" style="display:none"></div>
           <textarea class="fi" id="guide-goal" rows="1" placeholder="Describe your goal..."></textarea>
@@ -1019,7 +755,7 @@ audio { width: 100%; margin-top: 4px; }
         </div>
 
         <!-- new mission form -->
-        <div id="mission-form" style="background:var(--cyan-dim);border:1px solid var(--border);padding:10px 12px;margin-bottom:12px">
+        <div id="mission-form" style="background:var(--purple-dim);border:1px solid var(--border);padding:10px 12px;margin-bottom:12px">
           <div class="fg">
             <label class="fl">MISSION NAME</label>
             <input class="fi" id="mission-title" type="text" placeholder="Mission name..." autocomplete="off">
@@ -1063,7 +799,7 @@ audio { width: 100%; margin-top: 4px; }
         </div>
 
         <!-- design form -->
-        <div id="committee-design-form" style="background:var(--cyan-dim);border:1px solid var(--border);padding:10px 12px;margin-bottom:12px">
+        <div id="committee-design-form" style="background:var(--purple-dim);border:1px solid var(--border);padding:10px 12px;margin-bottom:12px">
           <div class="fg">
             <label class="fl">WHAT EXPERTISE DO YOU NEED?</label>
             <textarea class="fi" id="committee-request" rows="2" placeholder="Describe the expertise you need..."></textarea>
@@ -1072,7 +808,7 @@ audio { width: 100%; margin-top: 4px; }
         </div>
 
         <!-- preview of designed committee (before saving) -->
-        <div id="committee-preview" style="display:none;margin-bottom:12px;border:1px solid var(--cyan);padding:10px 12px;background:rgba(26,0,50,.2)">
+        <div id="committee-preview" style="display:none;margin-bottom:12px;border:1px solid var(--purple);padding:10px 12px;background:rgba(80,0,60,.2)">
           <div style="color:var(--cyan);font-size:var(--font-size-sm);letter-spacing:.08em;margin-bottom:6px">── TWIN DESIGNED THIS COMMITTEE ──</div>
           <div id="committee-preview-name" style="color:var(--neon-bright);font-size:14px;font-weight:700;margin-bottom:3px"></div>
           <div id="committee-preview-desc" style="color:var(--muted);font-size:var(--font-size-sm);margin-bottom:10px"></div>
@@ -1090,7 +826,7 @@ audio { width: 100%; margin-top: 4px; }
 
         <!-- launch overlay: pick brief for a saved committee -->
         <div id="committee-launch-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:none;align-items:center;justify-content:center">
-          <div style="background:var(--bg-panel);border:1px solid var(--cyan);padding:20px;width:min(90vw,480px)">
+          <div style="background:var(--bg-panel);border:1px solid var(--purple);padding:20px;width:min(90vw,480px)">
             <div style="color:var(--neon);font-size:var(--font-size-base);font-weight:700;margin-bottom:10px">LAUNCH MISSION</div>
             <div style="color:var(--muted);font-size:var(--font-size-sm);margin-bottom:8px">Committee: <span id="launch-committee-name" style="color:var(--cyan)"></span></div>
             <div class="fg">
@@ -1109,103 +845,47 @@ audio { width: 100%; margin-top: 4px; }
         </div>
       </div>
 
-      <!-- GUERRILLA WAR ROOM -->
-      <div id="ptab-guerrilla" class="panel-scroll" style="display:none;padding:10px 12px">
+      <!-- PIPELINE tab (kept for builder output) -->
+      <div id="ptab-pipeline" class="panel-scroll" style="padding:10px 12px;display:none">
         <div class="fg">
-          <span class="fl" style="color:var(--neon-bright);letter-spacing:.14em">GUERRILLA MARKETING WAR ROOM</span>
-        </div>
-        <div style="color:var(--muted);font-size:var(--font-size-sm);margin-bottom:10px;line-height:1.5">
-          Moneyball philosophy. TWIN intelligence pre-brief → 6-specialist committee (Scout, Street, Culture, Arbitrage, Narrative, Closer) → blueprint. No generic advice. Real channels, real costs, real tactics.
+          <span class="fl">PROJECT PIPELINE</span>
         </div>
         <div class="fg">
-          <span class="fl">THE BRIEF</span>
-          <textarea id="gorilla-brief" rows="4" class="fi" placeholder="Your product, audience, goal, budget, competitors, what's been tried..."></textarea>
-        </div>
-        <div class="action-row">
-          <button class="btn" id="gorilla-run-btn" onclick="gorillaRun()">[ DEPLOY COMMITTEE ]</button>
-          <button class="btn" onclick="gorillaClear()">[ CLEAR ]</button>
-          <button class="btn" id="gorilla-audio-btn" style="display:none" onclick="renderGorillaTTS()">[ PLAY AUDIO ]</button>
-          <a id="gorilla-mp3-btn" class="action-link" style="display:none" download="guerrilla_audio.mp3">[ DL MP3 ]</a>
-          <button class="btn" id="gorilla-pipeline-btn" style="display:none" onclick="gorillaPushPipeline()">[ PUSH BLUEPRINT TO PIPELINE ]</button>
-        </div>
-        <div class="fg" id="gorilla-progress" style="display:none">
-          <span class="fl" style="color:var(--cyan)">WAR ROOM IN SESSION</span>
-          <div id="gorilla-member-bar" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px"></div>
-        </div>
-        <audio id="gorilla-audio-player" controls style="display:none;width:100%;margin-top:4px"></audio>
-        <div id="gorilla-output" style="display:none">
-          <div class="fg" id="gorilla-transcript-box">
-            <span class="fl">COMMITTEE TRANSCRIPT</span>
-            <div id="gorilla-transcript" style="font-size:var(--font-size-sm);color:var(--text);line-height:1.6;max-height:400px;overflow-y:auto;padding:4px 0;white-space:pre-wrap"></div>
-          </div>
-          <div class="fg" id="gorilla-blueprint-box">
-            <span class="fl" style="color:var(--neon-bright)">GUERRILLA BLUEPRINT</span>
-            <div id="gorilla-blueprint" style="font-size:var(--font-size-base);color:var(--neon);line-height:1.8;white-space:pre-wrap;word-wrap:break-word"></div>
-          </div>
-        </div>
-      </div><!-- /ptab-guerrilla -->
-      <!-- BOARD sub-tab removed — now its own top-level panel -->
-    </div>
-
-    <!-- BOARDROOM panel -->
-    <div class="panel" id="panel-board">
-      <div class="panel-scroll">
-        <div class="fg">
-          <label class="fl">TOPIC / IDEA</label>
-          <textarea class="fi" id="boardroom-topic" rows="2" placeholder="Pitch your idea to the board..."></textarea>
+          <label class="fl">JOB NAME</label>
+          <input class="fi" id="pipeline-name" type="text" placeholder="Short label for this job..." autocomplete="off">
         </div>
         <div class="fg">
-          <span class="fl">MODE</span>
-          <div class="opt-row">
-            <button class="opt on" id="br-normal" onclick="setBoardMode('normal')">NORMAL BOARD</button>
-            <button class="opt"    id="br-shadow" onclick="setBoardMode('shadow')">SHADOW BOARD</button>
-          </div>
+          <label class="fl">WHAT TO BUILD</label>
+          <textarea class="fi" id="pipeline-desc" rows="3" placeholder="Describe exactly what you want built..."></textarea>
         </div>
-        <div class="fg">
-          <span class="fl">ROUNDS</span>
-          <div class="opt-row">
-            <button class="opt on" id="br-r1" onclick="setBoardRounds(1)">1</button>
-            <button class="opt"    id="br-r2" onclick="setBoardRounds(2)">2</button>
-            <button class="opt"    id="br-r3" onclick="setBoardRounds(3)">3</button>
-          </div>
-        </div>
-        <div class="action-row">
-          <button class="btn" id="boardroom-go-btn" onclick="runBoardroom()">[ CONVENE BOARD ]</button>
-          <button class="btn" id="boardroom-audio-btn" style="display:none" onclick="renderTTS('boardroom')">[ PLAY AUDIO ]</button>
-          <button class="btn" id="boardroom-save-btn" style="display:none" onclick="saveTranscript('boardroom')">[ SAVE ]</button>
-          <a id="boardroom-export-btn" class="action-link" style="display:none" download="boardroom_transcript.txt">[ EXPORT ]</a>
-          <a id="boardroom-mp3-btn"   class="action-link" style="display:none" download="boardroom_audio.mp3">[ DL MP3 ]</a>
-          <button class="btn" id="boardroom-lab-btn" style="display:none" onclick="sendToVideoLab('boardroom')">[ SEND TO VIDEO LAB ]</button>
-        </div>
-        <div class="steer-box" id="boardroom-steer-row">
-          <span class="fl" id="boardroom-steer-label">ROUND COMPLETE — STEER NEXT ROUND (OPTIONAL)</span>
-          <textarea class="fi" id="boardroom-steer" rows="2" placeholder="Redirect, challenge, or add context..."></textarea>
-          <button class="btn" id="boardroom-next-btn" onclick="boardroomNextRound()">[ NEXT ROUND ]</button>
-        </div>
-        <div class="steer-box" id="boardroom-extend-row">
-          <span class="fl">EXTEND SESSION — NEW DIRECTION (OPTIONAL)</span>
-          <textarea class="fi" id="boardroom-extend-steer" rows="2" placeholder="Push further, challenge a position, add a new angle..."></textarea>
-          <button class="btn" onclick="extendBoardroom()">[ + EXTEND ]</button>
-        </div>
-        <audio id="boardroom-audio" controls></audio>
-        <div id="boardroom-out" class="session-out"></div>
+        <button class="btn" onclick="addPipelineJob()">[ ADD JOB ]</button>
+        <div id="pipeline-list" style="display:flex;flex-direction:column;gap:5px;margin-top:8px"></div>
+        <p class="ph-text" id="pipeline-empty">NO JOBS IN QUEUE.</p>
       </div>
     </div>
 
-    <!-- [3] VIDEO LAB -->
-    <div class="panel" id="panel-lab-video">
-      <div class="panel-scroll">
-        <a href="/lab" target="_blank" class="btn" style="text-align:center;display:block;margin-bottom:10px">[ &#9658; OPEN VIDEO LAB ]</a>
-      </div>
-    </div>
-
-    <!-- [4] WRITE LAB — Bible / Reader / Book -->
-    <div class="panel" id="panel-lab-write">
+    <!-- [3] LABS — VIDEO / WRITE / CODE -->
+    <div class="panel" id="panel-lab">
       <div class="lab-tab-row">
-        <button class="lab-tab active" onclick="switchWrite('bible', this)">BIBLE</button>
-        <button class="lab-tab" onclick="switchWrite('reader', this)">READER</button>
-        <button class="lab-tab" onclick="switchWrite('book', this)">BOOK</button>
+        <button class="lab-tab active" onclick="switchLab('video', this)">VIDEO</button>
+        <button class="lab-tab" onclick="switchLab('write', this)">WRITE</button>
+        <button class="lab-tab" onclick="switchLab('code', this)">CODE</button>
       </div>
+
+      <!-- VIDEO LAB -->
+      <div class="lab-section active" id="lab-video">
+        <div class="panel-scroll">
+          <a href="/lab" target="_blank" class="btn" style="text-align:center;display:block;margin-bottom:10px">[ &#9658; OPEN VIDEO LAB ]</a>
+        </div>
+      </div>
+
+      <!-- WRITE LAB — Bible / Reader / Book -->
+      <div class="lab-section" id="lab-write">
+        <div class="lab-tab-row" style="border-top:1px solid var(--purple-dim);margin-top:0">
+          <button class="lab-tab active" onclick="switchWrite('bible', this)">BIBLE</button>
+          <button class="lab-tab" onclick="switchWrite('reader', this)">READER</button>
+          <button class="lab-tab" onclick="switchWrite('book', this)">BOOK</button>
+        </div>
 
         <!-- BIBLE -->
         <div class="lab-section active" id="studio-bible">
@@ -1213,7 +893,7 @@ audio { width: 100%; margin-top: 4px; }
             <div class="fg">
               <span class="fl">STORY BIBLE BUILDER</span>
               <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px">
-                <span style="font-size:var(--font-size-sm);color:var(--cyan);letter-spacing:1px">WRITER:</span>
+                <span style="font-size:var(--font-size-sm);color:var(--purple);letter-spacing:1px">WRITER:</span>
                 <button class="opt on" id="sw-twin"   onclick="setStoryWriter('twin',this)"   style="padding:2px 8px;font-size:var(--font-size-sm)">TWIN</button>
                 <button class="opt"    id="sw-shadow" onclick="setStoryWriter('shadow',this)" style="padding:2px 8px;font-size:var(--font-size-sm)">SHADOW</button>
               </div>
@@ -1231,7 +911,7 @@ audio { width: 100%; margin-top: 4px; }
             </div>
             <div class="fg" id="bible-preview-box" style="display:none">
               <span class="fl">STORY BIBLE</span>
-              <div id="bible-preview" style="font-size:var(--font-size-base);line-height:1.6;color:var(--text);white-space:pre-wrap;max-height:160px;overflow-y:auto;border:1px solid var(--cyan-dim);padding:6px"></div>
+              <div id="bible-preview" style="font-size:var(--font-size-base);line-height:1.6;color:var(--text);white-space:pre-wrap;max-height:160px;overflow-y:auto;border:1px solid var(--purple-dim);padding:6px"></div>
             </div>
             <div class="fg" id="bible-length-box" style="display:none">
               <span class="fl">LENGTH</span>
@@ -1259,7 +939,7 @@ audio { width: 100%; margin-top: 4px; }
             </div>
             <div id="studio-story-list" style="display:flex;flex-direction:column;gap:5px"></div>
             <p class="ph-text" id="studio-list-empty" style="display:none">NO STORIES GENERATED YET.</p>
-            <div id="studio-dl-box" style="display:none;flex-direction:column;gap:8px;border:1px solid var(--cyan-dim);padding:8px;margin-top:6px">
+            <div id="studio-dl-box" style="display:none;flex-direction:column;gap:8px;border:1px solid var(--purple-dim);padding:8px;margin-top:6px">
               <span class="fl">KDP DOWNLOAD — <span id="studio-dl-title" style="color:var(--cyan)"></span></span>
               <input class="fi" id="studio-dl-author"   type="text" placeholder="Author name (required)">
               <input class="fi" id="studio-dl-subtitle" type="text" placeholder="Subtitle (optional)">
@@ -1278,7 +958,7 @@ audio { width: 100%; margin-top: 4px; }
               </div>
               <div id="studio-chapter-text"
                 style="font-size:var(--font-size-base);line-height:1.8;color:var(--text);white-space:pre-wrap;
-                       max-height:280px;overflow-y:auto;border:1px solid var(--cyan-dim);padding:8px">
+                       max-height:280px;overflow-y:auto;border:1px solid var(--purple-dim);padding:8px">
               </div>
             </div>
           </div>
@@ -1337,7 +1017,7 @@ audio { width: 100%; margin-top: 4px; }
                 <option value="a4">A3 fold → A4 booklet 210×297 mm (print on A3)</option>
               </select>
             </div>
-            <div id="book-paper-note" style="font-size:var(--font-size-sm);color:var(--muted);margin-top:3px;padding:3px 6px;border-left:2px solid var(--cyan-dim)">
+            <div id="book-paper-note" style="font-size:var(--font-size-sm);color:var(--muted);margin-top:3px;padding:3px 6px;border-left:2px solid var(--purple-dim)">
               Two pages per sheet, fold on long edge &rarr; saddle-stitch spine. Any home printer works for Letter size.
             </div>
             <div id="book-pos-row" style="display:flex;flex-direction:column;gap:3px;margin-top:6px">
@@ -1348,7 +1028,7 @@ audio { width: 100%; margin-top: 4px; }
                 <option value="alternating">Alternating</option>
               </select>
             </div>
-            <div id="book-tpl-desc" style="font-size:var(--font-size-sm);color:var(--muted);margin-top:4px;padding:4px 6px;border-left:2px solid var(--cyan-dim)">
+            <div id="book-tpl-desc" style="font-size:var(--font-size-sm);color:var(--muted);margin-top:4px;padding:4px 6px;border-left:2px solid var(--purple-dim)">
               Template 1 — Classic: text stacked above or below each illustration on a white background strip.
             </div>
             <div class="action-row" style="margin-top:10px">
@@ -1368,11 +1048,11 @@ audio { width: 100%; margin-top: 4px; }
           </div>
         </div>
 
-    </div><!-- /panel-lab-write -->
+      </div><!-- /lab-write -->
 
-    <!-- [5] CODE LAB — Builder + Architect -->
-    <div class="panel" id="panel-lab-code">
-      <div class="panel-scroll" id="lab-code">
+      <!-- CODE LAB — Builder + Architect -->
+      <div class="lab-section" id="lab-code">
+        <div class="panel-scroll">
           <div class="fg">
             <span class="fl">MODE</span>
             <div class="opt-row">
@@ -1413,7 +1093,7 @@ audio { width: 100%; margin-top: 4px; }
             </div>
             <div id="builder-edit-file" style="font-size:var(--font-size-sm);color:var(--neon);margin-bottom:3px;font-family:monospace"></div>
             <div id="builder-edit-desc" style="font-size:var(--font-size-base);color:var(--text);margin-bottom:8px"></div>
-            <div style="border:1px solid var(--cyan-dim);padding:6px;max-height:180px;overflow-y:auto;font-size:var(--font-size-sm);line-height:1.5;white-space:pre-wrap;color:var(--neon)" id="builder-edit-preview">Loading preview...</div>
+            <div style="border:1px solid var(--purple-dim);padding:6px;max-height:180px;overflow-y:auto;font-size:var(--font-size-sm);line-height:1.5;white-space:pre-wrap;color:var(--neon)" id="builder-edit-preview">Loading preview...</div>
             <div class="action-row" style="margin-top:8px">
               <button class="btn" id="builder-approve-btn" style="border-color:var(--cyan);color:var(--cyan)" onclick="approveEdit()">[ &#10003; APPROVE ]</button>
               <button class="btn" style="opacity:.6" onclick="rejectEdit()">[ REJECT ]</button>
@@ -1432,234 +1112,302 @@ audio { width: 100%; margin-top: 4px; }
           </div>
 
           <!-- Bot output viewer (inline) -->
-          <div id="bot-output-box" style="display:none;margin-top:8px;border:1px solid var(--cyan-dim);padding:8px">
+          <div id="bot-output-box" style="display:none;margin-top:8px;border:1px solid var(--purple-dim);padding:8px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
               <span class="fl" id="bot-output-title">BOT OUTPUT</span>
               <button class="btn" style="font-size:var(--font-size-sm);padding:3px 8px" onclick="document.getElementById('bot-output-box').style.display='none'">[ CLOSE ]</button>
             </div>
             <div id="bot-output-lines" style="font-size:var(--font-size-sm);line-height:1.7;max-height:220px;overflow-y:auto;white-space:pre-wrap;color:var(--neon);font-family:monospace"></div>
           </div>
+        </div>
       </div>
-    </div><!-- /panel-lab-code -->
 
-    <!-- [6] PODCASTS — PODCAST / CHARACTERS -->
-    <!-- PODCASTS panel -->
+    </div><!-- /panel-lab -->
+
+    <!-- [4] STUDIO — BRAINSTORM / PODCAST / CHARACTERS -->
     <div class="panel" id="panel-studio">
       <div class="lab-tab-row">
-        <button class="lab-tab active" id="stab-podcast-btn" onclick="switchStudioTab('podcast',this)">PODCAST</button>
-        <button class="lab-tab" id="stab-chars-btn" onclick="switchStudioTab('characters',this)">CHARACTERS</button>
+        <button class="lab-tab active" onclick="switchStudio('brainstorm', this)">BRAINSTORM</button>
+        <button class="lab-tab" onclick="switchStudio('podcast', this)">PODCAST</button>
+        <button class="lab-tab" onclick="switchStudio('characters', this)">CHARS</button>
       </div>
-      <div id="stab-podcast" class="lab-section active panel-scroll">
-        <p id="el-voices-notice" style="display:none;color:var(--yellow);font-size:var(--font-size-sm);border:1px solid var(--yellow);padding:4px 8px;margin-bottom:8px;background:rgba(255,200,0,.05)"></p>
-        <div class="fg">
-          <span class="fl">SHOW TYPE</span>
-          <div class="opt-row" id="pod-type-row">
-            <button class="opt on" id="pod-t-podcast"   onclick="setPodType('podcast')">PODCAST</button>
-            <button class="opt"    id="pod-t-interview"  onclick="setPodType('interview')">INTERVIEW</button>
-            <button class="opt"    id="pod-t-debate"     onclick="setPodType('debate')">DEBATE</button>
-            <button class="opt"    id="pod-t-talk"       onclick="setPodType('talk show')">TALK SHOW</button>
-            <button class="opt"    id="pod-t-comedy"     onclick="setPodType('comedy')">COMEDY</button>
-            <button class="opt"    id="pod-t-improv"     onclick="setPodType('improv')">IMPROV</button>
+
+      <!-- BRAINSTORM -->
+      <div class="lab-section active" id="lab-brainstorm">
+        <div class="panel-scroll">
+          <div class="fg">
+            <label class="fl">TOPIC</label>
+            <textarea class="fi" id="brainstorm-topic" rows="2" placeholder="What are we riffing on?"></textarea>
           </div>
-        </div>
-        <div class="fg">
-          <span class="fl">CAST FORMAT</span>
-          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">
-            <span class="fl" style="width:100%;margin-bottom:2px;color:var(--neon);font-size:var(--font-size-sm)">SIMPLE —</span>
-            <button class="opt on" id="pod-f-1v1"   onclick="setPodFormat('1v1',   'simple',2)">1v1</button>
-            <button class="opt"    id="pod-f-2v1"   onclick="setPodFormat('2v1',   'simple',3)">2v1</button>
-            <button class="opt"    id="pod-f-1v2"   onclick="setPodFormat('1v2',   'simple',3)">1v2</button>
+          <div class="fg">
+            <span class="fl">MODE</span>
+            <div class="opt-row">
+              <button class="opt on" id="bs-normal"  onclick="setBrainstormMode('normal')">NORMAL</button>
+              <button class="opt"    id="bs-shadow"  onclick="setBrainstormMode('shadow')">SHADOW</button>
+              <button class="opt"    id="bs-podcast" onclick="setBrainstormMode('podcast')">PODCAST</button>
+            </div>
           </div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">
-            <span class="fl" style="width:100%;margin-bottom:2px;color:var(--neon);font-size:var(--font-size-sm)">COMPLEX —</span>
-            <button class="opt"    id="pod-f-2v3"   onclick="setPodFormat('2v3',   'complex',5)">2v3</button>
-            <button class="opt"    id="pod-f-3v2"   onclick="setPodFormat('3v2',   'complex',5)">3v2</button>
-            <button class="opt"    id="pod-f-3v3"   onclick="setPodFormat('3v3',   'complex',6)">3v3</button>
-            <button class="opt"    id="pod-f-3v4"   onclick="setPodFormat('3v4',   'complex',7)">3v4</button>
+          <div class="fg">
+            <span class="fl">ROUNDS</span>
+            <div class="opt-row">
+              <button class="opt on" id="bs-r1" onclick="setBsRounds(1)">1</button>
+              <button class="opt"    id="bs-r2" onclick="setBsRounds(2)">2</button>
+              <button class="opt"    id="bs-r3" onclick="setBsRounds(3)">3</button>
+            </div>
           </div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px">
-            <span class="fl" style="width:100%;margin-bottom:2px;color:var(--neon);font-size:var(--font-size-sm)">ALL-IN —</span>
-            <button class="opt"    id="pod-f-allin" onclick="setPodFormat('allin', 'all-in', 6)">1v1v1v1v1v1</button>
+          <div class="action-row">
+            <button class="btn" id="brainstorm-go-btn" onclick="runBrainstorm()">[ START SESSION ]</button>
+            <button class="btn" id="brainstorm-audio-btn" style="display:none" onclick="renderTTS('brainstorm')">[ PLAY AUDIO ]</button>
+            <button class="btn" id="brainstorm-save-btn" style="display:none" onclick="saveTranscript('brainstorm')">[ SAVE ]</button>
+            <a id="brainstorm-export-btn" class="action-link" style="display:none" download="brainstorm_transcript.txt">[ EXPORT ]</a>
+            <a id="brainstorm-mp3-btn"   class="action-link" style="display:none" download="brainstorm_audio.mp3">[ DL MP3 ]</a>
           </div>
-        </div>
-        <div class="fg">
-          <span class="fl">CAST  <span id="pod-cast-count" style="color:var(--neon)">(2 speakers)</span></span>
-          <div id="pod-cast-list"></div>
-          <div class="action-row" style="margin-top:6px">
-            <button class="btn" onclick="podAddSpeaker()">[ + ADD SPEAKER ]</button>
-            <button class="btn" onclick="podRemoveSpeaker()">[ - REMOVE ]</button>
+          <div class="steer-box" id="brainstorm-extend-row">
+            <span class="fl">EXTEND SESSION — NEW DIRECTION (OPTIONAL)</span>
+            <textarea class="fi" id="brainstorm-extend-steer" rows="2" placeholder="New angle, push further, add a twist..."></textarea>
+            <button class="btn" onclick="extendBrainstorm()">[ + EXTEND ]</button>
           </div>
+          <audio id="brainstorm-audio" controls></audio>
+          <div id="brainstorm-out" class="session-out"></div>
         </div>
-        <div class="fg">
-          <label class="fl">TOPIC / CONCEPT</label>
-          <textarea class="fi" id="pod-topic" rows="2" placeholder="What is this show about?"></textarea>
-        </div>
-        <div class="fg">
-          <span class="fl">ROUNDS</span>
-          <div class="opt-row">
-            <button class="opt on" id="pod-r1" onclick="setPodRounds(1)">1</button>
-            <button class="opt"    id="pod-r2" onclick="setPodRounds(2)">2</button>
-            <button class="opt"    id="pod-r3" onclick="setPodRounds(3)">3</button>
-            <button class="opt"    id="pod-r4" onclick="setPodRounds(4)">4</button>
-          </div>
-        </div>
-        <div class="action-row">
-          <button class="btn" id="pod-go-btn" onclick="runPodcast()">[ RECORD ]</button>
-          <button class="btn" id="pod-audio-btn" style="display:none" onclick="renderPodcastTTS()">[ PLAY AUDIO ]</button>
-          <button class="btn" id="pod-save-btn"  style="display:none" onclick="savePodcastTranscript()">[ SAVE ]</button>
-          <a id="pod-export-btn" class="action-link" style="display:none" download="podcast_transcript.txt">[ EXPORT ]</a>
-          <a id="pod-mp3-btn"    class="action-link" style="display:none" download="podcast_audio.mp3">[ DL MP3 ]</a>
-        </div>
-        <div class="steer-box" id="pod-extend-row" style="display:none">
-          <span class="fl">CONTINUE SESSION — NEW DIRECTION (OPTIONAL)</span>
-          <textarea class="fi" id="pod-extend-steer" rows="2" placeholder="New topic, new tension, redirect..."></textarea>
-          <button class="btn" onclick="extendPodcast()">[ + CONTINUE ]</button>
-        </div>
-        <audio id="pod-audio" controls style="display:none"></audio>
-        <div id="pod-out" class="session-out"></div>
       </div>
-      <div id="stab-characters" class="lab-section panel-scroll">
-        <div class="fg"><span class="fl">NEW CHARACTER</span></div>
-        <div style="display:flex;gap:6px;margin-bottom:4px">
-          <input class="fi" id="char-name" type="text" placeholder="NAME" style="flex:0 0 90px;text-transform:uppercase">
-          <input class="fi" id="char-role" type="text" placeholder="Host / Guest / Co-host..." style="flex:1">
-        </div>
-        <textarea class="fi" id="char-personality" rows="2"
-          placeholder="Personality, speech style, backstory..."
-          style="width:100%;box-sizing:border-box;margin-bottom:4px;resize:vertical"></textarea>
-        <div style="margin-bottom:4px">
-          <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:2px">VOICE</label>
-          <select class="fi" id="char-voice">
-            <option value="Ava-PlayAI">Ava (female)</option>
-            <option value="Orion-PlayAI">Orion (male, deep)</option>
-            <option value="Atlas-PlayAI">Atlas (male)</option>
-            <option value="Hudson-PlayAI">Hudson (male)</option>
-            <option value="Chip-PlayAI">Chip (male)</option>
-            <option value="Fritz-PlayAI">Fritz (male, accent)</option>
-            <option value="Briggs-PlayAI">Briggs (male)</option>
-            <option value="Celeste-PlayAI">Celeste (female)</option>
-            <option value="Mist-PlayAI">Mist (female)</option>
-            <option value="Seraphina-PlayAI">Seraphina (female)</option>
-            <option value="Calum-PlayAI">Calum (male)</option>
-          </select>
-        </div>
-        <div style="display:flex;gap:10px;margin-bottom:8px">
-          <div style="flex:1">
-            <label class="fl" style="font-size:var(--font-size-sm)">PITCH <span id="char-pitch-val" style="color:var(--cyan)">1.00</span></label>
-            <input type="range" id="char-pitch" min="0.5" max="2.0" step="0.05" value="1.0" style="width:100%;accent-color:var(--cyan)"
-              oninput="document.getElementById('char-pitch-val').textContent=parseFloat(this.value).toFixed(2)">
+
+      <!-- PODCAST -->
+      <div class="lab-section" id="lab-podcast">
+        <div class="panel-scroll">
+
+          <!-- Show type + format -->
+          <div class="fg">
+            <span class="fl">SHOW TYPE</span>
+            <div class="opt-row" id="pod-type-row">
+              <button class="opt on" id="pod-t-podcast"   onclick="setPodType('podcast')">PODCAST</button>
+              <button class="opt"    id="pod-t-interview"  onclick="setPodType('interview')">INTERVIEW</button>
+              <button class="opt"    id="pod-t-debate"     onclick="setPodType('debate')">DEBATE</button>
+              <button class="opt"    id="pod-t-talk"       onclick="setPodType('talk show')">TALK SHOW</button>
+              <button class="opt"    id="pod-t-comedy"     onclick="setPodType('comedy')">COMEDY</button>
+              <button class="opt"    id="pod-t-improv"     onclick="setPodType('improv')">IMPROV</button>
+            </div>
           </div>
-          <div style="flex:1">
-            <label class="fl" style="font-size:var(--font-size-sm)">SPEED <span id="char-speed-val" style="color:var(--cyan)">1.00</span></label>
-            <input type="range" id="char-speed" min="0.5" max="2.0" step="0.05" value="1.0" style="width:100%;accent-color:var(--cyan)"
-              oninput="document.getElementById('char-speed-val').textContent=parseFloat(this.value).toFixed(2)">
+
+          <div class="fg">
+            <span class="fl">CAST FORMAT</span>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">
+              <span class="fl" style="width:100%;margin-bottom:2px;color:var(--neon);font-size:var(--font-size-sm)">SIMPLE —</span>
+              <button class="opt on" id="pod-f-1v1"   onclick="setPodFormat('1v1',   'simple',2)">1v1</button>
+              <button class="opt"    id="pod-f-2v1"   onclick="setPodFormat('2v1',   'simple',3)">2v1</button>
+              <button class="opt"    id="pod-f-1v2"   onclick="setPodFormat('1v2',   'simple',3)">1v2</button>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">
+              <span class="fl" style="width:100%;margin-bottom:2px;color:var(--neon);font-size:var(--font-size-sm)">COMPLEX —</span>
+              <button class="opt"    id="pod-f-2v3"   onclick="setPodFormat('2v3',   'complex',5)">2v3</button>
+              <button class="opt"    id="pod-f-3v2"   onclick="setPodFormat('3v2',   'complex',5)">3v2</button>
+              <button class="opt"    id="pod-f-3v3"   onclick="setPodFormat('3v3',   'complex',6)">3v3</button>
+              <button class="opt"    id="pod-f-3v4"   onclick="setPodFormat('3v4',   'complex',7)">3v4</button>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px">
+              <span class="fl" style="width:100%;margin-bottom:2px;color:var(--neon);font-size:var(--font-size-sm)">ALL-IN —</span>
+              <button class="opt"    id="pod-f-allin" onclick="setPodFormat('allin', 'all-in', 6)">1v1v1v1v1v1</button>
+            </div>
           </div>
-        </div>
-        <div style="margin-bottom:8px">
-          <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:2px">AI MODEL</label>
-          <select class="fi" id="char-model" style="width:100%">
-            <option value="twin">TWIN · Groq Llama 3.3 70B (default)</option>
-            <option value="shadow">SHADOW · Venice Uncensored 1.2</option>
-            <option value="creative_dolphin">GEMMA 4 Uncensored · Venice</option>
-            <option value="board_gptoss">HERMES 405B · Venice</option>
-            <option value="brainstorm_qwq">QwQ 32B · Groq (reasoning)</option>
-            <option value="board_strategy">KIMI K2 · NVIDIA</option>
-            <option value="board_finance">MISTRAL LARGE 3 · NVIDIA</option>
-            <option value="board_creative">PALMYRA 122B · NVIDIA</option>
-            <option value="board_ops">NEMOTRON 49B · NVIDIA</option>
-            <option value="board_distribution">GPT-OSS 120B · NVIDIA</option>
-            <option value="brainstorm_minimax">MINIMAX M2.5 · NVIDIA</option>
-            <option value="creative">GLM 5.1 · NVIDIA</option>
-          </select>
-        </div>
-        <button class="btn" onclick="charSave()">[ + SAVE CHARACTER ]</button>
-        <div class="fg" style="margin-top:12px">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span class="fl">SAVED CHARACTERS</span>
-            <button class="btn" style="font-size:var(--font-size-sm);padding:3px 8px" onclick="charRenderRoster()">[ REFRESH ]</button>
+
+          <!-- Cast builder -->
+          <div class="fg">
+            <span class="fl">CAST  <span id="pod-cast-count" style="color:var(--neon)">(2 speakers)</span></span>
+            <div id="pod-cast-list"></div>
+            <div class="action-row" style="margin-top:6px">
+              <button class="btn" onclick="podAddSpeaker()">[ + ADD SPEAKER ]</button>
+              <button class="btn" onclick="podRemoveSpeaker()">[ - REMOVE ]</button>
+            </div>
           </div>
+
+          <!-- Topic + rounds -->
+          <div class="fg">
+            <label class="fl">TOPIC / CONCEPT</label>
+            <textarea class="fi" id="pod-topic" rows="2" placeholder="What is this show about?"></textarea>
+          </div>
+          <div class="fg">
+            <span class="fl">ROUNDS</span>
+            <div class="opt-row">
+              <button class="opt on" id="pod-r1" onclick="setPodRounds(1)">1</button>
+              <button class="opt"    id="pod-r2" onclick="setPodRounds(2)">2</button>
+              <button class="opt"    id="pod-r3" onclick="setPodRounds(3)">3</button>
+              <button class="opt"    id="pod-r4" onclick="setPodRounds(4)">4</button>
+            </div>
+          </div>
+
+          <div class="action-row">
+            <button class="btn" id="pod-go-btn" onclick="runPodcast()">[ RECORD ]</button>
+            <button class="btn" id="pod-audio-btn" style="display:none" onclick="renderPodcastTTS()">[ PLAY AUDIO ]</button>
+            <button class="btn" id="pod-save-btn"  style="display:none" onclick="savePodcastTranscript()">[ SAVE ]</button>
+            <a id="pod-export-btn" class="action-link" style="display:none" download="podcast_transcript.txt">[ EXPORT ]</a>
+            <a id="pod-mp3-btn"    class="action-link" style="display:none" download="podcast_audio.mp3">[ DL MP3 ]</a>
+          </div>
+          <div class="steer-box" id="pod-extend-row" style="display:none">
+            <span class="fl">CONTINUE SESSION — NEW DIRECTION (OPTIONAL)</span>
+            <textarea class="fi" id="pod-extend-steer" rows="2" placeholder="New topic, new tension, redirect..."></textarea>
+            <button class="btn" onclick="extendPodcast()">[ + CONTINUE ]</button>
+          </div>
+          <audio id="pod-audio" controls style="display:none"></audio>
+          <div id="pod-out" class="session-out"></div>
         </div>
-        <div id="char-roster"></div>
-        <p class="ph-text" id="char-roster-empty">NO CHARACTERS SAVED YET.</p>
       </div>
+
+      <!-- CHARACTERS -->
+      <div class="lab-section" id="lab-characters">
+        <div class="panel-scroll">
+          <div class="fg"><span class="fl">NEW CHARACTER</span></div>
+          <div style="display:flex;gap:6px;margin-bottom:4px">
+            <input class="fi" id="char-name" type="text" placeholder="NAME" style="flex:0 0 90px;text-transform:uppercase">
+            <input class="fi" id="char-role" type="text" placeholder="Host / Guest / Co-host..." style="flex:1">
+          </div>
+          <textarea class="fi" id="char-personality" rows="2"
+            placeholder="Personality, speech style, backstory..."
+            style="width:100%;box-sizing:border-box;margin-bottom:4px;resize:vertical"></textarea>
+          <div style="margin-bottom:4px">
+            <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:2px">VOICE</label>
+            <select class="fi" id="char-voice">
+              <option value="Ava-PlayAI">Ava (female)</option>
+              <option value="Orion-PlayAI">Orion (male, deep)</option>
+              <option value="Atlas-PlayAI">Atlas (male)</option>
+              <option value="Hudson-PlayAI">Hudson (male)</option>
+              <option value="Chip-PlayAI">Chip (male)</option>
+              <option value="Fritz-PlayAI">Fritz (male, accent)</option>
+              <option value="Briggs-PlayAI">Briggs (male)</option>
+              <option value="Celeste-PlayAI">Celeste (female)</option>
+              <option value="Mist-PlayAI">Mist (female)</option>
+              <option value="Seraphina-PlayAI">Seraphina (female)</option>
+              <option value="Calum-PlayAI">Calum (male)</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:10px;margin-bottom:8px">
+            <div style="flex:1">
+              <label class="fl" style="font-size:var(--font-size-sm)">PITCH <span id="char-pitch-val" style="color:var(--cyan)">1.00</span></label>
+              <input type="range" id="char-pitch" min="0.5" max="2.0" step="0.05" value="1.0" style="width:100%;accent-color:var(--cyan)"
+                oninput="document.getElementById('char-pitch-val').textContent=parseFloat(this.value).toFixed(2)">
+            </div>
+            <div style="flex:1">
+              <label class="fl" style="font-size:var(--font-size-sm)">SPEED <span id="char-speed-val" style="color:var(--cyan)">1.00</span></label>
+              <input type="range" id="char-speed" min="0.5" max="2.0" step="0.05" value="1.0" style="width:100%;accent-color:var(--cyan)"
+                oninput="document.getElementById('char-speed-val').textContent=parseFloat(this.value).toFixed(2)">
+            </div>
+          </div>
+          <div style="margin-bottom:8px">
+            <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:2px">AI MODEL</label>
+            <select class="fi" id="char-model" style="width:100%">
+              <option value="twin">TWIN · Groq Llama 3.3 70B (default)</option>
+              <option value="shadow">SHADOW · Venice Uncensored 1.2</option>
+              <option value="creative_dolphin">GEMMA 4 Uncensored · Venice</option>
+              <option value="board_gptoss">HERMES 405B · Venice</option>
+              <option value="brainstorm_qwq">QwQ 32B · Groq (reasoning)</option>
+              <option value="board_strategy">KIMI K2 · NVIDIA</option>
+              <option value="board_finance">MISTRAL LARGE 3 · NVIDIA</option>
+              <option value="board_creative">PALMYRA 122B · NVIDIA</option>
+              <option value="board_ops">NEMOTRON 49B · NVIDIA</option>
+              <option value="board_distribution">GPT-OSS 120B · NVIDIA</option>
+              <option value="brainstorm_minimax">MINIMAX M2.5 · NVIDIA</option>
+              <option value="creative">GLM 5.1 · NVIDIA</option>
+            </select>
+          </div>
+          <button class="btn" onclick="charSave()">[ + SAVE CHARACTER ]</button>
+
+          <div class="fg" style="margin-top:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span class="fl">SAVED CHARACTERS</span>
+              <button class="btn" style="font-size:var(--font-size-sm);padding:3px 8px" onclick="charRenderRoster()">[ REFRESH ]</button>
+            </div>
+          </div>
+          <div id="char-roster"></div>
+          <p class="ph-text" id="char-roster-empty">NO CHARACTERS SAVED YET.</p>
+        </div>
+      </div>
+
     </div><!-- /panel-studio -->
 
-    <!-- [5] BRAINSTORM — standalone -->
-    <div class="panel" id="panel-brainstorm">
-      <div class="panel-scroll">
-        <div class="fg">
-          <label class="fl">TOPIC</label>
-          <textarea class="fi" id="brainstorm-topic" rows="2" placeholder="What are we riffing on?"></textarea>
-        </div>
-        <div class="fg">
-          <span class="fl">MODE</span>
-          <div class="opt-row">
-            <button class="opt on" id="bs-normal"  onclick="setBrainstormMode('normal')">NORMAL</button>
-            <button class="opt"    id="bs-shadow"  onclick="setBrainstormMode('shadow')">SHADOW</button>
-            <button class="opt"    id="bs-podcast" onclick="setBrainstormMode('podcast')">PODCAST</button>
-          </div>
-        </div>
-        <div class="fg">
-          <span class="fl">ROUNDS</span>
-          <div class="opt-row">
-            <button class="opt on" id="bs-r1" onclick="setBsRounds(1)">1</button>
-            <button class="opt"    id="bs-r2" onclick="setBsRounds(2)">2</button>
-            <button class="opt"    id="bs-r3" onclick="setBsRounds(3)">3</button>
-          </div>
-        </div>
-        <div class="action-row">
-          <button class="btn" id="brainstorm-go-btn" onclick="runBrainstorm()">[ START SESSION ]</button>
-          <button class="btn" id="brainstorm-audio-btn" style="display:none" onclick="renderTTS('brainstorm')">[ PLAY AUDIO ]</button>
-          <button class="btn" id="brainstorm-save-btn" style="display:none" onclick="saveTranscript('brainstorm')">[ SAVE ]</button>
-          <a id="brainstorm-export-btn" class="action-link" style="display:none" download="brainstorm_transcript.txt">[ EXPORT ]</a>
-          <a id="brainstorm-mp3-btn"   class="action-link" style="display:none" download="brainstorm_audio.mp3">[ DL MP3 ]</a>
-        </div>
-        <div class="steer-box" id="brainstorm-extend-row">
-          <span class="fl">EXTEND SESSION — NEW DIRECTION (OPTIONAL)</span>
-          <textarea class="fi" id="brainstorm-extend-steer" rows="2" placeholder="New angle, push further, add a twist..."></textarea>
-          <button class="btn" onclick="extendBrainstorm()">[ + EXTEND ]</button>
-        </div>
-        <audio id="brainstorm-audio" controls></audio>
-        <div id="brainstorm-out" class="session-out"></div>
-      </div>
-    </div><!-- /panel-brainstorm -->
-
-    <!-- LEGAL / MARKETING ADVISORS -->
+    <!-- [5] ADVISE — LEGAL / MARKETING / BOARDROOM -->
     <div class="panel" id="panel-advisors">
       <div class="lab-tab-row">
-        <button class="lab-tab active" id="atab-legal-btn" onclick="switchAdvisorsTab('legal',this)">LEGAL</button>
-        <button class="lab-tab" id="atab-marketing-btn" onclick="switchAdvisorsTab('marketing',this)">MARKETING</button>
+        <button class="lab-tab active" onclick="switchAdvisors('legal', this)">LEGAL</button>
+        <button class="lab-tab"        onclick="switchAdvisors('marketing', this)">MARKETING</button>
+        <button class="lab-tab"        onclick="switchAdvisors('boardroom', this)">BOARD</button>
       </div>
-      <div id="adv-tab-legal" class="lab-section active panel-scroll">
-        <div class="fg">
-          <label class="fl">YOUR QUESTION</label>
-          <textarea class="fi" id="legal-input" rows="2" placeholder="Ask about rights, licensing, fair use, DMCA..."></textarea>
+
+      <!-- LEGAL -->
+      <div class="lab-section active" id="adv-legal">
+        <div class="panel-scroll">
+          <div class="fg">
+            <label class="fl">YOUR QUESTION</label>
+            <textarea class="fi" id="legal-input" rows="2" placeholder="Ask about rights, licensing, fair use, DMCA..."></textarea>
+          </div>
+          <div class="action-row">
+            <button class="btn" id="legal-go-btn" onclick="runAdvisor('legal')">[ ASK LEGAL ]</button>
+            <button class="btn" id="legal-clear-btn" onclick="clearAdvisor('legal')">[ NEW MATTER ]</button>
+            <a id="legal-export-btn" class="action-link" style="display:none" download="legal_advice.txt">[ EXPORT ]</a>
+          </div>
+          <div id="legal-out" class="session-out"></div>
         </div>
-        <div class="action-row">
-          <button class="btn" id="legal-go-btn" onclick="runAdvisor('legal')">[ ASK LEGAL ]</button>
-          <button class="btn" id="legal-clear-btn" onclick="clearAdvisor('legal')">[ NEW MATTER ]</button>
-          <a id="legal-export-btn" class="action-link" style="display:none" download="legal_advice.txt">[ EXPORT ]</a>
-          <button class="btn" id="legal-audio-btn" style="display:none" onclick="renderAdvisorTTS('legal')">[ PLAY AUDIO ]</button>
-          <a id="legal-mp3-btn" class="action-link" style="display:none" download="legal_audio.mp3">[ DL MP3 ]</a>
-        </div>
-        <audio id="legal-audio" controls style="display:none;width:100%;margin-top:4px"></audio>
-        <div id="legal-out" class="session-out"></div>
       </div>
-      <div id="adv-tab-marketing" class="lab-section panel-scroll">
-        <div class="fg">
-          <label class="fl">YOUR QUESTION</label>
-          <textarea class="fi" id="marketing-input" rows="3" placeholder="Ask about launches, ads, audience building, brand strategy, campaigns..."></textarea>
+
+      <!-- MARKETING -->
+      <div class="lab-section" id="adv-marketing">
+        <div class="panel-scroll">
+          <div class="fg">
+            <label class="fl">YOUR QUESTION</label>
+            <textarea class="fi" id="marketing-input" rows="3" placeholder="Ask about launches, ads, audience building, brand strategy, campaigns..."></textarea>
+          </div>
+          <div class="action-row">
+            <button class="btn" id="marketing-go-btn" onclick="runAdvisor('marketing')">[ ASK MARKETING ]</button>
+            <button class="btn" id="marketing-clear-btn" onclick="clearAdvisor('marketing')">[ NEW MATTER ]</button>
+            <a id="marketing-export-btn" class="action-link" style="display:none" download="marketing_advice.txt">[ EXPORT ]</a>
+          </div>
+          <div id="marketing-out" class="session-out"></div>
         </div>
-        <div class="action-row">
-          <button class="btn" id="marketing-go-btn" onclick="runAdvisor('marketing')">[ ASK MARKETING ]</button>
-          <button class="btn" id="marketing-clear-btn" onclick="clearAdvisor('marketing')">[ NEW MATTER ]</button>
-          <a id="marketing-export-btn" class="action-link" style="display:none" download="marketing_advice.txt">[ EXPORT ]</a>
-          <button class="btn" id="marketing-audio-btn" style="display:none" onclick="renderAdvisorTTS('marketing')">[ PLAY AUDIO ]</button>
-          <a id="marketing-mp3-btn" class="action-link" style="display:none" download="marketing_audio.mp3">[ DL MP3 ]</a>
-        </div>
-        <audio id="marketing-audio" controls style="display:none;width:100%;margin-top:4px"></audio>
-        <div id="marketing-out" class="session-out"></div>
       </div>
+
+      <!-- BOARDROOM -->
+      <div class="lab-section" id="adv-boardroom">
+        <div class="panel-scroll">
+          <div class="fg">
+            <label class="fl">TOPIC / IDEA</label>
+            <textarea class="fi" id="boardroom-topic" rows="2" placeholder="Pitch your idea to the board..."></textarea>
+          </div>
+          <div class="fg">
+            <span class="fl">MODE</span>
+            <div class="opt-row">
+              <button class="opt on" id="br-normal" onclick="setBoardMode('normal')">NORMAL BOARD</button>
+              <button class="opt"    id="br-shadow" onclick="setBoardMode('shadow')">SHADOW BOARD</button>
+            </div>
+          </div>
+          <div class="fg">
+            <span class="fl">ROUNDS</span>
+            <div class="opt-row">
+              <button class="opt on" id="br-r1" onclick="setBoardRounds(1)">1</button>
+              <button class="opt"    id="br-r2" onclick="setBoardRounds(2)">2</button>
+              <button class="opt"    id="br-r3" onclick="setBoardRounds(3)">3</button>
+            </div>
+          </div>
+          <div class="action-row">
+            <button class="btn" id="boardroom-go-btn" onclick="runBoardroom()">[ CONVENE BOARD ]</button>
+            <button class="btn" id="boardroom-audio-btn" style="display:none" onclick="renderTTS('boardroom')">[ PLAY AUDIO ]</button>
+            <button class="btn" id="boardroom-save-btn" style="display:none" onclick="saveTranscript('boardroom')">[ SAVE ]</button>
+            <a id="boardroom-export-btn" class="action-link" style="display:none" download="boardroom_transcript.txt">[ EXPORT ]</a>
+            <a id="boardroom-mp3-btn"   class="action-link" style="display:none" download="boardroom_audio.mp3">[ DL MP3 ]</a>
+            <button class="btn" id="boardroom-lab-btn" style="display:none" onclick="sendToVideoLab('boardroom')">[ SEND TO VIDEO LAB ]</button>
+          </div>
+          <div class="steer-box" id="boardroom-steer-row">
+            <span class="fl" id="boardroom-steer-label">ROUND COMPLETE — STEER NEXT ROUND (OPTIONAL)</span>
+            <textarea class="fi" id="boardroom-steer" rows="2" placeholder="Redirect, challenge, or add context..."></textarea>
+            <button class="btn" id="boardroom-next-btn" onclick="boardroomNextRound()">[ NEXT ROUND ]</button>
+          </div>
+          <div class="steer-box" id="boardroom-extend-row">
+            <span class="fl">EXTEND SESSION — NEW DIRECTION (OPTIONAL)</span>
+            <textarea class="fi" id="boardroom-extend-steer" rows="2" placeholder="Push further, challenge a position, add a new angle..."></textarea>
+            <button class="btn" onclick="extendBoardroom()">[ + EXTEND ]</button>
+          </div>
+          <audio id="boardroom-audio" controls></audio>
+          <div id="boardroom-out" class="session-out"></div>
+        </div>
+      </div>
+
     </div><!-- /panel-advisors -->
 
     <!-- [7] SETTINGS -->
@@ -1836,7 +1584,45 @@ audio { width: 100%; margin-top: 4px; }
     </div><!-- /panel-social -->
 
     <!-- ═══ GORILLA WAR ROOM ═══ -->
+    <div class="panel" id="panel-gorilla">
+      <div class="panel-scroll">
 
+        <div class="fg">
+          <span class="fl" style="color:var(--neon-bright);letter-spacing:.14em">GUERRILLA MARKETING WAR ROOM</span>
+        </div>
+        <div style="color:var(--muted);font-size:var(--font-size-sm);margin-bottom:10px;line-height:1.5">
+          Moneyball philosophy. TWIN intelligence pre-brief → 6-specialist committee (Scout, Street, Culture, Arbitrage, Narrative, Closer) → blueprint. No generic advice. Real channels, real costs, real tactics.
+        </div>
+
+        <div class="fg">
+          <span class="fl">THE BRIEF</span>
+          <textarea id="gorilla-brief" rows="4" style="width:100%;background:#0a000f;border:1px solid var(--purple);color:var(--neon);font-family:var(--font);font-size:var(--font-size-base);padding:8px;resize:vertical;box-sizing:border-box" placeholder="Your product, audience, goal, budget, competitors, what's been tried..."></textarea>
+        </div>
+
+        <div class="action-row">
+          <button class="btn" id="gorilla-run-btn" onclick="gorillaRun()">[ DEPLOY COMMITTEE ]</button>
+          <button class="btn" onclick="gorillaClear()">[ CLEAR ]</button>
+          <button class="btn" id="gorilla-pipeline-btn" style="display:none" onclick="gorillaPushPipeline()">[ PUSH BLUEPRINT TO PIPELINE ]</button>
+        </div>
+
+        <div class="fg" id="gorilla-progress" style="display:none">
+          <span class="fl" style="color:var(--cyan)">WAR ROOM IN SESSION</span>
+          <div id="gorilla-member-bar" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px"></div>
+        </div>
+
+        <div id="gorilla-output" style="display:none">
+          <div class="fg" id="gorilla-transcript-box">
+            <span class="fl">COMMITTEE TRANSCRIPT</span>
+            <div id="gorilla-transcript" style="font-size:var(--font-size-sm);color:var(--text);line-height:1.6;max-height:400px;overflow-y:auto;padding:4px 0;white-space:pre-wrap"></div>
+          </div>
+          <div class="fg" id="gorilla-blueprint-box">
+            <span class="fl" style="color:var(--neon-bright)">GUERRILLA BLUEPRINT</span>
+            <div id="gorilla-blueprint" style="font-size:var(--font-size-base);color:var(--neon);line-height:1.8;white-space:pre-wrap;word-wrap:break-word"></div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /panel-gorilla -->
 
     <!-- [9] ARCHIVE — everything you've ever done -->
     <div class="panel" id="panel-archive">
@@ -1844,10 +1630,7 @@ audio { width: 100%; margin-top: 4px; }
 
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
           <span style="color:var(--neon);font-size:var(--font-size-base);letter-spacing:.12em;font-weight:700">ARCHIVE</span>
-          <div style="display:flex;gap:6px">
-            <button class="btn" style="font-size:var(--font-size-sm);padding:3px 10px" onclick="downloadAllSessions()">[ DOWNLOAD ALL ]</button>
-            <button class="btn" style="font-size:var(--font-size-sm);padding:3px 10px" onclick="loadArchive()">[ REFRESH ]</button>
-          </div>
+          <button class="btn" style="font-size:var(--font-size-sm);padding:3px 10px" onclick="loadArchive()">[ REFRESH ]</button>
         </div>
 
         <!-- filter row -->
@@ -1870,12 +1653,9 @@ audio { width: 100%; margin-top: 4px; }
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <button class="btn" onclick="closeArchiveViewer()" style="padding:3px 10px;font-size:var(--font-size-sm)">[ ← CLOSE ]</button>
               <span id="archive-viewer-title" style="color:var(--neon);font-size:var(--font-size-base);font-weight:700;flex:1"></span>
-              <button class="btn" id="archive-tts-btn" onclick="renderArchiveTTS()" style="padding:3px 10px;font-size:var(--font-size-sm)">[ GENERATE MP3 ]</button>
-              <a id="archive-mp3-btn" class="action-link" style="display:none;font-size:var(--font-size-sm)" download="session_audio.mp3">[ DL MP3 ]</a>
               <button class="btn" id="archive-reload-btn" onclick="reloadArchiveSession()" style="padding:3px 10px;font-size:var(--font-size-sm)">[ RELOAD INTO TAB ]</button>
             </div>
             <div id="archive-viewer-meta" style="color:var(--muted);font-size:var(--font-size-sm)"></div>
-            <audio id="archive-audio" controls style="display:none;width:100%;margin-top:4px"></audio>
             <div id="archive-viewer-body" style="display:flex;flex-direction:column;gap:6px;padding-bottom:40px"></div>
           </div>
         </div>
@@ -1892,54 +1672,21 @@ audio { width: 100%; margin-top: 4px; }
     <button id="send-btn" onclick="send()"><img src="/static/send_btn_nobg.png" alt="Send"></button>
   </div>
 
+  <!-- ═══ NAV ═══ -->
+  <nav class="nav">
+    <button class="nav-btn active" onclick="switchTab('home', this)"><span class="nav-num">[1]</span>HOME</button>
+    <button class="nav-btn" onclick="switchTab('projects', this)"><span class="nav-num">[2]</span>PROJECTS</button>
+    <button class="nav-btn" onclick="switchTab('lab', this)"><span class="nav-num">[3]</span>LABS</button>
+    <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[4]</span>STUDIO</button>
+    <button class="nav-btn" onclick="switchTab('advisors', this)"><span class="nav-num">[5]</span>ADVISE</button>
+    <button class="nav-btn" onclick="switchTab('social', this)"><span class="nav-num">[6]</span>SOCIAL</button>
+    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[7]</span>SETTINGS</button>
+    <button class="nav-btn" onclick="switchTab('gorilla', this)"><span class="nav-num">[8]</span>GUERRILLA</button>
+    <button class="nav-btn" onclick="switchTab('archive', this)"><span class="nav-num">[9]</span>ARCHIVE</button>
+    <span class="nav-user" style="width:100%;order:99;text-align:right;padding:2px 8px;font-size:7px">{{ session.get('username', '') | upper }}&nbsp;<a class="nav-logout" href="/logout">[ EXIT ]</a></span>
+  </nav>
 
 </div><!-- /app -->
-
-<!-- ═══ PIPELINE DASHBOARD OVERLAY ═══ -->
-<div id="pipeline-overlay">
-  <div class="pipe-overlay-inner">
-    <div class="pipe-overlay-head">
-      <span>▓▓ TWIN SHADOW — SYSTEM DASHBOARD ▓▓</span>
-      <button class="pipe-close-btn" onclick="document.getElementById('pipeline-overlay').classList.remove('open')">[ CLOSE ✕ ]</button>
-    </div>
-
-    <!-- ── LIVE STATS ── -->
-    <div class="dash-header-bar">█ SYSTEM STATUS &nbsp;<span id="dash-clock" style="color:var(--muted);font-size:9px"></span></div>
-    <div class="dash-grid">
-      <div class="dash-block">
-        <div class="dash-block-title">█ SESSION ARCHIVE</div>
-        <div class="dash-row"><span class="dash-key">BOARDROOM</span><span class="dash-bar" id="db-bar-board"></span><span class="dash-val" id="db-cnt-board">█</span></div>
-        <div class="dash-row"><span class="dash-key">BRAINSTORM</span><span class="dash-bar" id="db-bar-brain"></span><span class="dash-val" id="db-cnt-brain">█</span></div>
-        <div class="dash-row"><span class="dash-key">TWIN CHAT</span><span class="dash-bar" id="db-bar-twin"></span><span class="dash-val" id="db-cnt-twin">█</span></div>
-        <div class="dash-row"><span class="dash-key">SHADOW CHAT</span><span class="dash-bar" id="db-bar-shadow"></span><span class="dash-val" id="db-cnt-shadow">█</span></div>
-        <div class="dash-row"><span class="dash-key">PODCAST</span><span class="dash-bar" id="db-bar-pod"></span><span class="dash-val" id="db-cnt-pod">█</span></div>
-      </div>
-      <div class="dash-block">
-        <div class="dash-block-title">█ MEDIA &amp; PIPELINE</div>
-        <div class="dash-row"><span class="dash-key">AUDIO FILES</span><span class="dash-bar" id="db-bar-audio"></span><span class="dash-val" id="db-cnt-audio">█</span></div>
-        <div class="dash-row"><span class="dash-key">VIDEO RENDERS</span><span class="dash-bar" id="db-bar-renders"></span><span class="dash-val" id="db-cnt-renders">█</span></div>
-        <div class="dash-row"><span class="dash-key">PIPELINE JOBS</span><span class="dash-bar" id="db-bar-jobs"></span><span class="dash-val" id="db-cnt-jobs">█</span></div>
-        <div class="dash-block-title" style="margin-top:10px">█ RECENT SESSIONS</div>
-        <div id="db-recent" style="display:flex;flex-direction:column;gap:2px"></div>
-      </div>
-    </div>
-    <div class="dash-divider">══════════════════════════════════════════════════════════</div>
-
-    <!-- ── JOB QUEUE ── -->
-    <div class="dash-block-title" style="margin-bottom:8px">█ BUILD QUEUE</div>
-    <div class="fg">
-      <label class="fl">JOB NAME</label>
-      <input class="fi" id="pipeline-name" type="text" placeholder="Short label for this job..." autocomplete="off">
-    </div>
-    <div class="fg">
-      <label class="fl">WHAT TO BUILD</label>
-      <textarea class="fi" id="pipeline-desc" rows="3" placeholder="Describe exactly what you want built..."></textarea>
-    </div>
-    <button class="btn" onclick="addPipelineJob()" style="width:100%;text-align:center">[ + ADD JOB ]</button>
-    <div id="pipeline-list" style="display:flex;flex-direction:column;gap:5px;margin-top:8px"></div>
-    <p class="ph-text" id="pipeline-empty">NO JOBS IN QUEUE.</p>
-  </div>
-</div>
 
 <script>
 /* ─────────────────────────────────────────
@@ -2016,29 +1763,16 @@ function _looksComplete(text) {
 
 async function speakText(text, voice) {
   try {
-    const audio = document.createElement('audio');
-    audio.style.display = 'none';
-    document.body.appendChild(audio);
-    const cleanup = () => { try { audio.remove(); } catch {} };
-
     const res = await fetch('/api/tts/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: text.slice(0, 3000), voice: voice || 'twin' }),
     });
-    if (!res.ok) { cleanup(); console.warn('TTS HTTP', res.status); return; }
-    const data = await res.json();
-    if (!data.url) { cleanup(); return; }
-
-    audio.src = data.url;
-    audio.onended = cleanup;
-    setTimeout(cleanup, 120000);
-    const spk = document.createElement('button');
-    spk.className = 'btn';
-    spk.style.cssText = 'font-size:var(--font-size-sm);padding:2px 8px;margin-top:4px;display:inline-block';
-    spk.textContent = '[ ▶ PLAY ]';
-    spk.onclick = () => { audio.play(); spk.textContent = '[ ■ STOP ]'; spk.onclick = () => { audio.pause(); audio.currentTime = 0; spk.textContent = '[ ▶ PLAY ]'; spk.onclick = () => { audio.play(); }; }; };
-    document.getElementById('msgs').lastElementChild?.appendChild(spk);
+    if (!res.ok) return;
+    const { url } = await res.json();
+    if (!url) return;
+    const audio = new Audio(url);
+    audio.play();
   } catch(e) { console.warn('TTS failed:', e); }
 }
 
@@ -2160,157 +1894,27 @@ const _labConcepts = {};
 })();
 
 /* ─────────────────────────────────────────
-   PIPELINE DASHBOARD
-───────────────────────────────────────── */
-function openPipelineDash() {
-  document.getElementById('pipeline-overlay').classList.add('open');
-  loadPipeline();
-  loadDashStats();
-  _dashClock();
-}
-
-function _bbsBar(n, max, width) {
-  if (!max) max = 1;
-  const fill = Math.round((n / max) * width);
-  const empty = width - fill;
-  return '█'.repeat(Math.max(0, fill)) + '░'.repeat(Math.max(0, empty));
-}
-
-function _relTime(iso) {
-  if (!iso) return '';
-  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (diff < 60)   return Math.round(diff) + 's ago';
-  if (diff < 3600) return Math.round(diff / 60) + 'm ago';
-  if (diff < 86400)return Math.round(diff / 3600) + 'h ago';
-  return Math.round(diff / 86400) + 'd ago';
-}
-
-let _dashClockTimer = null;
-function _dashClock() {
-  clearInterval(_dashClockTimer);
-  const el = document.getElementById('dash-clock');
-  if (!el) return;
-  const tick = () => { if (el) el.textContent = new Date().toLocaleTimeString(); };
-  tick(); _dashClockTimer = setInterval(tick, 1000);
-}
-
-async function loadDashStats() {
-  const BAR_W = 8;
-  const set = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
-
-  set('db-cnt-board','█'); set('db-cnt-brain','█'); set('db-cnt-twin','█');
-  set('db-cnt-shadow','█'); set('db-cnt-pod','█');
-  set('db-cnt-audio','█'); set('db-cnt-renders','█'); set('db-cnt-jobs','█');
-
-  try {
-    const [sessR, audioR, pipeR] = await Promise.all([
-      fetch('/api/sessions/list').then(r => r.json()).catch(() => []),
-      fetch('/api/audio/list').then(r => r.json()).catch(() => []),
-      fetch('/api/pipeline').then(r => r.json()).catch(() => []),
-    ]);
-
-    const sessions = Array.isArray(sessR) ? sessR : [];
-    const audio    = Array.isArray(audioR) ? audioR : [];
-    const jobs     = Array.isArray(pipeR)  ? pipeR  : (pipeR?.jobs || []);
-
-    const cnt = t => sessions.filter(s => s.session_type === t).length;
-    const board  = cnt('boardroom');
-    const brain  = cnt('brainstorm');
-    const twin   = cnt('twin');
-    const shadow = cnt('shadow');
-    const pod    = cnt('podcast');
-    const maxSess = Math.max(board, brain, twin, shadow, pod, 1);
-
-    set('db-cnt-board',  board);  set('db-bar-board',  _bbsBar(board,  maxSess, BAR_W));
-    set('db-cnt-brain',  brain);  set('db-bar-brain',  _bbsBar(brain,  maxSess, BAR_W));
-    set('db-cnt-twin',   twin);   set('db-bar-twin',   _bbsBar(twin,   maxSess, BAR_W));
-    set('db-cnt-shadow', shadow); set('db-bar-shadow', _bbsBar(shadow, maxSess, BAR_W));
-    set('db-cnt-pod',    pod);    set('db-bar-pod',    _bbsBar(pod,    maxSess, BAR_W));
-
-    set('db-cnt-audio',   audio.length); set('db-bar-audio',   _bbsBar(audio.length,  20, BAR_W));
-    set('db-cnt-renders', '—');          set('db-bar-renders',  '░'.repeat(BAR_W));
-    set('db-cnt-jobs',    jobs.length);  set('db-bar-jobs',     _bbsBar(jobs.length,   10, BAR_W));
-
-    const rec = document.getElementById('db-recent');
-    if (rec) {
-      const last5 = sessions.slice(-5).reverse();
-      rec.innerHTML = last5.length
-        ? last5.map(s =>
-            `<div class="dash-recent-item"><span class="dr-type">${(s.session_type||'?').toUpperCase()}</span>${(s.title||'(untitled)').slice(0,24)}<span class="dr-time">${_relTime(s.created_at)}</span></div>`
-          ).join('')
-        : '<div class="dash-recent-item" style="color:var(--muted)">NO SESSIONS YET</div>';
-    }
-  } catch(e) {
-    console.warn('Dashboard stats error:', e);
-  }
-}
-
-/* ─────────────────────────────────────────
    TAB SWITCHING
 ───────────────────────────────────────── */
-const _BANNERS = {
-  'home':      '/static/banner_chat.jpg',
-  'studio':    '/static/banner_podcast.jpg',
-  'advisors':  '/static/banner_legal.jpg',
-  'lab-video': '/static/lab-video.jpg',
-  'lab-code':  '/static/lab-code.jpg',
-};
-const _BANNER_LABELS = {
-  'home':      null,
-  'projects':  'COMMITTEES',
-  'board':     'BOARDROOM',
-  'lab-video': 'VIDEO\u00a0\u00a0LAB',
-  'lab-write': 'WRITE\u00a0\u00a0LAB',
-  'lab-code':  'CODE\u00a0\u00a0LAB',
-  'social':    'SOCIAL',
-  'studio':    'PODCAST\u00a0\u00a0SIMULATOR',
-  'brainstorm':'BRAINSTORM',
-  'advisors':  'LEGAL\u00a0/\u00a0MKT',
-  'settings':  'SETTINGS',
-  'archive':   'ARCHIVE',
-};
-function _updateBanner(name) {
-  const img = document.getElementById('banner-img');
-  if (img) img.src = _BANNERS[name] || '/static/banner_chat.jpg';
-  const lbl = document.getElementById('banner-label');
-  if (!lbl) return;
-  if (name === 'home') {
-    const b = (typeof bot !== 'undefined') ? bot : 'twin';
-    lbl.innerHTML = b === 'shadow' ? 'SHADOW\u00a0\u00a0CHAT' : 'TWIN\u00a0\u00a0CHAT';
-  } else {
-    lbl.textContent = _BANNER_LABELS[name] || name.toUpperCase();
-  }
-}
-
 function switchTab(name, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('panel-' + name).classList.add('active');
-  const mi = document.querySelector(`.menu-item[data-tab="${name}"]`);
-  if (mi) mi.classList.add('active');
-  _updateBanner(name);
+  if (btn) btn.classList.add('active');
   if (name === 'settings') { loadAudioGallery(); loadTranscripts(); }
-  if (name === 'projects') { loadMissions(); }
+  if (name === 'projects') { loadMissions(); loadPipeline(); }
   if (name === 'social')   { loadSocialJobs(); }
   if (name === 'archive')  { loadArchive(); }
 }
 
-function toggleMenu(e) {
-  if (e) e.stopPropagation();
-  document.getElementById('menu-dropdown').classList.toggle('open');
-}
-
-function menuNav(name) {
-  switchTab(name, null);
-  document.getElementById('menu-dropdown').classList.remove('open');
-}
-
-document.addEventListener('click', () => {
-  document.getElementById('menu-dropdown')?.classList.remove('open');
-});
-
 function switchLab(name, btn) {
-  switchTab('lab-' + name, btn);
+  ['video','write','code'].forEach(t => {
+    const el = document.getElementById('lab-' + t);
+    if (el) el.classList.remove('active');
+  });
+  document.querySelectorAll('#panel-lab > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('lab-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
   if (name === 'code') checkPendingBuilderJob();
 }
 
@@ -2319,7 +1923,7 @@ function switchWrite(name, btn) {
     const el = document.getElementById('studio-' + t);
     if (el) el.classList.remove('active');
   });
-  document.querySelectorAll('#panel-lab-write > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#lab-write > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
   document.getElementById('studio-' + name).classList.add('active');
   if (btn) btn.classList.add('active');
   if (name === 'reader') studioLoadList();
@@ -2354,8 +1958,6 @@ async function clearChat() {
 function applyBot(b) {
   document.getElementById('sw').classList.toggle('on', b === 'shadow');
   document.getElementById('toggle-name').textContent = b.toUpperCase();
-  const lbl = document.getElementById('banner-label');
-  if (lbl) lbl.innerHTML = b === 'shadow' ? 'SHADOW&nbsp;&nbsp;CHAT' : 'TWIN&nbsp;&nbsp;CHAT';
   _updateGuidePanelVoice();
   const spkBtn = document.getElementById('speak-toggle');
   if (spkBtn) spkBtn.style.color = autoSpeak ? 'var(--cyan)' : 'var(--muted)';
@@ -2446,7 +2048,8 @@ async function send() {
         const capturedMsg = msg;
         btn.onclick = () => {
           document.getElementById('builder-input').value = capturedMsg;
-          switchTab('lab-code', document.querySelector('.nav-btn[onclick*="lab-code"]'));
+          switchTab('lab', document.querySelectorAll('.nav-btn')[2]);
+          switchLab('code', document.querySelector('#panel-lab .lab-tab:nth-child(3)'));
           document.getElementById('builder-input').focus();
         };
         body.parentElement.appendChild(btn);
@@ -2835,6 +2438,7 @@ async function renderTTS(mode) {
       const el = document.getElementById(mode + '-audio');
       el.src = data.url;
       el.style.display = 'block';
+      el.play();
       const mp3btn = document.getElementById(mode + '-mp3-btn');
       mp3btn.href = data.url;
       mp3btn.style.display = '';
@@ -2927,7 +2531,7 @@ async function checkPendingBuilderJob() {
   const btn = document.getElementById('builder-go-btn');
   const inp = document.getElementById('builder-input');
   if (inp && job.task) inp.value = job.task;
-  out.innerHTML = '<div style="color:var(--cyan-dim);font-size:var(--font-size-sm);padding:6px 0;animation:blink 1s step-end infinite">&#9608; RESUMING JOB ' + job.jobId + '...</div>';
+  out.innerHTML = '<div style="color:var(--purple-dim);font-size:var(--font-size-sm);padding:6px 0;animation:blink 1s step-end infinite">&#9608; RESUMING JOB ' + job.jobId + '...</div>';
   btn.disabled = true; btn.textContent = '[ BUILDING... ]';
   await _pollBuilderJob(job.jobId, out, codeMode === 'architect', job.task);
   btn.disabled = false;
@@ -2941,7 +2545,7 @@ async function runBuilder() {
   const btn = document.getElementById('builder-go-btn');
   const isArch = codeMode === 'architect';
 
-  out.innerHTML = '<div style="color:var(--cyan-dim);font-size:var(--font-size-sm);padding:6px 0;animation:blink 1s step-end infinite">&#9608; BUILDER ACTIVE — INITIALIZING...</div>';
+  out.innerHTML = '<div style="color:var(--purple-dim);font-size:var(--font-size-sm);padding:6px 0;animation:blink 1s step-end infinite">&#9608; BUILDER ACTIVE — INITIALIZING...</div>';
   document.getElementById('code-files-row').style.display = 'none';
   const dlRow = document.getElementById('builder-dl-row');
   if (dlRow) dlRow.style.display = 'none';
@@ -3074,12 +2678,6 @@ async function _fetchElVoices() {
         const cur = sel.value;
         sel.innerHTML = _buildVoiceOpts(cur);
       });
-    } else if (!d.ok) {
-      const notice = document.getElementById('el-voices-notice');
-      if (notice) {
-        notice.style.display = '';
-        notice.textContent = '⚠ ELEVENLABS KEY NOT CONFIGURED — add ELEVENLABS_API_KEY in Settings to enable multi-voice TTS. Using gTTS fallback.';
-      }
     }
   } catch(e) {}
 }
@@ -3151,43 +2749,35 @@ function _podModelOpts(sel) {
 function _podMakeCard(name, role, pers, voice, pitch, speed, model) {
   const card = document.createElement('div');
   card.className = 'pod-speaker-card';
-  card.style.cssText = 'border:1px solid var(--cyan-dim);padding:5px 8px;margin-bottom:4px';
+  card.style.cssText = 'border:1px solid var(--purple-dim);padding:8px;margin-bottom:6px';
   const voiceOpts = _buildVoiceOpts(voice);
   const pitchFmt  = parseFloat(pitch || 1.0).toFixed(2);
   const speedFmt  = parseFloat(speed || 1.0).toFixed(2);
   const modelKey  = model || 'twin';
-  const persEsc   = (pers || '').replace(/"/g, '&quot;');
   card.innerHTML = `
-    <div style="display:flex;gap:5px;align-items:center">
-      <input class="fi pod-sp-name" type="text" value="${name}" placeholder="NAME"
-        style="flex:0 0 76px;text-transform:uppercase;font-size:var(--font-size-sm);padding:3px 5px">
-      <input class="fi pod-sp-role" type="text" value="${role}" placeholder="Role"
-        style="flex:1;font-size:var(--font-size-sm);padding:3px 5px">
-      <button class="btn" style="font-size:10px;padding:2px 7px;flex-shrink:0;line-height:1.4"
-        onclick="(function(btn){var d=btn.closest('.pod-speaker-card').querySelector('.pod-sp-detail');var open=d.style.display!=='none';d.style.display=open?'none':'block';btn.textContent=open?'[ ▼ ]':'[ ▲ ]';})(this)">[ ▼ ]</button>
+    <div style="display:flex;gap:6px;margin-bottom:4px">
+      <input class="fi pod-sp-name" type="text" value="${name}" placeholder="NAME" style="flex:0 0 90px;text-transform:uppercase">
+      <input class="fi pod-sp-role" type="text" value="${role}" placeholder="Role/title" style="flex:1">
     </div>
-    <div class="pod-sp-detail" style="display:none;margin-top:6px">
-      <input class="fi pod-sp-pers" type="text" value="${persEsc}" placeholder="Personality / voice description"
-        style="width:100%;box-sizing:border-box;margin-bottom:4px;font-size:var(--font-size-sm)">
-      <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
-        <select class="fi pod-sp-voice" style="flex:1;font-size:var(--font-size-sm)">${voiceOpts}</select>
-        <button class="btn" style="font-size:var(--font-size-sm);padding:3px 7px;white-space:nowrap" onclick="charSaveFromCard(this)">[ SAVE CHAR ]</button>
+    <input class="fi pod-sp-pers" type="text" value="${pers}" placeholder="Personality / voice description" style="width:100%;box-sizing:border-box;margin-bottom:4px">
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+      <select class="fi pod-sp-voice" style="flex:1;font-size:var(--font-size-sm)">${voiceOpts}</select>
+      <button class="btn" style="font-size:var(--font-size-sm);padding:3px 7px;white-space:nowrap" onclick="charSaveFromCard(this)">[ SAVE CHAR ]</button>
+    </div>
+    <div style="margin-bottom:4px">
+      <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:1px">AI MODEL</label>
+      <select class="fi pod-sp-model" style="width:100%;font-size:var(--font-size-sm)">${_podModelOpts(modelKey)}</select>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div style="flex:1">
+        <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:1px">PITCH <span class="pod-pitch-val" style="color:var(--cyan)">${pitchFmt}</span></label>
+        <input type="range" class="pod-sp-pitch" min="0.5" max="2.0" step="0.05" value="${pitch || 1.0}" style="width:100%;accent-color:var(--cyan)"
+          oninput="this.closest('.pod-speaker-card').querySelector('.pod-pitch-val').textContent=parseFloat(this.value).toFixed(2)">
       </div>
-      <div style="margin-bottom:4px">
-        <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:1px">AI MODEL</label>
-        <select class="fi pod-sp-model" style="width:100%;font-size:var(--font-size-sm)">${_podModelOpts(modelKey)}</select>
-      </div>
-      <div style="display:flex;gap:8px">
-        <div style="flex:1">
-          <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:1px">PITCH <span class="pod-pitch-val" style="color:var(--cyan)">${pitchFmt}</span></label>
-          <input type="range" class="pod-sp-pitch" min="0.5" max="2.0" step="0.05" value="${pitch || 1.0}" style="width:100%;accent-color:var(--cyan)"
-            oninput="this.closest('.pod-speaker-card').querySelector('.pod-pitch-val').textContent=parseFloat(this.value).toFixed(2)">
-        </div>
-        <div style="flex:1">
-          <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:1px">SPEED <span class="pod-speed-val" style="color:var(--cyan)">${speedFmt}</span></label>
-          <input type="range" class="pod-sp-speed" min="0.5" max="2.0" step="0.05" value="${speed || 1.0}" style="width:100%;accent-color:var(--cyan)"
-            oninput="this.closest('.pod-speaker-card').querySelector('.pod-speed-val').textContent=parseFloat(this.value).toFixed(2)">
-        </div>
+      <div style="flex:1">
+        <label class="fl" style="font-size:var(--font-size-sm);margin-bottom:1px">SPEED <span class="pod-speed-val" style="color:var(--cyan)">${speedFmt}</span></label>
+        <input type="range" class="pod-sp-speed" min="0.5" max="2.0" step="0.05" value="${speed || 1.0}" style="width:100%;accent-color:var(--cyan)"
+          oninput="this.closest('.pod-speaker-card').querySelector('.pod-speed-val').textContent=parseFloat(this.value).toFixed(2)">
       </div>
     </div>
   `;
@@ -3370,97 +2960,12 @@ async function renderPodcastTTS() {
     const data = await res.json();
     if (data.url) {
       const el = document.getElementById('pod-audio');
-      el.src = data.url; el.style.display = 'block';
+      el.src = data.url; el.style.display = 'block'; el.play();
       document.getElementById('pod-mp3-btn').href = data.url;
       document.getElementById('pod-mp3-btn').style.display = '';
     } else { alert('TTS failed: ' + (data.error || 'unknown')); }
   } catch(e) { alert('TTS error: ' + e); }
   btn.textContent = '[ PLAY AUDIO ]'; btn.disabled = false;
-}
-
-/* ─────────────────────────────────────────
-   ARCHIVE VIEWER — TTS / MP3
-───────────────────────────────────────── */
-async function renderArchiveTTS() {
-  const s = _archiveViewSession;
-  if (!s) { alert('No session open.'); return; }
-  const btn = document.getElementById('archive-tts-btn');
-  const mp3 = document.getElementById('archive-mp3-btn');
-  const aud = document.getElementById('archive-audio');
-  btn.disabled = true; btn.textContent = '[ RENDERING... ]';
-  const raw = s.content || [];
-  let turns = [];
-  if (Array.isArray(raw) && raw.length) {
-    if (raw[0].speaker !== undefined) {
-      turns = raw.map(t => ({ speaker: t.speaker || 'SPEAKER', text: t.text || '' }));
-    } else if (raw[0].role !== undefined) {
-      turns = raw.map(m => ({ speaker: (m.role || 'SPEAKER').toUpperCase(), text: m.content || '' }));
-    }
-  } else if (typeof raw === 'string' && raw.trim()) {
-    turns = [{ speaker: 'NARRATOR', text: raw.trim() }];
-  }
-  if (!turns.length) { alert('Nothing to render as audio.'); btn.disabled = false; btn.textContent = '[ GENERATE MP3 ]'; return; }
-  try {
-    const res  = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ turns }) });
-    const data = await res.json();
-    if (data.url) {
-      aud.src = data.url; aud.style.display = 'block';
-      mp3.href = data.url; mp3.download = (s.title || 'session') + '.mp3'; mp3.style.display = '';
-    } else { alert('TTS failed: ' + (data.error || 'unknown')); }
-  } catch(e) { alert('TTS error: ' + e); }
-  btn.disabled = false; btn.textContent = '[ GENERATE MP3 ]';
-}
-
-/* ─────────────────────────────────────────
-   ADVISOR (LEGAL / MARKETING) — TTS / MP3
-───────────────────────────────────────── */
-async function renderAdvisorTTS(type) {
-  const history = _advHistory[type] || '';
-  if (!history.trim()) { alert('No conversation yet.'); return; }
-  const btn = document.getElementById(type + '-audio-btn');
-  const mp3 = document.getElementById(type + '-mp3-btn');
-  btn.disabled = true; btn.textContent = '[ RENDERING... ]';
-  const label = type === 'legal' ? 'LEGAL' : 'MARKETING';
-  const turns = history.split(/\n\n/).filter(Boolean).map(p => {
-    if (p.startsWith('USER: '))    return { speaker: 'USER',  text: p.slice(6).trim() };
-    if (p.startsWith('ADVISOR: ')) return { speaker: label,   text: p.slice(9).trim() };
-    return { speaker: label, text: p.trim() };
-  }).filter(t => t.text);
-  if (!turns.length) { alert('Nothing to render.'); btn.disabled = false; btn.textContent = '[ PLAY AUDIO ]'; return; }
-  try {
-    const res  = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ turns }) });
-    const data = await res.json();
-    if (data.url) {
-      const aud = document.getElementById(type + '-audio');
-      if (aud) { aud.src = data.url; aud.style.display = 'block'; }
-      mp3.href = data.url; mp3.style.display = '';
-    } else { alert('TTS failed: ' + (data.error || 'unknown')); }
-  } catch(e) { alert('TTS error: ' + e); }
-  btn.disabled = false; btn.textContent = '[ PLAY AUDIO ]';
-}
-
-/* ─────────────────────────────────────────
-   GUERRILLA WAR ROOM — TTS / MP3
-───────────────────────────────────────── */
-async function renderGorillaTTS() {
-  const transcript = (document.getElementById('gorilla-transcript') || {}).textContent || '';
-  const blueprint  = (document.getElementById('gorilla-blueprint')  || {}).textContent || '';
-  const combined   = [transcript, blueprint].filter(Boolean).join('\n\n').trim();
-  if (!combined) { alert('No committee output yet.'); return; }
-  const btn = document.getElementById('gorilla-audio-btn');
-  const mp3 = document.getElementById('gorilla-mp3-btn');
-  btn.disabled = true; btn.textContent = '[ RENDERING... ]';
-  const turns = [{ speaker: 'COMMITTEE', text: combined }];
-  try {
-    const res  = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ turns }) });
-    const data = await res.json();
-    if (data.url) {
-      const aud = document.getElementById('gorilla-audio-player');
-      if (aud) { aud.src = data.url; aud.style.display = 'block'; }
-      mp3.href = data.url; mp3.style.display = '';
-    } else { alert('TTS failed: ' + (data.error || 'unknown')); }
-  } catch(e) { alert('TTS error: ' + e); }
-  btn.disabled = false; btn.textContent = '[ PLAY AUDIO ]';
 }
 
 async function savePodcastTranscript() {
@@ -3509,7 +3014,6 @@ async function runAdvisor(type) {
       const blob = new Blob([_advHistory[type]], { type: 'text/plain' });
       exp.href = URL.createObjectURL(blob);
       exp.style.display = '';
-      document.getElementById(type + '-audio-btn').style.display = '';
     }
   } catch(e) {
     out.innerHTML += '<p style="color:var(--red)">' + e + '</p>';
@@ -3524,8 +3028,6 @@ function clearAdvisor(type) {
   _advHistory[type] = '';
   document.getElementById(type + '-out').innerHTML = '';
   document.getElementById(type + '-export-btn').style.display = 'none';
-  document.getElementById(type + '-audio-btn').style.display = 'none';
-  document.getElementById(type + '-mp3-btn').style.display = 'none';
 }
 
 /* ─────────────────────────────────────────
@@ -3562,7 +3064,7 @@ async function sendToVideoLab(source) {
    PROJECTS SUB-TABS
 ───────────────────────────────────────── */
 function switchProjectsTab(name, btn) {
-  ['missions','committees','guerrilla'].forEach(t => {
+  ['missions','committees','pipeline'].forEach(t => {
     const el = document.getElementById('ptab-' + t);
     if (el) el.style.display = (t === name) ? '' : 'none';
   });
@@ -3757,9 +3259,9 @@ const _GUIDE_TOOL_MAP = {
   missions_creative:    { tab: 'missions',   type: 'creative_brief' },
   missions_competitive: { tab: 'missions',   type: 'competitive_intel' },
   missions_custom:      { tab: 'missions',   type: 'custom_committee' },
-  gorilla_warroom:      { tab: 'projects',   type: null },
+  gorilla_warroom:      { tab: 'gorilla',    type: null },
   board_session:        { tab: 'board',      type: null },
-  brainstorm:           { tab: 'brainstorm', type: null },
+  brainstorm:           { tab: 'studio',     type: null },
   advisor_legal:        { tab: 'advisors',   type: null },
   advisor_marketing:    { tab: 'advisors',   type: null },
   lab_video:            { tab: 'lab',        type: null },
@@ -4130,7 +3632,8 @@ function runPipelineJob(name, description) {
   const task = (description || name || '').trim();
   if (!task) return;
   // Switch tabs
-  switchTab('lab-code', document.querySelector('.nav-btn[onclick*="lab-code"]'));
+  switchTab('lab', document.querySelector('.nav-btn[onclick*="lab"]'));
+  switchLab('code', document.querySelector('#panel-lab .lab-tab[onclick*="code"]'));
   // Fill builder input
   const inp = document.getElementById('builder-input');
   if (inp) inp.value = task;
@@ -4263,7 +3766,7 @@ async function loadTranscripts() {
       row.innerHTML =
         `<span class="gallery-row-name">${t.title || '(untitled)'}</span>` +
         `<span class="gallery-row-meta">${type} &nbsp;|&nbsp; ${dt}</span>` +
-        `<button class="btn" style="font-size:10px;padding:1px 6px;align-self:flex-start;margin-top:2px" onclick="menuNav('archive')">[ → ARCHIVE ]</button>`;
+        `<button class="btn" style="font-size:10px;padding:1px 6px;align-self:flex-start;margin-top:2px" onclick="switchTab('archive',document.querySelector('.nav-btn:nth-child(9)'))">[ → ARCHIVE ]</button>`;
       list.appendChild(row);
     });
   } catch(e) {
@@ -4313,7 +3816,7 @@ function renderArchive() {
   filtered.forEach(s => {
     const dt   = s.created_at ? new Date(s.created_at).toLocaleString() : '';
     const type = (s.session_type || '').toUpperCase();
-    const typeColor = { boardroom:'var(--cyan)', brainstorm:'var(--neon)', podcast:'var(--cyan)', twin:'var(--muted)', shadow:'var(--red)' }[s.session_type] || 'var(--muted)';
+    const typeColor = { boardroom:'var(--cyan)', brainstorm:'var(--neon)', podcast:'var(--purple)', twin:'var(--muted)', shadow:'var(--red)' }[s.session_type] || 'var(--muted)';
     const row  = document.createElement('div');
     row.className = 'gallery-row';
     row.style.cssText = 'flex-direction:column;gap:4px;padding:8px 10px';
@@ -4367,14 +3870,14 @@ async function viewArchiveSession(id) {
   if (isChatRaw) {
     content.forEach(m => {
       const div = document.createElement('div');
-      div.style.cssText = 'border:1px solid var(--border);padding:6px 10px;background:var(--cyan-dim)';
+      div.style.cssText = 'border:1px solid var(--border);padding:6px 10px;background:var(--purple-dim)';
       div.innerHTML = `<div style="color:var(--cyan);font-size:10px;letter-spacing:.08em;margin-bottom:3px">${(m.role||'').toUpperCase()}</div><div style="font-size:var(--font-size-sm);color:var(--text);white-space:pre-wrap;line-height:1.6">${m.content||''}</div>`;
       body.appendChild(div);
     });
   } else if (Array.isArray(content) && content.length && content[0].speaker !== undefined) {
     content.forEach(t => {
       const div = document.createElement('div');
-      div.style.cssText = 'border:1px solid var(--border);padding:6px 10px;background:var(--cyan-dim)';
+      div.style.cssText = 'border:1px solid var(--border);padding:6px 10px;background:var(--purple-dim)';
       div.innerHTML = `<div style="color:var(--cyan);font-size:10px;letter-spacing:.08em;margin-bottom:3px">${t.speaker||''}</div><div style="font-size:var(--font-size-sm);color:var(--text);white-space:pre-wrap;line-height:1.6">${t.text||''}</div>`;
       body.appendChild(div);
     });
@@ -4418,7 +3921,8 @@ function reloadArchiveSession() {
     document.getElementById('boardroom-save-btn').style.display = '';
     document.getElementById('boardroom-audio-btn').style.display = '';
     closeArchiveViewer();
-    switchTab('board', document.querySelector('.nav-btn[onclick*="\'board\'"]'));
+    switchTab('advisors', document.querySelector('.nav-btn:nth-child(5)'));
+    switchAdvisors('boardroom', document.querySelector('#panel-advisors .lab-tab:nth-child(3)'));
   } else if (type === 'brainstorm') {
     bsTurns = turns;
     document.getElementById('brainstorm-out').innerHTML = '';
@@ -4430,7 +3934,8 @@ function reloadArchiveSession() {
     document.getElementById('brainstorm-save-btn').style.display = '';
     document.getElementById('brainstorm-audio-btn').style.display = '';
     closeArchiveViewer();
-    switchTab('brainstorm', document.querySelector('.nav-btn:nth-child(6)'));
+    switchTab('studio', document.querySelector('.nav-btn:nth-child(4)'));
+    switchStudio('brainstorm', document.querySelector('#panel-studio .lab-tab:nth-child(1)'));
   } else if (type === 'podcast') {
     POD.turns = turns;
     document.getElementById('pod-out').innerHTML = '';
@@ -4442,37 +3947,11 @@ function reloadArchiveSession() {
     document.getElementById('pod-save-btn').style.display = '';
     document.getElementById('pod-audio-btn').style.display = '';
     closeArchiveViewer();
-    switchTab('studio', document.querySelector('.nav-btn[onclick*="\'studio\'"]'));
+    switchTab('studio', document.querySelector('.nav-btn:nth-child(4)'));
+    switchStudio('podcast', document.querySelector('#panel-studio .lab-tab:nth-child(2)'));
   } else {
     alert('Cannot reload this session type into a panel.');
   }
-}
-
-function downloadAllSessions() {
-  if (!_archiveData.length) { alert('NO SESSIONS IN ARCHIVE YET.'); return; }
-  const lines = _archiveData.map(s => {
-    const dt  = s.created_at ? new Date(s.created_at).toLocaleString() : '';
-    const bar = '═'.repeat(60);
-    const hdr = `${bar}\n${(s.session_type || 'session').toUpperCase()} — ${s.title || '(untitled)'}${dt ? '  ·  ' + dt : ''}\n${bar}\n`;
-    let body  = '';
-    try {
-      const c = typeof s.content === 'string' ? JSON.parse(s.content) : s.content;
-      if (Array.isArray(c)) {
-        body = c.map(t => `${(t.speaker || t.role || '').toUpperCase()}: ${t.text || t.content || ''}`).join('\n\n');
-      } else {
-        body = JSON.stringify(c, null, 2);
-      }
-    } catch { body = String(s.content || ''); }
-    return hdr + body;
-  }).join('\n\n\n');
-
-  const blob = new Blob([lines], { type: 'text/plain' });
-  const a    = document.createElement('a');
-  a.href     = URL.createObjectURL(blob);
-  a.download = `twin_shadow_archive_${new Date().toISOString().slice(0, 10)}.txt`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
 }
 
 async function deleteArchiveSession(id, btn) {
@@ -4575,7 +4054,7 @@ function renderSocialResult(job) {
     html += `<div class="fg"><span class="fl">CLIPS (${job.clips.length})</span>`;
     job.clips.forEach((c, i) => {
       const dur = Math.round(c.end - c.start);
-      html += `<div style="border:1px solid var(--cyan-dim);padding:8px;margin-bottom:6px">
+      html += `<div style="border:1px solid var(--purple-dim);padding:8px;margin-bottom:6px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <span style="color:var(--neon-bright);font-size:var(--font-size-base);font-weight:700">CLIP ${i+1} &nbsp;·&nbsp; ${c.start}s–${c.end}s &nbsp;(${dur}s)</span>
           ${c.clip_path ? `<a href="/api/social/download/${job.job_id}/${i}" class="btn" style="font-size:var(--font-size-sm);padding:3px 8px;text-decoration:none">[ ↓ DOWNLOAD ]</a>` : ''}
@@ -4591,8 +4070,8 @@ function renderSocialResult(job) {
     html += `<div class="fg"><span class="fl">PLATFORM COPY</span>`;
     job.platforms.forEach(p => {
       const tags = (p.hashtags || []).map(h => '#' + h).join(' ');
-      html += `<div style="border:1px solid var(--cyan-dim);padding:8px;margin-bottom:6px">
-        <span style="color:var(--cyan);font-size:var(--font-size-sm);font-weight:700;letter-spacing:1px">${p.platform.toUpperCase()}</span>
+      html += `<div style="border:1px solid var(--purple-dim);padding:8px;margin-bottom:6px">
+        <span style="color:var(--purple);font-size:var(--font-size-sm);font-weight:700;letter-spacing:1px">${p.platform.toUpperCase()}</span>
         ${p.title ? `<p style="font-size:var(--font-size-base);color:var(--neon-bright);margin:4px 0 2px;font-weight:700">${p.title}</p>` : ''}
         <p style="font-size:var(--font-size-sm);color:var(--text);margin:0 0 4px;white-space:pre-wrap">${p.description || ''}</p>
         ${tags ? `<p style="font-size:var(--font-size-sm);color:var(--cyan);margin:0">${tags}</p>` : ''}
@@ -4729,7 +4208,7 @@ async function botRefresh() {
     }
     if (empty) empty.style.display = 'none';
     el.innerHTML = bots.map(b => `
-      <div style="border:1px solid var(--cyan-dim);padding:7px 8px;margin-bottom:5px">
+      <div style="border:1px solid var(--purple-dim);padding:7px 8px;margin-bottom:5px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
           <span style="color:${b.status==='running'?'var(--cyan)':'var(--muted)'};font-family:monospace;font-size:var(--font-size-base)">${b.name}</span>
           <div style="display:flex;gap:3px">
@@ -4852,19 +4331,12 @@ const ST = {
 };
 
 function switchStudio(tab, btn) {
-  switchTab('studio', document.querySelector('.nav-btn[onclick*="\'studio\'"]'));
-  const subtab = (tab === 'podcast') ? 'podcast' : 'characters';
-  switchStudioTab(subtab, document.querySelector(`#panel-studio .lab-tab[onclick*="${subtab}"]`));
-}
-
-function switchStudioTab(tab, btn) {
-  ['podcast','characters'].forEach(t => {
-    const el = document.getElementById('stab-' + t);
+  ['brainstorm','podcast','characters'].forEach(t => {
+    const el = document.getElementById('lab-' + t);
     if (el) el.classList.remove('active');
   });
   document.querySelectorAll('#panel-studio > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
-  const el = document.getElementById('stab-' + tab);
-  if (el) el.classList.add('active');
+  document.getElementById('lab-' + tab).classList.add('active');
   if (btn) btn.classList.add('active');
   if (tab === 'characters') charRenderRoster();
 }
@@ -4877,18 +4349,13 @@ function switchBoard(tab, btn) {
 }
 
 function switchAdvisors(tab, btn) {
-  switchTab('advisors', document.querySelector('.nav-btn[onclick*="\'advisors\'"]'));
-  switchAdvisorsTab(tab, document.querySelector(`#panel-advisors .lab-tab[onclick*="${tab}"]`));
-}
-
-function switchAdvisorsTab(tab, btn) {
-  ['legal','marketing'].forEach(t => {
-    const el = document.getElementById('adv-tab-' + t);
+  ['legal','marketing','boardroom'].forEach(t => {
+    const el = document.getElementById('adv-' + t);
     if (el) el.classList.remove('active');
   });
   document.querySelectorAll('#panel-advisors > .lab-tab-row .lab-tab').forEach(b => b.classList.remove('active'));
-  const el = document.getElementById('adv-tab-' + tab);
-  if (el) el.classList.add('active');
+  const target = document.getElementById('adv-' + tab);
+  if (target) target.classList.add('active');
   if (btn) btn.classList.add('active');
 }
 
@@ -5243,7 +4710,7 @@ async function studioLoadList() {
     if (!stories.length) { empty.style.display = ''; return; }
     stories.reverse().forEach(s => {
       const row = document.createElement('div');
-      row.style.cssText = 'display:flex;flex-direction:column;gap:4px;border:1px solid var(--cyan-dim);padding:6px;';
+      row.style.cssText = 'display:flex;flex-direction:column;gap:4px;border:1px solid var(--purple-dim);padding:6px;';
       const statusColor = s.status === 'completed' ? 'var(--green)' :
                           s.status === 'failed'    ? 'var(--red)'   : 'var(--cyan)';
       row.innerHTML =
@@ -5350,10 +4817,13 @@ async function studioLoadChapter() {
 document.addEventListener('keydown', e => {
   const tag = document.activeElement?.tagName;
   if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT') return;
-  const map = { '1':'home','2':'projects','3':'board','4':'lab-video','5':'lab-write','6':'lab-code','7':'social','8':'studio','9':'brainstorm','0':'advisors' };
+  const navBtns = document.querySelectorAll('.nav-btn');
+  const _tabs   = ['home','projects','lab','studio','board','advisors','settings'];
+  const map = { '1':'home','2':'projects','3':'lab','4':'studio','5':'board','6':'advisors','7':'settings' };
   if (map[e.key]) {
     const name = map[e.key];
-    switchTab(name, null);
+    const idx  = _tabs.indexOf(name);
+    switchTab(name, navBtns[idx] || null);
   }
   if (e.key === 'Enter' && document.activeElement === document.getElementById('txt')) {
     e.preventDefault(); send();
@@ -5426,9 +4896,7 @@ function charLoadToCast(name) {
   list.appendChild(_podMakeCard(char.name, char.role, char.personality || '', char.voice, char.pitch, char.speed, char.model || 'twin'));
   POD.numSpeakers = list.querySelectorAll('.pod-speaker-card').length;
   document.getElementById('pod-cast-count').textContent = `(${POD.numSpeakers} speaker${POD.numSpeakers !== 1 ? 's' : ''})`;
-  // Stay in CHARACTERS tab so user can keep loading characters; just confirm with a flash
-  const btn = document.querySelector(`#char-roster [onclick="charLoadToCast('${name}')"]`);
-  if (btn) { const orig = btn.textContent; btn.textContent = '[ ADDED ]'; setTimeout(() => btn.textContent = orig, 1200); }
+  switchStudio('podcast', document.querySelector('#panel-studio .lab-tab:nth-child(2)'));
 }
 
 function charEditPrefill(name) {
@@ -5457,7 +4925,7 @@ function charRenderRoster() {
   }
   if (empty) empty.style.display = 'none';
   el.innerHTML = list.map(c => `
-    <div style="border:1px solid var(--cyan-dim);padding:7px 8px;margin-bottom:5px">
+    <div style="border:1px solid var(--purple-dim);padding:7px 8px;margin-bottom:5px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
         <span style="color:var(--cyan);font-size:var(--font-size-base);font-weight:bold;letter-spacing:1px">${c.name}</span>
         <div style="display:flex;gap:3px">
@@ -5601,7 +5069,6 @@ async function gorillaRun() {
     _gorillaTranscriptText = transcriptFull;
     if (blueprintFull) {
       document.getElementById('gorilla-pipeline-btn').style.display = '';
-      document.getElementById('gorilla-audio-btn').style.display = '';
     }
     _GORILLA_MEMBERS.forEach(n => _gorillaMemberBadge(n, 'done'));
 

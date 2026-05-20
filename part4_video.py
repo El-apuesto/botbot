@@ -509,7 +509,7 @@ async def lab_generate_image(prompt: str, style: str = "", reference_frame_path:
         v for k in ("AIML_API_KEY_1", "AIML_API_KEY_2", "AIML_API_KEY_3")
         if (v := os.environ.get(k, ""))
     ]
-    _aiml_models = ["flux-dev", "dall-e-3", "stable-diffusion-xl-base-1.0"]
+    _aiml_models = ["flux-schnell", "dall-e-2", "stable-diffusion-xl-base-1.0"]
     if aiml_keys:
         import asyncio as _asyncio2
         _loop2 = _asyncio2.get_event_loop()
@@ -521,7 +521,7 @@ async def lab_generate_image(prompt: str, style: str = "", reference_frame_path:
                         "model":  _model,
                         "prompt": full_prompt[:500],
                         "n":      1,
-                        "size":   "1024x576",
+                        "size":   "1024x1024",
                     }).encode()
                     req = urllib.request.Request(
                         "https://api.aimlapi.com/v1/images/generations",
@@ -766,7 +766,7 @@ async def grok_imagine(prompt: str, n: int = 1) -> list[str]:
     if not key:
         return []
     body = _json.dumps({
-        "model":  "grok-2-image-1212",
+        "model":  "aurora",
         "prompt": prompt,
         "n":      n,
     }).encode()
