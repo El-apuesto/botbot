@@ -783,7 +783,7 @@ def register_routes(app: Flask):
             loop = _aio.new_event_loop()
             async def _collect():
                 try:
-                    async for chunk in _st(role, msgs):
+                    async for chunk in _st(role, msgs, max_tokens=12000):
                         _builder_jobs[job_id]["chunks"].append(chunk)
                 except Exception as exc:
                     _builder_jobs[job_id]["error"] = str(exc)

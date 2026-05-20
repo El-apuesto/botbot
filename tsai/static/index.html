@@ -1419,6 +1419,11 @@ audio { width: 100%; margin-top: 4px; }
             <label class="fl">TASK</label>
             <textarea class="fi" id="builder-input" rows="3" placeholder="Describe what to build..."></textarea>
           </div>
+          <div class="fg" style="display:flex;align-items:center;gap:8px">
+            <input class="fi" id="builder-file-path" type="text" placeholder="path/to/file.py — inject into task" style="flex:1">
+            <button class="btn" style="white-space:nowrap" onclick="builderAttachFile()">[ ATTACH FILE ]</button>
+          </div>
+          <div id="builder-attach-status" style="font-size:var(--font-size-sm);color:var(--muted);min-height:14px"></div>
           <div class="fg" id="code-stack-row" style="display:none">
             <label class="fl">TECH STACK (optional)</label>
             <input class="fi" id="code-stack" type="text" placeholder="e.g. Python Flask + SQLite, or React + Node...">
@@ -3068,6 +3073,31 @@ async function buildsDelete(filename, btn) {
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function builderAttachFile() {
+  const fp  = document.getElementById('builder-file-path').value.trim();
+  const st  = document.getElementById('builder-attach-status');
+  const inp = document.getElementById('builder-input');
+  if (!fp) { st.textContent = 'enter a file path first'; st.style.color = 'var(--red)'; return; }
+  st.textContent = 'reading...'; st.style.color = 'var(--muted)';
+  try {
+    const res  = await fetch('/api/builder/read_file', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file_path: fp }),
+    });
+    const data = await res.json();
+    if (!data.exists || data.content == null) {
+      st.textContent = `FILE NOT FOUND: ${fp}`; st.style.color = 'var(--red)'; return;
+    }
+    const header = `\n\n--- FILE: ${fp} (${data.lines} lines) ---\n\`\`\`\n${data.content}\n\`\`\`\n--- END FILE ---\n`;
+    inp.value = (inp.value + header).trimStart();
+    st.textContent = `✓ ${fp} injected (${data.lines} lines)`; st.style.color = 'var(--green)';
+    document.getElementById('builder-file-path').value = '';
+    inp.focus(); inp.setSelectionRange(0, 0); inp.scrollTop = 0;
+  } catch(e) {
+    st.textContent = 'ERROR: ' + e; st.style.color = 'var(--red)';
+  }
 }
 
 async function runBuilder() {
