@@ -895,26 +895,72 @@ audio { width: 100%; margin-top: 4px; }
 }
 
 /* ── DASHBOARD ── */
-#pipeline-overlay { background: rgba(4,0,10,.97); }
+#pipeline-overlay { background: rgba(2,0,8,.97); }
 .dash-header-bar {
   color: var(--cyan);
   font-family: var(--font-head);
   font-size: 11px;
-  letter-spacing: .14em;
-  text-shadow: 0 0 12px var(--cyan);
-  margin-bottom: 14px;
-  padding-bottom: 6px;
+  letter-spacing: .18em;
+  text-shadow: 0 0 14px var(--cyan);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(187,68,255,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
-.dash-grid {
+/* ── GAUGE ROW ── */
+.dash-gauge-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 18px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cyan) transparent;
+}
+.dash-gauge-row::-webkit-scrollbar { height: 3px; }
+.dash-gauge-row::-webkit-scrollbar-thumb { background: var(--cyan); }
+.dash-gauge {
+  flex: 0 0 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(187,68,255,0.06);
+  padding: 10px 6px 8px;
+  position: relative;
+}
+.dash-gauge svg { width: 88px; height: 76px; display: block; }
+.dash-gauge-val {
+  font-family: var(--font-head);
+  font-size: 18px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 16px var(--cyan), 0 0 6px #fff;
+  letter-spacing: .04em;
+  line-height: 1;
+  margin-top: -2px;
+}
+.dash-gauge-label {
+  font-family: var(--font-head);
+  font-size: 7px;
+  letter-spacing: .14em;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 5px;
+  text-transform: uppercase;
+}
+/* ── STATUS GRID ── */
+.dash-status-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-bottom: 14px;
 }
-@media (max-width: 480px) { .dash-grid { grid-template-columns: 1fr; } }
+@media (max-width: 480px) { .dash-status-grid { grid-template-columns: 1fr; } }
 .dash-block {
   background: rgba(187,68,255,0.05);
-  padding: 10px 14px;
+  padding: 12px 14px;
 }
 .dash-block-title {
   color: var(--cyan);
@@ -922,13 +968,13 @@ audio { width: 100%; margin-top: 4px; }
   font-size: 9px;
   letter-spacing: .14em;
   text-shadow: 0 0 8px var(--cyan);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
+/* loading-bar rows */
 .dash-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 3px 0;
+  padding: 4px 0;
   gap: 8px;
 }
 .dash-key {
@@ -937,6 +983,21 @@ audio { width: 100%; margin-top: 4px; }
   font-size: 8px;
   letter-spacing: .08em;
   white-space: nowrap;
+  width: 80px;
+  flex-shrink: 0;
+}
+.dash-bar-wrap {
+  flex: 1;
+  height: 8px;
+  background: rgba(187,68,255,0.12);
+  position: relative;
+  overflow: hidden;
+}
+.dash-bar-fill {
+  height: 100%;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+  transition: width .6s ease;
 }
 .dash-val {
   color: #ffffff;
@@ -945,32 +1006,15 @@ audio { width: 100%; margin-top: 4px; }
   font-weight: 700;
   text-shadow: 0 0 8px rgba(255,255,255,0.6);
   white-space: nowrap;
-}
-.dash-bar {
-  flex: 1;
-  font-family: var(--font-head);
-  font-size: 8px;
-  color: var(--cyan);
-  text-shadow: 0 0 6px var(--cyan);
-  overflow: hidden;
-  letter-spacing: 0;
-  white-space: nowrap;
+  width: 22px;
+  text-align: right;
+  flex-shrink: 0;
 }
 .dash-divider {
-  color: var(--muted);
-  font-family: var(--font-head);
-  font-size: 7px;
-  overflow: hidden;
-  white-space: nowrap;
-  margin: 10px 0;
-  letter-spacing: .02em;
-}
-.dash-loading {
-  color: var(--cyan);
-  font-family: var(--font-head);
-  font-size: 9px;
-  letter-spacing: .12em;
-  animation: blink .7s step-end infinite;
+  color: rgba(187,68,255,0.3);
+  border: none;
+  border-top: 1px solid rgba(187,68,255,0.2);
+  margin: 12px 0;
 }
 .dash-recent-item {
   font-family: var(--font-head);
@@ -978,15 +1022,20 @@ audio { width: 100%; margin-top: 4px; }
   color: var(--text);
   padding: 3px 0;
   letter-spacing: .04em;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 .dash-recent-item .dr-type {
   color: var(--yellow);
-  margin-right: 6px;
+  flex-shrink: 0;
+  width: 62px;
 }
 .dash-recent-item .dr-time {
   color: var(--muted);
-  margin-left: 6px;
+  margin-left: auto;
   font-size: 7px;
+  flex-shrink: 0;
 }
 
 /* ── DESKTOP GLASS EFFECT — semi-transparent panels over full-bg banner ── */
@@ -2091,33 +2140,51 @@ audio { width: 100%; margin-top: 4px; }
       <button class="pipe-close-btn" onclick="document.getElementById('pipeline-overlay').classList.remove('open')">[ CLOSE ✕ ]</button>
     </div>
 
-    <!-- ── LIVE STATS ── -->
-    <div class="dash-header-bar">█ SYSTEM STATUS &nbsp;<span id="dash-clock" style="color:var(--muted);font-size:9px"></span></div>
-    <div class="dash-grid">
-      <div class="dash-block">
-        <div class="dash-block-title">█ SESSION ARCHIVE</div>
-        <div class="dash-row"><span class="dash-key">BOARDROOM</span><span class="dash-bar" id="db-bar-board"></span><span class="dash-val" id="db-cnt-board">█</span></div>
-        <div class="dash-row"><span class="dash-key">BRAINSTORM</span><span class="dash-bar" id="db-bar-brain"></span><span class="dash-val" id="db-cnt-brain">█</span></div>
-        <div class="dash-row"><span class="dash-key">TWIN CHAT</span><span class="dash-bar" id="db-bar-twin"></span><span class="dash-val" id="db-cnt-twin">█</span></div>
-        <div class="dash-row"><span class="dash-key">SHADOW CHAT</span><span class="dash-bar" id="db-bar-shadow"></span><span class="dash-val" id="db-cnt-shadow">█</span></div>
-        <div class="dash-row"><span class="dash-key">PODCAST</span><span class="dash-bar" id="db-bar-pod"></span><span class="dash-val" id="db-cnt-pod">█</span></div>
-        <div class="dash-row"><span class="dash-key" style="color:var(--yellow)">COMMITTEE</span><span class="dash-bar" id="db-bar-comm"></span><span class="dash-val" id="db-cnt-comm">█</span></div>
-        <div class="dash-row"><span class="dash-key" style="color:var(--yellow)">MISSIONS</span><span class="dash-bar" id="db-bar-miss"></span><span class="dash-val" id="db-cnt-miss">█</span></div>
-        <div class="dash-row"><span class="dash-key" style="color:var(--green)">CODE BUILD</span><span class="dash-bar" id="db-bar-code"></span><span class="dash-val" id="db-cnt-code">█</span></div>
-        <div class="dash-row"><span class="dash-key" style="color:var(--cyan)">WRITE LAB</span><span class="dash-bar" id="db-bar-write"></span><span class="dash-val" id="db-cnt-write">█</span></div>
-      </div>
+    <!-- ── STATUS BAR ── -->
+    <div class="dash-header-bar">
+      <span>█ SYSTEM STATUS</span>
+      <span id="dash-clock" style="color:var(--muted);font-size:9px;letter-spacing:.1em"></span>
+    </div>
+
+    <!-- ── ARC GAUGE ROW ── -->
+    <div class="dash-gauge-row" id="dash-gauge-row">
+      <!-- injected by renderDashGauges() -->
+    </div>
+
+    <!-- ── LOADING BAR STATUS ── -->
+    <div class="dash-status-grid">
       <div class="dash-block">
         <div class="dash-block-title">█ MEDIA &amp; PIPELINE</div>
-        <div class="dash-row"><span class="dash-key">AUDIO FILES</span><span class="dash-bar" id="db-bar-audio"></span><span class="dash-val" id="db-cnt-audio">█</span></div>
-        <div class="dash-row"><span class="dash-key">VIDEO RENDERS</span><span class="dash-bar" id="db-bar-renders"></span><span class="dash-val" id="db-cnt-renders">█</span></div>
-        <div class="dash-row"><span class="dash-key">PIPELINE JOBS</span><span class="dash-bar" id="db-bar-jobs"></span><span class="dash-val" id="db-cnt-jobs">█</span></div>
-        <div class="dash-block-title" style="margin-top:10px">█ RECENT SESSIONS</div>
+        <div class="dash-row">
+          <span class="dash-key">AUDIO</span>
+          <div class="dash-bar-wrap"><div class="dash-bar-fill" id="db-fill-audio" style="width:0%"></div></div>
+          <span class="dash-val" id="db-cnt-audio">—</span>
+        </div>
+        <div class="dash-row">
+          <span class="dash-key">RENDERS</span>
+          <div class="dash-bar-wrap"><div class="dash-bar-fill" id="db-fill-renders" style="width:0%;background:var(--green);box-shadow:0 0 8px var(--green)"></div></div>
+          <span class="dash-val" id="db-cnt-renders">—</span>
+        </div>
+        <div class="dash-row">
+          <span class="dash-key">JOBS</span>
+          <div class="dash-bar-wrap"><div class="dash-bar-fill" id="db-fill-jobs" style="width:0%;background:var(--yellow);box-shadow:0 0 8px var(--yellow)"></div></div>
+          <span class="dash-val" id="db-cnt-jobs">—</span>
+        </div>
+        <div class="dash-row">
+          <span class="dash-key">MISSIONS</span>
+          <div class="dash-bar-wrap"><div class="dash-bar-fill" id="db-fill-miss" style="width:0%;background:var(--magenta);box-shadow:0 0 8px var(--magenta)"></div></div>
+          <span class="dash-val" id="db-cnt-miss">—</span>
+        </div>
+      </div>
+      <div class="dash-block">
+        <div class="dash-block-title">█ RECENT SESSIONS</div>
         <div id="db-recent" style="display:flex;flex-direction:column;gap:2px"></div>
       </div>
     </div>
-    <div class="dash-divider">══════════════════════════════════════════════════════════</div>
 
-    <!-- ── JOB QUEUE ── -->
+    <hr class="dash-divider">
+
+    <!-- ── BUILD QUEUE ── -->
     <div class="dash-block-title" style="margin-bottom:8px">█ BUILD QUEUE</div>
     <div class="fg">
       <label class="fl">JOB NAME</label>
@@ -2386,15 +2453,67 @@ function _dashClock() {
   tick(); _dashClockTimer = setInterval(tick, 1000);
 }
 
+/* arc gauge SVG builder
+   r=36, cx=50, cy=52, sweep=240° starting at 150° (bottom-left → bottom-right clockwise)
+   circumference of full circle = 2π×36 ≈ 226.19
+   240° arc length = 226.19 × (240/360) = 150.80 */
+function _gaugeArc(pct, color) {
+  const R = 36, cx = 50, cy = 52;
+  const SWEEP_DEG = 240, START_DEG = 150;
+  const CIRC = 2 * Math.PI * R;
+  const arcLen = CIRC * (SWEEP_DEG / 360);
+  const gap    = CIRC - arcLen;
+
+  const toRad = d => (d - 90) * Math.PI / 180;
+  function polar(deg) {
+    return [cx + R * Math.cos(toRad(deg)), cy + R * Math.sin(toRad(deg))];
+  }
+  const [sx, sy] = polar(START_DEG);
+  const [ex, ey] = polar(START_DEG + SWEEP_DEG);
+
+  const bgArcPath  = `M ${sx.toFixed(2)},${sy.toFixed(2)} A ${R},${R} 0 1 1 ${ex.toFixed(2)},${ey.toFixed(2)}`;
+  const fillLen    = arcLen * Math.min(1, Math.max(0, pct));
+  const [fx, fy]   = polar(START_DEG + SWEEP_DEG * Math.min(1, Math.max(0, pct)));
+  const largeArc   = SWEEP_DEG * pct > 180 ? 1 : 0;
+  const fillArcPath = pct > 0
+    ? `M ${sx.toFixed(2)},${sy.toFixed(2)} A ${R},${R} 0 ${largeArc} 1 ${fx.toFixed(2)},${fy.toFixed(2)}`
+    : '';
+
+  return `<svg viewBox="0 0 100 88" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="glow-g"><feGaussianBlur stdDeviation="2.5" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    </defs>
+    <path d="${bgArcPath}" fill="none" stroke="rgba(187,68,255,0.15)" stroke-width="7" stroke-linecap="round"/>
+    ${fillArcPath ? `<path d="${fillArcPath}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round" filter="url(#glow-g)" opacity="0.9"/>` : ''}
+  </svg>`;
+}
+
+function renderDashGauges(gauges) {
+  const COLORS = ['#bb44ff','#bb44ff','#ffffff','#eebbff','#ff00ff','#ffff00','#00ff41','#44aaff'];
+  const row = document.getElementById('dash-gauge-row');
+  if (!row) return;
+  const max = Math.max(...gauges.map(g => g.val), 1);
+  row.innerHTML = gauges.map((g, i) => {
+    const pct = g.val / max;
+    const col = COLORS[i % COLORS.length];
+    return `<div class="dash-gauge">
+      ${_gaugeArc(pct, col)}
+      <div class="dash-gauge-val" style="color:${col};text-shadow:0 0 16px ${col}">${g.val}</div>
+      <div class="dash-gauge-label">${g.label}</div>
+    </div>`;
+  }).join('');
+}
+
+function _setBar(fillId, cntId, val, max) {
+  const pct = Math.min(100, Math.round((val / Math.max(max, 1)) * 100));
+  const f = document.getElementById(fillId);
+  const c = document.getElementById(cntId);
+  if (f) f.style.width = pct + '%';
+  if (c) c.textContent = val;
+}
+
 async function loadDashStats() {
-  const BAR_W = 8;
-  const set = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
-
-  set('db-cnt-board','█'); set('db-cnt-brain','█'); set('db-cnt-twin','█');
-  set('db-cnt-shadow','█'); set('db-cnt-pod','█');
-  set('db-cnt-comm','█'); set('db-cnt-miss','█'); set('db-cnt-code','█'); set('db-cnt-write','█');
-  set('db-cnt-audio','█'); set('db-cnt-renders','█'); set('db-cnt-jobs','█');
-
   try {
     const [sessR, audioR, pipeR, missR, storR] = await Promise.all([
       fetch('/api/sessions/list').then(r => r.json()).catch(() => []),
@@ -2418,28 +2537,29 @@ async function loadDashStats() {
     const pod    = cnt('podcast');
     const comm   = cnt('committee');
     const code   = cnt('code');
-    const maxSess = Math.max(board, brain, twin, shadow, pod, comm, code, missions.length, stories.length, 1);
 
-    set('db-cnt-board',  board);           set('db-bar-board',  _bbsBar(board,           maxSess, BAR_W));
-    set('db-cnt-brain',  brain);           set('db-bar-brain',  _bbsBar(brain,           maxSess, BAR_W));
-    set('db-cnt-twin',   twin);            set('db-bar-twin',   _bbsBar(twin,            maxSess, BAR_W));
-    set('db-cnt-shadow', shadow);          set('db-bar-shadow', _bbsBar(shadow,          maxSess, BAR_W));
-    set('db-cnt-pod',    pod);             set('db-bar-pod',    _bbsBar(pod,             maxSess, BAR_W));
-    set('db-cnt-comm',   comm);            set('db-bar-comm',   _bbsBar(comm,            maxSess, BAR_W));
-    set('db-cnt-miss',   missions.length); set('db-bar-miss',   _bbsBar(missions.length, maxSess, BAR_W));
-    set('db-cnt-code',   code);            set('db-bar-code',   _bbsBar(code,            maxSess, BAR_W));
-    set('db-cnt-write',  stories.length);  set('db-bar-write',  _bbsBar(stories.length,  maxSess, BAR_W));
+    renderDashGauges([
+      { label: 'BOARDROOM',  val: board  },
+      { label: 'BRAINSTORM', val: brain  },
+      { label: 'TWIN CHAT',  val: twin   },
+      { label: 'SHADOW',     val: shadow },
+      { label: 'PODCAST',    val: pod    },
+      { label: 'COMMITTEE',  val: comm   },
+      { label: 'CODE BUILD', val: code   },
+      { label: 'WRITE LAB',  val: stories.length },
+    ]);
 
-    set('db-cnt-audio',   audio.length); set('db-bar-audio',   _bbsBar(audio.length,  20, BAR_W));
-    set('db-cnt-renders', '—');          set('db-bar-renders',  '░'.repeat(BAR_W));
-    set('db-cnt-jobs',    jobs.length);  set('db-bar-jobs',     _bbsBar(jobs.length,   10, BAR_W));
+    _setBar('db-fill-audio',  'db-cnt-audio',  audio.length,    20);
+    _setBar('db-fill-renders','db-cnt-renders', 0,               1);
+    _setBar('db-fill-jobs',   'db-cnt-jobs',    jobs.length,     10);
+    _setBar('db-fill-miss',   'db-cnt-miss',    missions.length, 20);
 
     const rec = document.getElementById('db-recent');
     if (rec) {
       const last5 = sessions.slice(-5).reverse();
       rec.innerHTML = last5.length
         ? last5.map(s =>
-            `<div class="dash-recent-item"><span class="dr-type">${(s.session_type||'?').toUpperCase()}</span>${(s.title||'(untitled)').slice(0,24)}<span class="dr-time">${_relTime(s.created_at)}</span></div>`
+            `<div class="dash-recent-item"><span class="dr-type">${(s.session_type||'?').toUpperCase()}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(s.title||'(untitled)').slice(0,22)}</span><span class="dr-time">${_relTime(s.created_at)}</span></div>`
           ).join('')
         : '<div class="dash-recent-item" style="color:var(--muted)">NO SESSIONS YET</div>';
     }
