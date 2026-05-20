@@ -2010,6 +2010,10 @@ audio { width: 100%; margin-top: 4px; }
           <button class="opt"    id="af-podcast"    onclick="archiveFilter('podcast',this)">PODCAST</button>
           <button class="opt"    id="af-twin"       onclick="archiveFilter('twin',this)">TWIN CHAT</button>
           <button class="opt"    id="af-shadow"     onclick="archiveFilter('shadow',this)">SHADOW CHAT</button>
+          <button class="opt"    id="af-committee"  onclick="archiveFilter('committee',this)" style="color:var(--yellow)">COMMITTEE</button>
+          <button class="opt"    id="af-mission"    onclick="archiveFilter('mission',this)"   style="color:var(--yellow)">MISSIONS</button>
+          <button class="opt"    id="af-code"       onclick="archiveFilter('code',this)"      style="color:var(--green)">CODE</button>
+          <button class="opt"    id="af-write"      onclick="archiveFilter('write',this)"     style="color:var(--cyan)">WRITE LAB</button>
         </div>
 
         <!-- session list -->
@@ -2065,6 +2069,10 @@ audio { width: 100%; margin-top: 4px; }
         <div class="dash-row"><span class="dash-key">TWIN CHAT</span><span class="dash-bar" id="db-bar-twin"></span><span class="dash-val" id="db-cnt-twin">█</span></div>
         <div class="dash-row"><span class="dash-key">SHADOW CHAT</span><span class="dash-bar" id="db-bar-shadow"></span><span class="dash-val" id="db-cnt-shadow">█</span></div>
         <div class="dash-row"><span class="dash-key">PODCAST</span><span class="dash-bar" id="db-bar-pod"></span><span class="dash-val" id="db-cnt-pod">█</span></div>
+        <div class="dash-row"><span class="dash-key" style="color:var(--yellow)">COMMITTEE</span><span class="dash-bar" id="db-bar-comm"></span><span class="dash-val" id="db-cnt-comm">█</span></div>
+        <div class="dash-row"><span class="dash-key" style="color:var(--yellow)">MISSIONS</span><span class="dash-bar" id="db-bar-miss"></span><span class="dash-val" id="db-cnt-miss">█</span></div>
+        <div class="dash-row"><span class="dash-key" style="color:var(--green)">CODE BUILD</span><span class="dash-bar" id="db-bar-code"></span><span class="dash-val" id="db-cnt-code">█</span></div>
+        <div class="dash-row"><span class="dash-key" style="color:var(--cyan)">WRITE LAB</span><span class="dash-bar" id="db-bar-write"></span><span class="dash-val" id="db-cnt-write">█</span></div>
       </div>
       <div class="dash-block">
         <div class="dash-block-title">█ MEDIA &amp; PIPELINE</div>
@@ -2352,18 +2360,23 @@ async function loadDashStats() {
 
   set('db-cnt-board','█'); set('db-cnt-brain','█'); set('db-cnt-twin','█');
   set('db-cnt-shadow','█'); set('db-cnt-pod','█');
+  set('db-cnt-comm','█'); set('db-cnt-miss','█'); set('db-cnt-code','█'); set('db-cnt-write','█');
   set('db-cnt-audio','█'); set('db-cnt-renders','█'); set('db-cnt-jobs','█');
 
   try {
-    const [sessR, audioR, pipeR] = await Promise.all([
+    const [sessR, audioR, pipeR, missR, storR] = await Promise.all([
       fetch('/api/sessions/list').then(r => r.json()).catch(() => []),
       fetch('/api/audio/list').then(r => r.json()).catch(() => []),
       fetch('/api/pipeline').then(r => r.json()).catch(() => []),
+      fetch('/api/missions').then(r => r.json()).catch(() => []),
+      fetch('/api/story/list').then(r => r.json()).catch(() => []),
     ]);
 
     const sessions = Array.isArray(sessR) ? sessR : [];
     const audio    = Array.isArray(audioR) ? audioR : [];
     const jobs     = Array.isArray(pipeR)  ? pipeR  : (pipeR?.jobs || []);
+    const missions = Array.isArray(missR)  ? missR  : [];
+    const stories  = Array.isArray(storR)  ? storR.filter(s => s.status === 'completed') : [];
 
     const cnt = t => sessions.filter(s => s.session_type === t).length;
     const board  = cnt('boardroom');
@@ -2371,13 +2384,19 @@ async function loadDashStats() {
     const twin   = cnt('twin');
     const shadow = cnt('shadow');
     const pod    = cnt('podcast');
-    const maxSess = Math.max(board, brain, twin, shadow, pod, 1);
+    const comm   = cnt('committee');
+    const code   = cnt('code');
+    const maxSess = Math.max(board, brain, twin, shadow, pod, comm, code, missions.length, stories.length, 1);
 
-    set('db-cnt-board',  board);  set('db-bar-board',  _bbsBar(board,  maxSess, BAR_W));
-    set('db-cnt-brain',  brain);  set('db-bar-brain',  _bbsBar(brain,  maxSess, BAR_W));
-    set('db-cnt-twin',   twin);   set('db-bar-twin',   _bbsBar(twin,   maxSess, BAR_W));
-    set('db-cnt-shadow', shadow); set('db-bar-shadow', _bbsBar(shadow, maxSess, BAR_W));
-    set('db-cnt-pod',    pod);    set('db-bar-pod',    _bbsBar(pod,    maxSess, BAR_W));
+    set('db-cnt-board',  board);           set('db-bar-board',  _bbsBar(board,           maxSess, BAR_W));
+    set('db-cnt-brain',  brain);           set('db-bar-brain',  _bbsBar(brain,           maxSess, BAR_W));
+    set('db-cnt-twin',   twin);            set('db-bar-twin',   _bbsBar(twin,            maxSess, BAR_W));
+    set('db-cnt-shadow', shadow);          set('db-bar-shadow', _bbsBar(shadow,          maxSess, BAR_W));
+    set('db-cnt-pod',    pod);             set('db-bar-pod',    _bbsBar(pod,             maxSess, BAR_W));
+    set('db-cnt-comm',   comm);            set('db-bar-comm',   _bbsBar(comm,            maxSess, BAR_W));
+    set('db-cnt-miss',   missions.length); set('db-bar-miss',   _bbsBar(missions.length, maxSess, BAR_W));
+    set('db-cnt-code',   code);            set('db-bar-code',   _bbsBar(code,            maxSess, BAR_W));
+    set('db-cnt-write',  stories.length);  set('db-bar-write',  _bbsBar(stories.length,  maxSess, BAR_W));
 
     set('db-cnt-audio',   audio.length); set('db-bar-audio',   _bbsBar(audio.length,  20, BAR_W));
     set('db-cnt-renders', '—');          set('db-bar-renders',  '░'.repeat(BAR_W));
@@ -3067,6 +3086,7 @@ async function _pollBuilderJob(jobId, out, isArch, prefillTask) {
             const rawTask = prefillTask || document.getElementById('builder-input').value.trim();
             const fullTxt = turns.map(t => t.speaker + ': ' + t.text).join('\n\n');
             _labConcepts.builder = { task: rawTask, output: fullTxt };
+            dbAutoSave('code', (rawTask || 'builder').slice(0,80), turns);
             document.getElementById('builder-lab-btn').style.display = '';
             const deployRow = document.getElementById('builder-deploy-row');
             deployRow.style.display = 'flex';
@@ -3075,13 +3095,29 @@ async function _pollBuilderJob(jobId, out, isArch, prefillTask) {
             _showBuilderDownload(fullTxt, rawTask);
           }
           if (data.output_incomplete) {
-            const contRow = document.createElement('div');
-            contRow.id = 'builder-cont-row-' + jobId;
-            contRow.style.cssText = 'display:flex;gap:8px;padding:8px 0;align-items:center;flex-wrap:wrap';
-            contRow.innerHTML = '<span style="color:var(--yellow);font-size:var(--font-size-sm)">&#9888; OUTPUT INCOMPLETE — unclosed code block detected</span>'
-              + '<button class="btn" style="font-size:var(--font-size-sm);padding:4px 14px" onclick="continueBuilderJob(\'' + jobId + '\')">[ CONTINUE ]</button>'
-              + '<button class="btn" style="font-size:var(--font-size-sm);padding:4px 10px;opacity:0.5" onclick="this.parentElement.remove()">[ DISMISS ]</button>';
-            out.appendChild(contRow);
+            const _acCount = _autoContinueCounts[jobId] || 0;
+            if (_acCount < 3) {
+              _autoContinueCounts[jobId] = _acCount + 1;
+              const acNote = document.createElement('div');
+              acNote.id = 'builder-cont-row-' + jobId;
+              acNote.style.cssText = 'padding:5px 0;font-size:var(--font-size-sm);color:var(--yellow)';
+              acNote.textContent = '⚡ AUTO-CONTINUING (' + (_acCount + 1) + '/3)…';
+              out.appendChild(acNote);
+              resolve(turns);
+              continueBuilderJob(jobId);
+              return;
+            } else {
+              _autoContinueCounts[jobId] = 0;
+              const contRow = document.createElement('div');
+              contRow.id = 'builder-cont-row-' + jobId;
+              contRow.style.cssText = 'display:flex;gap:8px;padding:8px 0;align-items:center;flex-wrap:wrap';
+              contRow.innerHTML = '<span style="color:var(--yellow);font-size:var(--font-size-sm)">&#9888; OUTPUT INCOMPLETE — auto-continue limit reached</span>'
+                + '<button class="btn" style="font-size:var(--font-size-sm);padding:4px 14px" onclick="continueBuilderJob(\'' + jobId + '\')">[ CONTINUE ]</button>'
+                + '<button class="btn" style="font-size:var(--font-size-sm);padding:4px 10px;opacity:0.5" onclick="this.parentElement.remove()">[ DISMISS ]</button>';
+              out.appendChild(contRow);
+            }
+          } else {
+            _autoContinueCounts[jobId] = 0;
           }
           resolve(turns);
         } else if (data.error) {
@@ -4760,15 +4796,33 @@ async function loadArchive() {
   list.innerHTML = '<p style="font-size:var(--font-size-sm);color:var(--muted)">LOADING...</p>';
   empty.style.display = 'none';
   try {
-    const [sessions, chatTwin, chatShadow] = await Promise.all([
-      fetch('/api/sessions/list').then(r => r.json()),
-      fetch('/api/history/load?bot=twin').then(r => r.json()),
-      fetch('/api/history/load?bot=shadow').then(r => r.json()),
+    const [sessions, chatTwin, chatShadow, missions, stories] = await Promise.all([
+      fetch('/api/sessions/list').then(r => r.json()).catch(() => []),
+      fetch('/api/history/load?bot=twin').then(r => r.json()).catch(() => []),
+      fetch('/api/history/load?bot=shadow').then(r => r.json()).catch(() => []),
+      fetch('/api/missions').then(r => r.json()).catch(() => []),
+      fetch('/api/story/list').then(r => r.json()).catch(() => []),
     ]);
     _archiveData = [
       ...sessions.map(s => ({ ...s, _kind: 'session' })),
       chatTwin.length   ? { id: 'chat-twin',   session_type: 'twin',   title: `TWIN — ${chatTwin.length} messages`,   created_at: chatTwin[chatTwin.length-1]?.created_at   || '', content: chatTwin,   _kind: 'chat' } : null,
       chatShadow.length ? { id: 'chat-shadow', session_type: 'shadow', title: `SHADOW — ${chatShadow.length} messages`, created_at: chatShadow[chatShadow.length-1]?.created_at || '', content: chatShadow, _kind: 'chat' } : null,
+      ...(Array.isArray(missions) ? missions : []).map(m => ({
+        id: 'mission-' + m.id,
+        session_type: 'mission',
+        title: m.title || 'Mission',
+        created_at: m.created || '',
+        _kind: 'mission',
+        _raw: m,
+      })),
+      ...(Array.isArray(stories) ? stories.filter(s => s.status === 'completed') : []).map(s => ({
+        id: 'story-' + s.story_id,
+        session_type: 'write',
+        title: s.title || s.story_id,
+        created_at: s.created_at || '',
+        _kind: 'story',
+        _raw: s,
+      })),
     ].filter(Boolean);
     renderArchive();
   } catch(e) {
@@ -4789,7 +4843,7 @@ function renderArchive() {
   filtered.forEach(s => {
     const dt   = s.created_at ? new Date(s.created_at).toLocaleString() : '';
     const type = (s.session_type || '').toUpperCase();
-    const typeColor = { boardroom:'var(--cyan)', brainstorm:'var(--neon)', podcast:'var(--cyan)', twin:'var(--muted)', shadow:'var(--red)' }[s.session_type] || 'var(--muted)';
+    const typeColor = { boardroom:'var(--cyan)', brainstorm:'var(--neon)', podcast:'var(--cyan)', twin:'var(--muted)', shadow:'var(--red)', committee:'var(--yellow)', mission:'var(--yellow)', code:'var(--green)', write:'var(--cyan)' }[s.session_type] || 'var(--muted)';
     const row  = document.createElement('div');
     row.className = 'gallery-row';
     row.style.cssText = 'flex-direction:column;gap:4px;padding:8px 10px';
@@ -4817,7 +4871,7 @@ function archiveFilter(type, btn) {
 
 async function viewArchiveSession(id) {
   let session;
-  if (id === 'chat-twin' || id === 'chat-shadow') {
+  if (id === 'chat-twin' || id === 'chat-shadow' || id.startsWith('mission-') || id.startsWith('story-')) {
     session = _archiveData.find(s => s.id === id);
   } else {
     try {
@@ -4835,9 +4889,36 @@ async function viewArchiveSession(id) {
   const body = document.getElementById('archive-viewer-body');
   body.innerHTML = '';
 
+  const reloadBtn = document.getElementById('archive-reload-btn');
+
+  // Mission viewer
+  if (session._kind === 'mission') {
+    const m = session._raw || {};
+    reloadBtn.style.display = 'none';
+    const typeLabel = { gorilla_marketing:'GUERRILLA MARKETING', boardroom_analysis:'BOARDROOM ANALYSIS', strategy_deep:'STRATEGY DEEP DIVE', creative_brief:'CREATIVE BRIEF', competitive_intel:'COMPETITIVE INTEL', custom_committee:'CUSTOM COMMITTEE' }[m.type] || (m.type||'MISSION').toUpperCase();
+    const results = m.results || {};
+    body.innerHTML = `<div style="color:var(--yellow);font-size:var(--font-size-sm);margin-bottom:8px">${typeLabel}</div>` +
+      `<div style="color:var(--muted);font-size:var(--font-size-sm);margin-bottom:10px">${m.brief||''}</div>` +
+      Object.entries(results).map(([k,v]) =>
+        `<div style="border:1px solid var(--cyan-dim);padding:6px 10px;margin-bottom:4px"><div style="color:var(--cyan);font-size:10px;letter-spacing:.08em;margin-bottom:3px">${k.toUpperCase()}</div><div style="font-size:var(--font-size-sm);color:var(--text);white-space:pre-wrap;line-height:1.6">${typeof v==='string'?v:JSON.stringify(v,null,2)}</div></div>`
+      ).join('');
+    document.getElementById('archive-viewer').style.display = '';
+    return;
+  }
+
+  // Story viewer
+  if (session._kind === 'story') {
+    const s = session._raw || {};
+    reloadBtn.style.display = 'none';
+    body.innerHTML = `<div style="color:var(--cyan);font-size:var(--font-size-sm);margin-bottom:6px">STORY — ${s.story_id}</div>` +
+      `<div style="color:var(--muted);font-size:var(--font-size-sm);margin-bottom:8px">${(s.word_count||0).toLocaleString()} words · ${s.chapters||0} chapters</div>` +
+      `<div style="color:var(--text);font-size:var(--font-size-sm)">Open <strong>WRITE LAB → READER</strong> to read or download this story.</div>`;
+    document.getElementById('archive-viewer').style.display = '';
+    return;
+  }
+
   const content = session.content || [];
   const isChatRaw = Array.isArray(content) && content.length && content[0].role;
-  const reloadBtn = document.getElementById('archive-reload-btn');
   reloadBtn.style.display = isChatRaw ? 'none' : '';
 
   if (isChatRaw) {
@@ -5372,6 +5453,7 @@ function switchAdvisorsTab(tab, btn) {
    CODE LAB — ARCHITECT MODE
 ───────────────────────────────────────── */
 let codeMode = 'build';
+let _autoContinueCounts = {};
 let builderUncensored = false;
 
 function setCodeMode(m) {
@@ -6103,6 +6185,13 @@ async function gorillaRun() {
       document.getElementById('gorilla-audio-btn').style.display = '';
     }
     _GORILLA_MEMBERS.forEach(n => _gorillaMemberBadge(n, 'done'));
+    // Auto-save to archive
+    const _gBrief = (document.getElementById('gorilla-brief') || {}).value || 'Guerrilla War Room';
+    const _gTurns = [
+      transcriptFull ? { speaker: 'TRANSCRIPT', text: transcriptFull } : null,
+      blueprintFull  ? { speaker: 'BLUEPRINT',  text: blueprintFull  } : null,
+    ].filter(Boolean);
+    if (_gTurns.length) dbAutoSave('committee', _gBrief.slice(0,80), _gTurns);
 
   } catch (e) {
     document.getElementById('gorilla-transcript').textContent += '\n[CONNECTION ERROR] ' + e.message;
