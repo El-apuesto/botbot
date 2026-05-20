@@ -2468,6 +2468,7 @@ function switchTab(name, btn) {
   if (name === 'projects') { committeeNav('list'); }
   if (name === 'social')   { loadSocialJobs(); }
   if (name === 'archive')  { loadArchive(); }
+  if (name === 'studio')   { _fetchElVoices(); }
 }
 
 function toggleMenu(e) {
@@ -5404,6 +5405,7 @@ function switchStudioTab(tab, btn) {
   if (el) el.classList.add('active');
   if (btn) btn.classList.add('active');
   if (tab === 'characters') charRenderRoster();
+  if (tab === 'podcast')    _fetchElVoices();
 }
 
 function switchBoard(tab, btn) {
