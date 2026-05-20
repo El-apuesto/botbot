@@ -33,6 +33,8 @@ _INVITES_FILE    = _ROOT / "invites.json"
 _SETTINGS_DIR    = _ROOT / "settings"
 _TRANSCRIPTS_DIR = _ROOT / "transcripts"
 _LAB_CONCEPT     = _ROOT / "lab_concept.json"
+_BUILDS_DIR      = _ROOT / "builds"
+_BUILDS_DIR.mkdir(parents=True, exist_ok=True)
 
 for _d in [_AUDIO_DIR, _RENDERS_DIR, _UPLOADS_DIR, _SETTINGS_DIR, _TRANSCRIPTS_DIR]:
     _d.mkdir(exist_ok=True)
@@ -789,6 +791,20 @@ def register_routes(app: Flask):
                     _builder_jobs[job_id]["status"] = "done"
             loop.run_until_complete(_collect())
             loop.close()
+            # ── auto-save completed build ──────────────────────────────────────
+            output = "".join(_builder_jobs[job_id]["chunks"])
+            if output.strip():
+                import datetime as _dt
+                ts     = _dt.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                bfile  = _BUILDS_DIR / f"{ts}_{job_id}.json"
+                bfile.write_text(json.dumps({
+                    "id":         job_id,
+                    "ts":         ts,
+                    "task":       task,
+                    "role":       role,
+                    "output":     output,
+                    "error":      _builder_jobs[job_id]["error"],
+                }, indent=2), encoding="utf-8")
 
         Thread(target=_run, daemon=True).start()
         return jsonify({"ok": True, "job_id": job_id})
@@ -865,6 +881,48 @@ def register_routes(app: Flask):
         d   = request.get_json(force=True) or {}
         eid = d.get("edit_id", "")
         _pending_edits.pop(eid, None)
+        return jsonify({"ok": True})
+
+    @app.route("/api/builder/builds", methods=["GET"])
+    @_login_required
+    def api_builder_builds_list():
+        """List all saved builds, newest first."""
+        builds = []
+        for f in sorted(_BUILDS_DIR.glob("*.json"), reverse=True):
+            try:
+                data = json.loads(f.read_text(encoding="utf-8"))
+                builds.append({
+                    "id":    data.get("id", f.stem),
+                    "file":  f.name,
+                    "ts":    data.get("ts", ""),
+                    "task":  data.get("task", "")[:120],
+                    "role":  data.get("role", "builder"),
+                    "error": data.get("error"),
+                })
+            except Exception:
+                pass
+        return jsonify(builds)
+
+    @app.route("/api/builder/builds/<filename>", methods=["GET"])
+    @_login_required
+    def api_builder_builds_get(filename):
+        """Return full content of a saved build."""
+        if not re.match(r"^[\w\-. ]+\.json$", filename):
+            return jsonify({"error": "invalid filename"}), 400
+        f = _BUILDS_DIR / filename
+        if not f.exists():
+            return jsonify({"error": "not found"}), 404
+        return jsonify(json.loads(f.read_text(encoding="utf-8")))
+
+    @app.route("/api/builder/builds/<filename>", methods=["DELETE"])
+    @_login_required
+    def api_builder_builds_delete(filename):
+        """Delete a saved build."""
+        if not re.match(r"^[\w\-. ]+\.json$", filename):
+            return jsonify({"error": "invalid filename"}), 400
+        f = _BUILDS_DIR / filename
+        if f.exists():
+            f.unlink()
         return jsonify({"ok": True})
 
     @app.route("/api/builder/save", methods=["POST"])

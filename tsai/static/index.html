@@ -1428,6 +1428,16 @@ audio { width: 100%; margin-top: 4px; }
             <div id="builder-edit-result" style="font-size:var(--font-size-sm);color:var(--cyan);margin-top:5px"></div>
           </div>
 
+          <!-- Saved builds library -->
+          <div style="margin-top:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span class="fl">SAVED BUILDS</span>
+              <button class="btn" style="font-size:var(--font-size-sm);padding:3px 8px" onclick="buildsRefresh()">[ REFRESH ]</button>
+            </div>
+            <div id="builds-list" style="display:none;max-height:220px;overflow-y:auto"></div>
+            <p class="ph-text" id="builds-empty" style="display:none">NO SAVED BUILDS YET.</p>
+          </div>
+
           <!-- Child bot monitor -->
           <div style="margin-top:14px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
@@ -2936,6 +2946,7 @@ async function _pollBuilderJob(jobId, out, isArch, prefillTask) {
 
 // Called when CODE tab is activated — resumes any in-progress job
 async function checkPendingBuilderJob() {
+  buildsRefresh();
   const job = _loadBuilderJob();
   if (!job) return;
   const out = document.getElementById('builder-out');
@@ -2947,6 +2958,77 @@ async function checkPendingBuilderJob() {
   await _pollBuilderJob(job.jobId, out, codeMode === 'architect', job.task);
   btn.disabled = false;
   btn.textContent = codeMode === 'architect' ? '[ ARCHITECT + BUILD ]' : '[ RUN BUILDER ]';
+}
+
+/* ─── SAVED BUILDS LIBRARY ─────────────────────────────────────────────────── */
+async function buildsRefresh() {
+  const list  = document.getElementById('builds-list');
+  const empty = document.getElementById('builds-empty');
+  try {
+    const res    = await fetch('/api/builder/builds');
+    const builds = await res.json();
+    if (!builds.length) {
+      list.style.display  = 'none';
+      empty.style.display = '';
+      return;
+    }
+    empty.style.display = 'none';
+    list.style.display  = 'block';
+    list.innerHTML = builds.map(b => {
+      const d   = b.ts ? b.ts.replace(/(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/, '$1-$2-$3 $4:$5') : '';
+      const eng = b.role === 'builder_uncensored' ? '<span style="color:var(--magenta);font-size:10px"> [SHADOW]</span>' : '';
+      const err = b.error ? '<span style="color:var(--red);font-size:10px"> ERR</span>' : '';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;gap:6px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:var(--font-size-sm);color:var(--neon);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(b.task||'(no task)')}${eng}${err}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">${d}</div>
+        </div>
+        <div style="display:flex;gap:3px;flex-shrink:0">
+          <button class="btn" style="font-size:10px;padding:2px 6px" onclick="buildsLoad('${escHtml(b.file)}','${escHtml(b.task.slice(0,60))}')">[ LOAD ]</button>
+          <button class="btn" style="font-size:10px;padding:2px 6px;opacity:.55" onclick="buildsDelete('${escHtml(b.file)}',this)">[ DEL ]</button>
+        </div>
+      </div>`;
+    }).join('<hr style="opacity:.15;margin:0">');
+  } catch(e) {
+    console.error('buildsRefresh:', e);
+  }
+}
+
+async function buildsLoad(filename, task) {
+  try {
+    const res  = await fetch('/api/builder/builds/' + encodeURIComponent(filename));
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+    const out = document.getElementById('builder-out');
+    const inp = document.getElementById('builder-input');
+    if (inp && data.task) inp.value = data.task;
+    out.innerHTML = '';
+    const turn = document.createElement('div'); turn.className = 'turn';
+    const who  = document.createElement('div'); who.className  = 'turn-who';
+    who.textContent = data.role === 'builder_uncensored' ? 'SHADOW BUILDER' : 'BUILDER';
+    const body = document.createElement('div'); body.className = 'turn-body';
+    body.textContent = data.output || '';
+    turn.appendChild(who); turn.appendChild(body);
+    out.appendChild(turn);
+    const fullTxt = data.output || '';
+    _labConcepts.builder = { task: data.task || '', output: fullTxt };
+    document.getElementById('builder-lab-btn').style.display = '';
+    document.getElementById('builder-deploy-row').style.display = 'flex';
+    _showBuilderDownload(fullTxt, data.task || task);
+    out.scrollTop = 0;
+  } catch(e) { console.error('buildsLoad:', e); }
+}
+
+async function buildsDelete(filename, btn) {
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    await fetch('/api/builder/builds/' + encodeURIComponent(filename), { method: 'DELETE' });
+    buildsRefresh();
+  } catch(e) { btn.disabled = false; btn.textContent = '[ DEL ]'; }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 async function runBuilder() {
