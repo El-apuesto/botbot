@@ -291,9 +291,10 @@ TASK_MODELS: dict = {
     "code_check":       ("groq",         "llama"),
     "code_check_v2":    ("venice",       "gpt_codex_52"),
     "code_reason":      ("groq",         "qwq_32b"),
-    "builder":          ("nvidia",        "glm51"),
-    "builder_review":   ("nvidia",        "qwen_coder_480"),
-    "builder_check":    ("nvidia",        "glm51"),
+    "builder":              ("nvidia",        "glm51"),
+    "builder_uncensored":   ("venice",       "venice_uncensored_12"),
+    "builder_review":       ("nvidia",        "qwen_coder_480"),
+    "builder_check":        ("nvidia",        "glm51"),
 
     # ── vision ────────────────────────────────────────────────────────────────
     "vision":           ("nvidia",       "vision_90b"),

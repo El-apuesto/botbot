@@ -1371,11 +1371,20 @@ audio { width: 100%; margin-top: 4px; }
     <!-- [5] CODE LAB — Builder + Architect -->
     <div class="panel" id="panel-lab-code">
       <div class="panel-scroll" id="lab-code">
-          <div class="fg">
-            <span class="fl">MODE</span>
-            <div class="opt-row">
-              <button class="opt on" id="code-m-build"     onclick="setCodeMode('build')">BUILD</button>
-              <button class="opt"    id="code-m-architect" onclick="setCodeMode('architect')">ARCHITECT</button>
+          <div class="fg" style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+            <div>
+              <span class="fl">MODE</span>
+              <div class="opt-row">
+                <button class="opt on" id="code-m-build"     onclick="setCodeMode('build')">BUILD</button>
+                <button class="opt"    id="code-m-architect" onclick="setCodeMode('architect')">ARCHITECT</button>
+              </div>
+            </div>
+            <div>
+              <span class="fl">ENGINE</span>
+              <div class="opt-row">
+                <button class="opt on" id="code-e-normal"     onclick="setBuilderEngine('normal',this)">STANDARD</button>
+                <button class="opt"    id="code-e-uncensored" onclick="setBuilderEngine('uncensored',this)" style="color:var(--magenta)">UNCENSORED</button>
+              </div>
             </div>
           </div>
           <div class="fg" id="code-arch-note" style="display:none">
@@ -2976,7 +2985,7 @@ async function runBuilder() {
     const startRes = await fetch('/api/builder/job', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task, system_prompt: S.get('p_builder', '') }),
+      body: JSON.stringify({ task, system_prompt: S.get('p_builder', ''), uncensored: builderUncensored }),
     });
     if (!startRes.ok) {
       out.innerHTML = '<p style="color:var(--red)">ERROR ' + startRes.status + ' — could not start job</p>';
@@ -4902,6 +4911,7 @@ function switchAdvisorsTab(tab, btn) {
    CODE LAB — ARCHITECT MODE
 ───────────────────────────────────────── */
 let codeMode = 'build';
+let builderUncensored = false;
 
 function setCodeMode(m) {
   codeMode = m;
@@ -4915,6 +4925,20 @@ function setCodeMode(m) {
       : 'Describe what to build...';
   document.getElementById('builder-go-btn').textContent     =
     m === 'architect' ? '[ ARCHITECT + BUILD ]' : '[ RUN BUILDER ]';
+}
+
+function setBuilderEngine(mode, btn) {
+  builderUncensored = (mode === 'uncensored');
+  document.getElementById('code-e-normal').classList.toggle('on', !builderUncensored);
+  document.getElementById('code-e-uncensored').classList.toggle('on', builderUncensored);
+  const goBtn = document.getElementById('builder-go-btn');
+  if (builderUncensored) {
+    goBtn.style.color = 'var(--magenta)';
+    goBtn.textContent = codeMode === 'architect' ? '[ SHADOW ARCHITECT ]' : '[ SHADOW BUILDER ]';
+  } else {
+    goBtn.style.color = '';
+    goBtn.textContent = codeMode === 'architect' ? '[ ARCHITECT + BUILD ]' : '[ RUN BUILDER ]';
+  }
 }
 
 function _extractFilesFromOutput(text) {

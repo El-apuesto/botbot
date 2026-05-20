@@ -763,12 +763,14 @@ def register_routes(app: Flask):
     @_login_required
     def api_builder_job_create():
         from part8_personas import get_system_prompt
-        d        = request.get_json(force=True) or {}
-        task     = d.get("task", "")
-        sys_over = d.get("system_prompt", "")
+        d           = request.get_json(force=True) or {}
+        task        = d.get("task", "")
+        sys_over    = d.get("system_prompt", "")
+        uncensored  = bool(d.get("uncensored", False))
         if not task:
             return jsonify({"error": "task required"}), 400
-        sys_p  = sys_over or get_system_prompt("builder")
+        role   = "builder_uncensored" if uncensored else "builder"
+        sys_p  = sys_over or get_system_prompt(role)
         msgs   = [{"role": "system", "content": sys_p}, {"role": "user", "content": task}]
         job_id = uuid.uuid4().hex[:12]
         _builder_jobs[job_id] = {"status": "running", "chunks": [], "error": None}
@@ -779,7 +781,7 @@ def register_routes(app: Flask):
             loop = _aio.new_event_loop()
             async def _collect():
                 try:
-                    async for chunk in _st("builder", msgs):
+                    async for chunk in _st(role, msgs):
                         _builder_jobs[job_id]["chunks"].append(chunk)
                 except Exception as exc:
                     _builder_jobs[job_id]["error"] = str(exc)
