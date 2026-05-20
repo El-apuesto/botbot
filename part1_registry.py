@@ -292,7 +292,7 @@ TASK_MODELS: dict = {
     "code_check_v2":    ("venice",       "gpt_codex_52"),
     "code_reason":      ("groq",         "qwq_32b"),
     "builder":              ("venice",        "qwen_coder_480_turbo"),
-    "builder_uncensored":   ("venice",        "qwen_coder_480_turbo"),
+    "builder_uncensored":   ("venice",        "venice_uncensored_12"),
     "builder_review":       ("venice",        "gpt_codex_52"),
     "builder_check":        ("venice",        "qwen_coder_480_turbo"),
 
