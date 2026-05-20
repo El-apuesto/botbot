@@ -85,6 +85,9 @@ body::before {
   margin: 0 auto;
   padding: 0 10px;
 }
+@media (min-width: 700px) {
+  .app { grid-template-rows: 14vh 1fr auto auto; }
+}
 @media (max-width: 600px) {
   .app { padding: 0 4px; }
   .app { grid-template-rows: 16vh 1fr auto auto; }
@@ -1642,7 +1645,6 @@ audio { width: 100%; margin-top: 4px; }
           <div class="opt-row">
             <button class="opt on" id="bs-normal"  onclick="setBrainstormMode('normal')">NORMAL</button>
             <button class="opt"    id="bs-shadow"  onclick="setBrainstormMode('shadow')">SHADOW</button>
-            <button class="opt"    id="bs-podcast" onclick="setBrainstormMode('podcast')">PODCAST</button>
           </div>
         </div>
         <div class="fg">
@@ -2913,7 +2915,6 @@ function setBrainstormMode(m) {
   bsMode = m;
   document.getElementById('bs-normal').classList.toggle('on', m === 'normal');
   document.getElementById('bs-shadow').classList.toggle('on', m === 'shadow');
-  document.getElementById('bs-podcast').classList.toggle('on', m === 'podcast');
 }
 function setBsRounds(r) {
   bsRounds = r;
