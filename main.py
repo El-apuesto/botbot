@@ -4,6 +4,7 @@ Twin Shadow — Final Working Version
 """
 
 import os
+import subprocess
 import sys
 import time
 import logging
@@ -45,8 +46,71 @@ def text_to_mp3(text: str, filename: str, model_key=None):
         return None
 
 
+def _install_github_hook():
+    """Reinstall the post-commit GitHub sync hook and reconcile GitHub on startup.
+
+    The hook lives in .git/hooks/ which is not tracked by git, so it can be lost
+    when the environment is rebuilt.  scripts/install-github-hook.sh is
+    version-controlled and recreates the hook idempotently.
+
+    After installing we also attempt a one-time reconciliation push so any
+    commits that landed while the hook was absent are immediately mirrored
+    to GitHub without waiting for the next new commit.
+    """
+    installer = Path(__file__).parent / "scripts" / "install-github-hook.sh"
+    if not installer.exists():
+        logger.warning("github-sync: installer not found at %s — skipping", installer)
+        return
+
+    try:
+        result = subprocess.run(
+            ["bash", str(installer)],
+            capture_output=True, text=True, timeout=10
+        )
+        if result.returncode == 0:
+            logger.info("github-sync hook ready: %s", result.stdout.strip())
+        else:
+            logger.warning("github-sync installer exited %d: %s", result.returncode, result.stderr.strip())
+            return
+    except Exception as exc:
+        logger.warning("github-sync: could not run installer: %s", exc)
+        return
+
+    pat = os.environ.get("GITHUB_PAT", "")
+    if not pat:
+        logger.info("github-sync: GITHUB_PAT not set — skipping startup reconciliation push")
+        return
+
+    def _reconcile():
+        import tempfile, stat
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".sh", delete=False) as fh:
+                fh.write(f"#!/bin/sh\necho '{pat}'\n")
+                askpass = fh.name
+            os.chmod(askpass, stat.S_IRWXU)
+            env = {**os.environ, "GIT_ASKPASS": askpass}
+            proc = subprocess.run(
+                ["git", "push", "--force",
+                 "https://El-apuesto@github.com/El-apuesto/botbot.git",
+                 "HEAD:main", "--quiet"],
+                capture_output=True, text=True, timeout=30, env=env
+            )
+            os.unlink(askpass)
+            if proc.returncode == 0:
+                logger.info("github-sync: startup reconciliation push OK")
+            else:
+                logger.warning("github-sync: startup reconciliation push failed (exit %d): %s",
+                               proc.returncode, proc.stderr.strip())
+        except Exception as exc:
+            logger.warning("github-sync: reconciliation push error: %s", exc)
+
+    import threading
+    threading.Thread(target=_reconcile, daemon=True, name="github-sync-reconcile").start()
+
+
 def main():
     print("\n Twin Shadow Starting...")
+    _install_github_hook()
     logger.info("Web UI is running (managed by part6_bot)")
 
     token = os.environ.get("TOKEN", "")
