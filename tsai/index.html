@@ -689,10 +689,7 @@ audio { width: 100%; margin-top: 4px; }
   <!-- ═══ HEADER ═══ -->
   <div class="header">
     <div id="app-banner" style="position:relative">
-      <picture>
-        <source media="(max-width: 600px)" srcset="/static/header_mobile2.jpeg">
-        <img src="/static/header_mobile.JPEG" alt="Twin Shadow">
-      </picture>
+      <img id="banner-img" src="/static/banner_home.jpg" alt="Twin Shadow">
       <div class="menu-wrap" id="menu-wrap">
         <button class="menu-toggle" id="menu-toggle" onclick="toggleMenu(event)">[ ≡ MENU ]</button>
         <div class="menu-dropdown" id="menu-dropdown">
@@ -1890,6 +1887,22 @@ const _labConcepts = {};
 /* ─────────────────────────────────────────
    TAB SWITCHING
 ───────────────────────────────────────── */
+const BANNER_MAP = {
+  'home':       '/static/banner_home.jpg',
+  'projects':   '/static/banner_committee.jpg',
+  'board':      '/static/banner_board.jpg',
+  'lab-video':  '/static/banner_video.jpg',
+  'lab-write':  '/static/banner_code.jpg',
+  'lab-code':   '/static/banner_code.jpg',
+  'social':     '/static/banner_social.jpg',
+  'studio':     '/static/banner_podcast.jpg',
+  'brainstorm': '/static/banner_podcast.jpg',
+  'advisors':   '/static/banner_legal.jpg',
+  'gorilla':    '/static/banner_committee.jpg',
+  'settings':   '/static/banner_home.jpg',
+  'archive':    '/static/banner_home.jpg',
+};
+
 function switchTab(name, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
@@ -1897,6 +1910,8 @@ function switchTab(name, btn) {
   if (panel) panel.classList.add('active');
   const menuItem = document.querySelector(`.menu-item[data-tab="${name}"]`);
   if (menuItem) menuItem.classList.add('active');
+  const bImg = document.getElementById('banner-img');
+  if (bImg && BANNER_MAP[name]) bImg.src = BANNER_MAP[name];
   if (name === 'settings') { loadAudioGallery(); loadTranscripts(); }
   if (name === 'projects') { loadMissions(); loadPipeline(); }
   if (name === 'social')   { loadSocialJobs(); }
