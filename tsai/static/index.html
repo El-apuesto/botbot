@@ -103,6 +103,28 @@ body::before {
 .header-right { display: flex; flex-direction: column; gap: 0; }
 .logo { display: none; }
 
+/* ── HEADER CORNER BUTTONS (top-left of banner) ── */
+#header-btns {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+#header-btns button {
+  background: rgba(187,68,255,0.88);
+  color: #ffffff;
+  font-family: var(--font-head);
+  font-size: 10px;
+  letter-spacing: .10em;
+  cursor: pointer;
+  padding: 3px 7px;
+  transition: background .15s;
+}
+#header-btns button:hover { background: var(--cyan); }
+
 /* ── BANNER — hero 1/3 page ── */
 #app-banner {
   width: 100%;
@@ -922,6 +944,13 @@ audio { width: 100%; margin-top: 4px; }
     <div id="app-banner">
       <img id="banner-img" src="/static/home.jpg" alt="Twin Shadow">
       <div id="banner-label">TWIN&nbsp;&nbsp;CHAT</div>
+      <!-- corner buttons — top-left -->
+      <div id="header-btns">
+        <button onclick="document.getElementById('file-input').click()" title="Attach file">[FILE]</button>
+        <button id="speak-toggle" onclick="toggleAutoSpeak()" title="Auto-speak responses">[SND]</button>
+        <button onclick="clearChat()" title="Clear conversation history">[CLR]</button>
+        <button onclick="openPipelineDash()" title="Pipeline dashboard" style="color:var(--yellow)">[DASH]</button>
+      </div>
     </div>
     <!-- MENU — top-right of hero -->
     <div class="menu-wrap" id="menu-wrap">
@@ -949,14 +978,9 @@ audio { width: 100%; margin-top: 4px; }
 
     <!-- [1] HOME — CHAT -->
     <div class="panel active" id="panel-home" style="position:relative">
+      <input id="file-input" type="file" accept="image/*,audio/*,video/*" onchange="onFile(this)" style="display:none">
       <div class="bot-strip">
-        <div class="bot-strip-left">
-          <button id="upload-btn" onclick="document.getElementById('file-input').click()" title="Attach file">[FILE]</button>
-          <input id="file-input" type="file" accept="image/*,audio/*,video/*" onchange="onFile(this)">
-          <button id="speak-toggle" onclick="toggleAutoSpeak()" title="Auto-speak responses" style="background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:var(--font-size-sm);padding:1px 6px;letter-spacing:.08em;font-family:inherit">[SND]</button>
-          <button onclick="clearChat()" title="Clear conversation history" style="background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:var(--font-size-sm);padding:1px 6px;letter-spacing:.08em;font-family:inherit">[CLR]</button>
-          <button onclick="openPipelineDash()" title="Pipeline dashboard" style="background:none;border:1px solid var(--border);color:var(--yellow);cursor:pointer;font-size:var(--font-size-sm);padding:1px 6px;letter-spacing:.08em;font-family:inherit">[DASH]</button>
-        </div>
+        <div class="bot-strip-left"></div>
         <div id="bot-toggle" onclick="toggleBot()">
           <span id="toggle-name">TWIN</span>
           <div class="sw" id="sw"></div>
