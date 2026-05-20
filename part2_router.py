@@ -124,6 +124,14 @@ async def _rotate_stream(
     else:
         base_url = cfg["base_url"]
 
+    # Venice requires this flag to actually bypass their safety layer.
+    # Without it, Venice wraps every call with their own content policy
+    # regardless of the system prompt — silently re-censoring uncensored models.
+    extra_body = (
+        {"venice_parameters": {"include_venice_system_prompt": False}}
+        if provider_key == "venice" else {}
+    )
+
     last_err = None
     for key in keys:
         for attempt in range(2):          # up to 2 attempts per key for server errors
@@ -134,6 +142,7 @@ async def _rotate_stream(
                     messages=messages,
                     max_tokens=max_tokens,
                     stream=True,
+                    extra_body=extra_body or None,
                 )
                 async for chunk in stream:
                     if not chunk.choices:
