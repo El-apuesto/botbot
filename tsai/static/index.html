@@ -2225,13 +2225,37 @@ async function loadDashStats() {
    TAB SWITCHING
 ───────────────────────────────────────── */
 const _BANNERS = {
-  'home':      '/static/home.jpg',
+  'home':      '/static/banner_chat.jpg',
+  'studio':    '/static/banner_podcast.jpg',
+  'advisors':  '/static/banner_legal.jpg',
   'lab-video': '/static/lab-video.jpg',
   'lab-code':  '/static/lab-code.jpg',
 };
+const _BANNER_LABELS = {
+  'home':      null,
+  'projects':  'COMMITTEES',
+  'board':     'BOARDROOM',
+  'lab-video': 'VIDEO\u00a0\u00a0LAB',
+  'lab-write': 'WRITE\u00a0\u00a0LAB',
+  'lab-code':  'CODE\u00a0\u00a0LAB',
+  'social':    'SOCIAL',
+  'studio':    'PODCAST\u00a0\u00a0SIMULATOR',
+  'brainstorm':'BRAINSTORM',
+  'advisors':  'LEGAL\u00a0/\u00a0MKT',
+  'settings':  'SETTINGS',
+  'archive':   'ARCHIVE',
+};
 function _updateBanner(name) {
   const img = document.getElementById('banner-img');
-  if (img) img.src = _BANNERS[name] || '/static/home.jpg';
+  if (img) img.src = _BANNERS[name] || '/static/banner_chat.jpg';
+  const lbl = document.getElementById('banner-label');
+  if (!lbl) return;
+  if (name === 'home') {
+    const b = (typeof bot !== 'undefined') ? bot : 'twin';
+    lbl.innerHTML = b === 'shadow' ? 'SHADOW\u00a0\u00a0CHAT' : 'TWIN\u00a0\u00a0CHAT';
+  } else {
+    lbl.textContent = _BANNER_LABELS[name] || name.toUpperCase();
+  }
 }
 
 function switchTab(name, btn) {
