@@ -78,19 +78,21 @@ body::before {
 /* ── APP GRID ── */
 .app {
   display: grid;
-  grid-template-rows: 33vh 1fr auto auto;
+  grid-template-rows: 0 1fr auto auto;
   height: 100vh;
   height: 100dvh;
   max-width: 900px;
   margin: 0 auto;
   padding: 0 10px;
+  position: relative;
+  z-index: 1;
 }
 @media (min-width: 700px) {
-  .app { grid-template-rows: 14vh 1fr auto auto; }
+  .app { grid-template-rows: 0 1fr auto auto; }
 }
 @media (max-width: 600px) {
   .app { padding: 0 4px; }
-  .app { grid-template-rows: 16vh 1fr auto auto; }
+  .app { grid-template-rows: 0 1fr auto auto; }
 }
 
 /* ── HEADER ── */
@@ -107,9 +109,9 @@ body::before {
 .header-right { display: flex; flex-direction: column; gap: 0; }
 .logo { display: none; }
 
-/* ── HEADER CORNER BUTTONS (top-left of banner) ── */
+/* ── HEADER CORNER BUTTONS (fixed top-left) ── */
 #header-btns {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   z-index: 9999;
@@ -129,28 +131,26 @@ body::before {
 }
 #header-btns button:hover { background: var(--cyan); }
 
-/* ── BANNER — hero 1/3 page ── */
+/* ── BANNER — full-viewport fixed background ── */
 #app-banner {
-  width: 100%;
-  flex: 1;
-  min-height: 0;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
   overflow: hidden;
-  position: relative;
-  padding: 0;
+  pointer-events: none;
 }
 #app-banner img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 8%;
+  object-position: center 20%;
   display: block;
-  filter: none;
 }
-/* TWIN CHAT corner label */
+/* TWIN CHAT corner label — fixed bottom-right */
 #banner-label {
-  position: absolute;
-  bottom: 4px;
-  right: 6px;
+  position: fixed;
+  bottom: 46px;
+  right: 10px;
   font-family: var(--font-head);
   font-size: 13px;
   font-weight: 700;
@@ -159,6 +159,8 @@ body::before {
   text-shadow: 0 0 12px var(--cyan), 0 0 4px #fff;
   pointer-events: none;
   line-height: 1;
+  z-index: 9990;
+  opacity: 0.75;
 }
 
 /* ── PIPELINE POPUP OVERLAY ── */
@@ -224,7 +226,7 @@ body::before {
 /* ── TERMINAL — clean full rectangle ── */
 .terminal {
   border: 2px solid var(--border);
-  background: #000;
+  background: rgba(4, 0, 12, 0.72);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -262,7 +264,7 @@ body::before {
   justify-content: space-between;
   padding: 4px 10px;
   border-bottom: 1px solid var(--border);
-  background: #000;
+  background: rgba(4, 0, 12, 0.82);
   flex-shrink: 0;
   min-height: 34px;
   gap: 8px;
@@ -343,7 +345,7 @@ body::before {
   padding: 7px 10px;
   border: 2px solid var(--border);
   border-top: none;
-  background: #000;
+  background: rgba(4, 0, 12, 0.88);
   flex-shrink: 0;
   box-shadow: 0 4px 20px var(--cyan-glow);
 }
@@ -718,7 +720,7 @@ audio { width: 100%; margin-top: 4px; }
   flex-wrap: nowrap;
   gap: 0;
   flex-shrink: 0;
-  background: #000;
+  background: rgba(4, 0, 12, 0.88);
   border-top: 2px solid var(--border);
   padding: 0;
   font-family: var(--font-head);
@@ -811,7 +813,7 @@ audio { width: 100%; margin-top: 4px; }
 .deploy-row .fi { flex: 1; min-width: 0; }
 
 /* ── DROPDOWN MENU ── */
-.menu-wrap { position: absolute; top: 0; right: 0; z-index: 9999; }
+.menu-wrap { position: fixed; top: 0; right: 0; z-index: 9999; }
 .menu-toggle {
   background: rgba(187,68,255,0.88);
   color: #ffffff;
