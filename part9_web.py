@@ -777,6 +777,23 @@ def register_routes(app: Flask):
         job_id = uuid.uuid4().hex[:12]
         _builder_jobs[job_id] = {"status": "running", "chunks": [], "error": None}
 
+        # store extra context for continuation
+        _builder_jobs[job_id]["role"]  = role
+        _builder_jobs[job_id]["sys_p"] = sys_p
+        _builder_jobs[job_id]["task"]  = task
+        _builder_jobs[job_id]["output_incomplete"] = False
+
+        def _output_incomplete(text: str) -> bool:
+            if not text.strip():
+                return False
+            if text.count("```") % 2 == 1:
+                return True
+            s = text.rstrip()
+            for marker in ("...", "…", "[continues", "[truncated", "# TODO", "// TODO"):
+                if s.endswith(marker):
+                    return True
+            return False
+
         def _run():
             from part2_router import stream_task as _st
             import asyncio as _aio
@@ -789,6 +806,8 @@ def register_routes(app: Flask):
                     _builder_jobs[job_id]["error"] = str(exc)
                 finally:
                     _builder_jobs[job_id]["status"] = "done"
+                    output = "".join(_builder_jobs[job_id]["chunks"])
+                    _builder_jobs[job_id]["output_incomplete"] = _output_incomplete(output)
             loop.run_until_complete(_collect())
             loop.close()
             # ── auto-save completed build ──────────────────────────────────────
@@ -816,10 +835,70 @@ def register_routes(app: Flask):
         if not job:
             return jsonify({"error": "not found"}), 404
         return jsonify({
-            "status": job["status"],
-            "chunks": job["chunks"],
-            "error":  job["error"],
+            "status":            job["status"],
+            "chunks":            job["chunks"],
+            "error":             job["error"],
+            "output_incomplete": job.get("output_incomplete", False),
         })
+
+    @app.route("/api/builder/job/<job_id>/continue", methods=["POST"])
+    @_login_required
+    def api_builder_job_continue(job_id):
+        job = _builder_jobs.get(job_id)
+        if not job:
+            return jsonify({"error": "not found"}), 404
+        if job.get("status") == "running":
+            return jsonify({"error": "still running"}), 400
+        existing = "".join(job["chunks"])
+        role  = job.get("role", "builder")
+        sys_p = job.get("sys_p", "")
+        orig  = job.get("task", "")
+        if not sys_p:
+            from part8_personas import get_system_prompt
+            sys_p = get_system_prompt(role)
+        cont_msgs = [
+            {"role": "system",    "content": sys_p},
+            {"role": "user",      "content": orig},
+            {"role": "assistant", "content": existing},
+            {"role": "user",      "content": (
+                "Continue from exactly where you stopped. "
+                "Do NOT repeat any code or text already written. "
+                "Resume mid-line or mid-block if needed. "
+                "Complete the implementation fully."
+            )},
+        ]
+        job["status"]            = "running"
+        job["output_incomplete"] = False
+
+        def _output_incomplete(text: str) -> bool:
+            if not text.strip():
+                return False
+            if text.count("```") % 2 == 1:
+                return True
+            s = text.rstrip()
+            for marker in ("...", "…", "[continues", "[truncated", "# TODO", "// TODO"):
+                if s.endswith(marker):
+                    return True
+            return False
+
+        def _run_cont():
+            from part2_router import stream_task as _st
+            import asyncio as _aio
+            loop = _aio.new_event_loop()
+            async def _collect():
+                try:
+                    async for chunk in _st(role, cont_msgs, max_tokens=12000):
+                        job["chunks"].append(chunk)
+                except Exception as exc:
+                    job["error"] = str(exc)
+                finally:
+                    job["status"] = "done"
+                    job["output_incomplete"] = _output_incomplete("".join(job["chunks"]))
+            loop.run_until_complete(_collect())
+            loop.close()
+
+        Thread(target=_run_cont, daemon=True).start()
+        return jsonify({"ok": True, "job_id": job_id})
 
     # Pending-edit store: edit_id → {file_path, new_code, description}
     _pending_edits: dict[str, dict] = {}
@@ -2407,8 +2486,217 @@ def register_routes(app: Flask):
             brief       = brief,
             mission_type= "custom_committee",
         )
-        # Embed the committee config into the mission results so the executor can read it
         import json as _json
         m.results["committee_config"] = _json.dumps(cfg.to_dict())
         m.save()
         return jsonify(m.to_dict()), 201
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # LLM ADMIN PANEL — /api/admin/*
+    # ══════════════════════════════════════════════════════════════════════════
+
+    _ROLE_CATEGORIES = {
+        "CORE":        ["twin","brief","shadow","shadow_chat","capi","relay"],
+        "CREATIVE":    ["creative","creative_alt","creative_dolphin","multimodal",
+                        "story","story_fallback","story_shadow","story_shadow_fallback"],
+        "BUILDER":     ["builder","builder_uncensored","builder_review","builder_check",
+                        "code","code_fallback","code_check","code_check_v2","code_reason"],
+        "BOARDROOM":   ["board_strategy","board_finance","board_creative","board_tech",
+                        "board_ops","board_distribution","board_venice","board_venice_llama",
+                        "board_dolphin","board_hermes","board_gptoss","board_qwen",
+                        "board_mistral","board_minimax","board_hermes_capped","shadow_chat"],
+        "BRAINSTORM":  ["brainstorm_qwq","brainstorm_minimax","brainstorm_glm",
+                        "brainstorm_kimi","brainstorm_mistral"],
+        "COMMITTEE":   ["committee_strategy_1","committee_strategy_2","committee_strategy_3",
+                        "committee_finance_1","committee_finance_2","committee_finance_3",
+                        "committee_creative_1","committee_creative_2","committee_creative_3",
+                        "committee_tech_1","committee_tech_2","committee_tech_3",
+                        "committee_ops_1","committee_ops_2","committee_ops_3",
+                        "committee_dist_1","committee_dist_2","committee_dist_3"],
+        "SPECIALISTS": ["routing","summarize","vision","vision_fast","vision_uncensored",
+                        "business","business_deep","legal_finance","fast_reasoning",
+                        "chat_specialist"],
+        "LOCAL":       ["local_shadow","local_adolphus"],
+    }
+
+    def _is_local_request() -> bool:
+        return request.remote_addr in ("127.0.0.1", "::1", "localhost")
+
+    @app.route("/api/admin/config", methods=["GET"])
+    @_login_required
+    def api_admin_config():
+        from part1_registry import TASK_MODELS, PROVIDERS
+        from part8_personas import get_system_prompt
+        from part_llm_config import get_full_config, get_role_override, get_prompt_override
+        cfg      = get_full_config()
+        is_local = _is_local_request()
+        roles    = []
+        seen     = set()
+        for cat, keys in _ROLE_CATEGORIES.items():
+            for role in keys:
+                if role in seen:
+                    continue
+                seen.add(role)
+                if role not in TASK_MODELS:
+                    continue
+                if cat == "LOCAL" and not is_local:
+                    continue
+                def_p, def_m  = TASK_MODELS[role]
+                ov            = get_role_override(role)
+                cur_p         = ov["provider"]   if ov else def_p
+                cur_m         = ov["model_key"]  if ov else def_m
+                prompt_ov     = get_prompt_override(role)
+                roles.append({
+                    "role":               role,
+                    "category":           cat,
+                    "default_provider":   def_p,
+                    "default_model_key":  def_m,
+                    "current_provider":   cur_p,
+                    "current_model_key":  cur_m,
+                    "has_override":       ov is not None,
+                    "current_prompt":     prompt_ov or get_system_prompt(role),
+                    "has_prompt_override":prompt_ov is not None,
+                })
+        return jsonify({
+            "roles":           roles,
+            "is_local":        is_local,
+            "ollama_base_url": cfg.get("ollama_base_url", "http://localhost:11434"),
+            "templates":       list(cfg.get("templates", {}).keys()),
+        })
+
+    @app.route("/api/admin/models", methods=["GET"])
+    @_login_required
+    def api_admin_models():
+        from part1_registry import PROVIDERS
+        is_local = _is_local_request()
+        result   = {}
+        for prov, cfg in PROVIDERS.items():
+            if prov == "ollama_local" and not is_local:
+                continue
+            models = cfg.get("models", {})
+            result[prov] = {
+                "desc":    cfg.get("desc", ""),
+                "models":  list(models.keys()),
+                "model_names": models,
+            }
+        return jsonify(result)
+
+    @app.route("/api/admin/role/<role>", methods=["POST"])
+    @_login_required
+    def api_admin_set_role(role):
+        from part1_registry import TASK_MODELS, PROVIDERS
+        from part_llm_config import set_role as _sr
+        d         = request.get_json(force=True) or {}
+        provider  = d.get("provider", "").strip()
+        model_key = d.get("model_key", "").strip()
+        if not provider or not model_key:
+            return jsonify({"error": "provider and model_key required"}), 400
+        if provider not in PROVIDERS:
+            return jsonify({"error": f"unknown provider: {provider}"}), 400
+        if model_key not in PROVIDERS[provider].get("models", {}):
+            return jsonify({"error": f"unknown model_key '{model_key}' for {provider}"}), 400
+        _sr(role, provider, model_key)
+        return jsonify({"ok": True, "role": role, "provider": provider, "model_key": model_key})
+
+    @app.route("/api/admin/prompt/<role>", methods=["POST"])
+    @_login_required
+    def api_admin_set_prompt(role):
+        from part_llm_config import set_prompt as _sp
+        d      = request.get_json(force=True) or {}
+        prompt = d.get("prompt", "")
+        if not prompt.strip():
+            return jsonify({"error": "prompt required"}), 400
+        _sp(role, prompt)
+        return jsonify({"ok": True, "role": role})
+
+    @app.route("/api/admin/reset/role/<role>", methods=["POST"])
+    @_login_required
+    def api_admin_reset_role(role):
+        from part_llm_config import reset_role as _rr
+        _rr(role)
+        return jsonify({"ok": True, "role": role, "reset": "role"})
+
+    @app.route("/api/admin/reset/prompt/<role>", methods=["POST"])
+    @_login_required
+    def api_admin_reset_prompt(role):
+        from part_llm_config import reset_prompt as _rp
+        _rp(role)
+        return jsonify({"ok": True, "role": role, "reset": "prompt"})
+
+    @app.route("/api/admin/ollama/models", methods=["GET"])
+    @_login_required
+    def api_admin_ollama_models():
+        import urllib.request as _ur
+        import json as _j
+        from part_llm_config import get_ollama_base_url
+        base = get_ollama_base_url().rstrip("/")
+        try:
+            req  = _ur.Request(f"{base}/api/tags", headers={"Accept": "application/json"})
+            with _ur.urlopen(req, timeout=5) as r:
+                data   = _j.loads(r.read().decode())
+                models = [m["name"] for m in data.get("models", [])]
+                return jsonify({"ok": True, "models": models, "base_url": base})
+        except Exception as e:
+            return jsonify({"ok": False, "error": str(e), "models": [], "base_url": base})
+
+    @app.route("/api/admin/ollama/url", methods=["POST"])
+    @_login_required
+    def api_admin_ollama_url():
+        from part_llm_config import set_ollama_base_url
+        d   = request.get_json(force=True) or {}
+        url = d.get("url", "").strip()
+        if not url:
+            return jsonify({"error": "url required"}), 400
+        set_ollama_base_url(url)
+        return jsonify({"ok": True, "url": url})
+
+    @app.route("/api/admin/configs", methods=["GET"])
+    @_login_required
+    def api_admin_list_templates():
+        from part_llm_config import list_templates
+        return jsonify({"templates": list_templates()})
+
+    @app.route("/api/admin/config/template", methods=["POST"])
+    @_login_required
+    def api_admin_save_template():
+        from part_llm_config import save_template
+        d    = request.get_json(force=True) or {}
+        name = d.get("name", "").strip()
+        if not name:
+            return jsonify({"error": "name required"}), 400
+        save_template(name)
+        return jsonify({"ok": True, "name": name})
+
+    @app.route("/api/admin/config/load/<name>", methods=["POST"])
+    @_login_required
+    def api_admin_load_template(name):
+        from part_llm_config import load_template
+        ok = load_template(name)
+        if not ok:
+            return jsonify({"error": "template not found"}), 404
+        return jsonify({"ok": True, "name": name})
+
+    @app.route("/api/admin/config/template/<name>", methods=["DELETE"])
+    @_login_required
+    def api_admin_delete_template(name):
+        from part_llm_config import delete_template
+        delete_template(name)
+        return jsonify({"ok": True, "name": name})
+
+    @app.route("/api/admin/ollama/assign", methods=["POST"])
+    @_login_required
+    def api_admin_ollama_assign():
+        """Add a discovered Ollama model to ollama_local provider and assign it to a role."""
+        from part1_registry import PROVIDERS
+        from part_llm_config import set_role as _sr
+        d         = request.get_json(force=True) or {}
+        model_id  = d.get("model_id", "").strip()
+        role      = d.get("role", "").strip()
+        alias     = d.get("alias", model_id.split(":")[0]).strip()
+        if not model_id or not role:
+            return jsonify({"error": "model_id and role required"}), 400
+        if not _is_local_request():
+            return jsonify({"error": "ollama_local assignment only available on localhost"}), 403
+        PROVIDERS["ollama_local"]["models"][alias] = model_id
+        _sr(role, "ollama_local", alias)
+        return jsonify({"ok": True, "role": role, "model_id": model_id, "alias": alias})

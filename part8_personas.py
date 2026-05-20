@@ -647,6 +647,14 @@ _TURN_LENGTH = {
 
 def get_system_prompt(task_key: str) -> str:
     """Return the system prompt for a given task routing key."""
+    # ── admin override check ────────────────────────────────────────────────
+    try:
+        from part_llm_config import get_prompt_override as _gpo
+        _ov = _gpo(task_key)
+        if _ov:
+            return _ov
+    except Exception:
+        pass
     _MAP = {
         "twin":                    TWIN_SYSTEM,
         "relay":                   TWIN_SYSTEM,

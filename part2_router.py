@@ -239,6 +239,15 @@ async def stream_task(
 ) -> AsyncGenerator[str, None]:
     """Stream response chunks for a task type. Uses key rotation + provider fallback."""
     provider_key, model_key = get_task_routing(task_type)
+    # ── LLM config override (admin panel) ─────────────────────────────────────
+    try:
+        from part_llm_config import get_role_override as _gro
+        _ov = _gro(task_type)
+        if _ov:
+            provider_key = _ov["provider"]
+            model_key    = _ov["model_key"]
+    except Exception:
+        pass
     if model_key_override:
         model_key = model_key_override
     cfg = get_provider_cfg(provider_key)

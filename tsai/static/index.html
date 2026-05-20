@@ -1806,6 +1806,80 @@ audio { width: 100%; margin-top: 4px; }
 
         <button class="btn" style="font-size:var(--font-size-base);padding:10px 20px;letter-spacing:2px;align-self:stretch;text-align:center" onclick="saveSettings()">[ SAVE SETTINGS ]</button>
 
+        <!-- ═══════════════ LLM ADMIN ═══════════════ -->
+        <button class="btn" id="adm-toggle-btn" style="font-size:var(--font-size-base);padding:10px 20px;letter-spacing:2px;align-self:stretch;text-align:center;margin-top:6px;border:1px solid var(--cyan)" onclick="adminToggle()">[ LLM ADMIN ]</button>
+
+        <div id="adm-panel" style="display:none;flex-direction:column;gap:10px;padding:10px 0">
+
+          <div id="adm-status" style="color:var(--muted);font-size:var(--font-size-sm)">LOADING...</div>
+
+          <!-- sub-tabs -->
+          <div style="display:flex;gap:0;flex-wrap:wrap;gap:2px">
+            <button class="opt on" id="adm-t-roles"     onclick="admTab('roles')">ROLES</button>
+            <button class="opt"    id="adm-t-prompts"   onclick="admTab('prompts')">PROMPTS</button>
+            <button class="opt"    id="adm-t-ollama"    onclick="admTab('ollama')">OLLAMA</button>
+            <button class="opt"    id="adm-t-templates" onclick="admTab('templates')">TEMPLATES</button>
+          </div>
+
+          <!-- ── ROLES ── -->
+          <div id="adm-p-roles" style="display:flex;flex-direction:column;gap:4px">
+            <div style="font-size:var(--font-size-xs);color:var(--muted);padding-bottom:4px">
+              PROVIDER — MODEL — PER ROLE. ORANGE = OVERRIDDEN. <span id="adm-roles-badge"></span>
+            </div>
+            <div id="adm-roles-content" style="display:flex;flex-direction:column;gap:2px"></div>
+          </div>
+
+          <!-- ── PROMPTS ── -->
+          <div id="adm-p-prompts" style="display:none;flex-direction:column;gap:6px">
+            <div style="font-size:var(--font-size-xs);color:var(--muted);padding-bottom:4px">
+              EDIT SYSTEM PROMPT PER ROLE. RESET RETURNS TO HARDCODED DEFAULT.
+            </div>
+            <div id="adm-prompts-content" style="display:flex;flex-direction:column;gap:8px"></div>
+          </div>
+
+          <!-- ── OLLAMA ── -->
+          <div id="adm-p-ollama" style="display:none;flex-direction:column;gap:8px">
+            <div class="fg">
+              <label class="fl">OLLAMA BASE URL <span style="color:var(--muted);font-size:var(--font-size-xs)">(localhost only)</span></label>
+              <div style="display:flex;gap:6px">
+                <input class="fi" id="adm-ollama-url" placeholder="http://localhost:11434" style="flex:1">
+                <button class="btn" style="font-size:var(--font-size-sm);padding:4px 12px" onclick="admSetOllamaUrl()">[ SET ]</button>
+              </div>
+            </div>
+            <button class="btn" style="font-size:var(--font-size-sm);padding:6px 16px" onclick="admDiscoverOllama()">[ DISCOVER LOCAL MODELS ]</button>
+            <div id="adm-ollama-result" style="display:flex;flex-direction:column;gap:6px"></div>
+            <div id="adm-ollama-assign" style="display:none;flex-direction:column;gap:6px">
+              <div class="fg">
+                <label class="fl">ASSIGN LOCAL MODEL TO ROLE</label>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <select class="fi" id="adm-oll-model" style="flex:1.2"></select>
+                  <select class="fi" id="adm-oll-role"  style="flex:1.2"></select>
+                  <input  class="fi" id="adm-oll-alias" placeholder="alias (optional)" style="flex:1">
+                  <button class="btn" style="font-size:var(--font-size-sm);padding:4px 12px" onclick="admOllamaAssign()">[ ASSIGN ]</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── TEMPLATES ── -->
+          <div id="adm-p-templates" style="display:none;flex-direction:column;gap:8px">
+            <div class="fg">
+              <label class="fl">SAVE CURRENT CONFIG AS TEMPLATE</label>
+              <div style="display:flex;gap:6px">
+                <input class="fi" id="adm-tpl-name" placeholder="config-name" style="flex:1">
+                <button class="btn" style="font-size:var(--font-size-sm);padding:4px 12px" onclick="admSaveTemplate()">[ SAVE ]</button>
+              </div>
+            </div>
+            <div class="fg">
+              <span class="fl">SAVED TEMPLATES</span>
+              <div id="adm-tpl-list" style="display:flex;flex-direction:column;gap:4px"></div>
+              <p id="adm-tpl-empty" style="color:var(--muted);font-size:var(--font-size-sm)">NO TEMPLATES SAVED.</p>
+            </div>
+          </div>
+
+        </div>
+        <!-- ═══════════════ /LLM ADMIN ═══════════════ -->
+
         <!-- AUDIO GALLERY -->
         <div class="fg">
           <div style="display:flex;justify-content:space-between;align-items:center">
@@ -2969,6 +3043,15 @@ async function _pollBuilderJob(jobId, out, isArch, prefillTask) {
             document.getElementById('builder-deploy-btn').textContent = '[ DEPLOY ]';
             if (isArch) _renderCodeFiles(fullTxt);
             _showBuilderDownload(fullTxt, rawTask);
+          }
+          if (data.output_incomplete) {
+            const contRow = document.createElement('div');
+            contRow.id = 'builder-cont-row-' + jobId;
+            contRow.style.cssText = 'display:flex;gap:8px;padding:8px 0;align-items:center;flex-wrap:wrap';
+            contRow.innerHTML = '<span style="color:var(--yellow);font-size:var(--font-size-sm)">&#9888; OUTPUT INCOMPLETE — unclosed code block detected</span>'
+              + '<button class="btn" style="font-size:var(--font-size-sm);padding:4px 14px" onclick="continueBuilderJob(\'' + jobId + '\')">[ CONTINUE ]</button>'
+              + '<button class="btn" style="font-size:var(--font-size-sm);padding:4px 10px;opacity:0.5" onclick="this.parentElement.remove()">[ DISMISS ]</button>';
+            out.appendChild(contRow);
           }
           resolve(turns);
         } else if (data.error) {
@@ -5808,6 +5891,334 @@ async function gorillaPushPipeline() {
     setTimeout(() => {
       document.getElementById('gorilla-pipeline-btn').textContent = '[ PUSH BLUEPRINT TO PIPELINE ]';
     }, 3000);
+  }
+}
+
+/* ─────────────────────────────────────────
+   BUILDER — CONTINUE JOB
+───────────────────────────────────────── */
+async function continueBuilderJob(jobId) {
+  const row = document.getElementById('builder-cont-row-' + jobId);
+  if (row) row.innerHTML = '<span style="color:var(--cyan);font-size:var(--font-size-sm);animation:blink 1s step-end infinite">&#9608; CONTINUING...</span>';
+  try {
+    const res = await fetch('/api/builder/job/' + jobId + '/continue', { method: 'POST' });
+    if (!res.ok) { if (row) row.innerHTML = '<span style="color:var(--red)">[ CONTINUE FAILED ]</span>'; return; }
+    if (row) row.remove();
+    const out = document.getElementById('builder-out');
+    const btn = document.getElementById('builder-go-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '[ CONTINUING... ]'; }
+    await _pollBuilderJob(jobId, out, false, null);
+    if (btn) { btn.disabled = false; btn.textContent = codeMode === 'architect' ? '[ ARCHITECT + BUILD ]' : '[ RUN BUILDER ]'; }
+  } catch(e) {
+    if (row) row.innerHTML = '<span style="color:var(--red)">[ ERROR: ' + e.message + ' ]</span>';
+  }
+}
+
+/* ─────────────────────────────────────────
+   LLM ADMIN PANEL
+───────────────────────────────────────── */
+let _admData   = null;
+let _admModels = null;
+let _admOpen   = false;
+let _admTab    = 'roles';
+
+function adminToggle() {
+  _admOpen = !_admOpen;
+  const panel = document.getElementById('adm-panel');
+  const btn   = document.getElementById('adm-toggle-btn');
+  panel.style.display = _admOpen ? 'flex' : 'none';
+  btn.style.color = _admOpen ? 'var(--cyan)' : '';
+  if (_admOpen && !_admData) admLoad();
+}
+
+function admTab(name) {
+  _admTab = name;
+  ['roles','prompts','ollama','templates'].forEach(t => {
+    document.getElementById('adm-t-' + t).classList.toggle('on', t === name);
+    document.getElementById('adm-p-' + t).style.display = t === name ? 'flex' : 'none';
+  });
+}
+
+async function admLoad() {
+  document.getElementById('adm-status').textContent = 'LOADING CONFIG...';
+  try {
+    const [cfgRes, modRes] = await Promise.all([
+      fetch('/api/admin/config'),
+      fetch('/api/admin/models'),
+    ]);
+    _admData   = await cfgRes.json();
+    _admModels = await modRes.json();
+    document.getElementById('adm-ollama-url').value = _admData.ollama_base_url || 'http://localhost:11434';
+    const ov = _admData.roles.filter(r => r.has_override || r.has_prompt_override).length;
+    document.getElementById('adm-roles-badge').textContent = ov ? ov + ' OVERRIDE(S) ACTIVE' : '';
+    document.getElementById('adm-status').textContent = _admData.roles.length + ' ROLES LOADED' + (_admData.is_local ? ' · LOCAL MODE' : '');
+    admRenderRoles();
+    admRenderPrompts();
+    admRenderTemplates();
+  } catch(e) {
+    document.getElementById('adm-status').textContent = 'ERROR: ' + e.message;
+  }
+}
+
+function admProviderOptions(current) {
+  if (!_admModels) return '';
+  return Object.keys(_admModels).map(p =>
+    `<option value="${p}" ${p === current ? 'selected' : ''}>${p}</option>`
+  ).join('');
+}
+
+function admModelOptions(provider, current) {
+  if (!_admModels || !_admModels[provider]) return '';
+  return _admModels[provider].models.map(m =>
+    `<option value="${m}" ${m === current ? 'selected' : ''}>${m}${_admModels[provider].model_names ? ' — ' + (_admModels[provider].model_names[m] || '') : ''}</option>`
+  ).join('');
+}
+
+function admRenderRoles() {
+  const container = document.getElementById('adm-roles-content');
+  if (!_admData) return;
+  const cats = {};
+  _admData.roles.forEach(r => {
+    if (!cats[r.category]) cats[r.category] = [];
+    cats[r.category].push(r);
+  });
+  let html = '';
+  for (const [cat, roles] of Object.entries(cats)) {
+    html += `<div style="color:var(--yellow);font-size:var(--font-size-xs);letter-spacing:2px;padding:6px 0 2px 0;border-top:1px solid var(--cyan-dim)">── ${cat} ──</div>`;
+    roles.forEach(r => {
+      const provOpts  = admProviderOptions(r.current_provider);
+      const modOpts   = admModelOptions(r.current_provider, r.current_model_key);
+      const ov        = r.has_override;
+      html += `<div style="display:grid;grid-template-columns:130px 1fr 1fr auto auto;gap:4px;align-items:center;padding:2px 0" data-role="${r.role}">
+        <span style="font-size:var(--font-size-sm);color:${ov ? '#ffaa44' : 'var(--text)'};letter-spacing:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.role}">${r.role}</span>
+        <select class="fi" id="adm-prov-${r.role}" style="font-size:var(--font-size-xs);padding:3px 6px" onchange="admOnProviderChange('${r.role}')">${provOpts}</select>
+        <select class="fi" id="adm-mod-${r.role}"  style="font-size:var(--font-size-xs);padding:3px 6px">${modOpts}</select>
+        <button class="btn" style="font-size:var(--font-size-xs);padding:3px 8px;white-space:nowrap" onclick="admSaveRole('${r.role}')">SAVE</button>
+        <button class="btn" style="font-size:var(--font-size-xs);padding:3px 8px;white-space:nowrap;opacity:${ov ? 1 : 0.35}" onclick="admResetRole('${r.role}')">RST</button>
+      </div>`;
+    });
+  }
+  container.innerHTML = html;
+}
+
+function admOnProviderChange(role) {
+  const prov = document.getElementById('adm-prov-' + role).value;
+  const modSel = document.getElementById('adm-mod-' + role);
+  if (!_admModels || !_admModels[prov]) return;
+  modSel.innerHTML = admModelOptions(prov, _admModels[prov].models[0]);
+}
+
+async function admSaveRole(role) {
+  const provider   = document.getElementById('adm-prov-' + role).value;
+  const model_key  = document.getElementById('adm-mod-' + role).value;
+  try {
+    const res = await fetch('/api/admin/role/' + role, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ provider, model_key }),
+    });
+    const d = await res.json();
+    if (d.ok) {
+      const row = document.querySelector(`[data-role="${role}"] span`);
+      if (row) row.style.color = '#ffaa44';
+      document.getElementById('adm-status').textContent = role.toUpperCase() + ' SAVED → ' + provider + '/' + model_key;
+    } else {
+      document.getElementById('adm-status').textContent = 'ERROR: ' + (d.error || 'failed');
+    }
+  } catch(e) {
+    document.getElementById('adm-status').textContent = 'ERROR: ' + e.message;
+  }
+}
+
+async function admResetRole(role) {
+  if (!confirm('Reset ' + role.toUpperCase() + ' to hardcoded default model? This removes any override.')) return;
+  try {
+    await fetch('/api/admin/reset/role/' + role, { method: 'POST' });
+    document.getElementById('adm-status').textContent = role.toUpperCase() + ' RESET TO DEFAULT';
+    await admLoad();
+  } catch(e) {
+    document.getElementById('adm-status').textContent = 'ERROR: ' + e.message;
+  }
+}
+
+function admRenderPrompts() {
+  const container = document.getElementById('adm-prompts-content');
+  if (!_admData) return;
+  const cats = {};
+  _admData.roles.forEach(r => {
+    if (!cats[r.category]) cats[r.category] = [];
+    cats[r.category].push(r);
+  });
+  let html = '';
+  for (const [cat, roles] of Object.entries(cats)) {
+    html += `<div style="color:var(--yellow);font-size:var(--font-size-xs);letter-spacing:2px;padding:6px 0 2px 0;border-top:1px solid var(--cyan-dim)">── ${cat} ──</div>`;
+    roles.forEach(r => {
+      const ov = r.has_prompt_override;
+      const promptText = (r.current_prompt || '').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+      html += `<div style="display:flex;flex-direction:column;gap:4px;padding:4px 0">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:var(--font-size-sm);color:${ov ? '#ffaa44' : 'var(--text)'};letter-spacing:1px">${r.role}</span>
+          <div style="display:flex;gap:4px">
+            <button class="btn" style="font-size:var(--font-size-xs);padding:2px 8px" onclick="admSavePrompt('${r.role}')">SAVE</button>
+            <button class="btn" style="font-size:var(--font-size-xs);padding:2px 8px;opacity:${ov ? 1 : 0.35}" onclick="admResetPrompt('${r.role}')">RESET TO DEFAULT</button>
+          </div>
+        </div>
+        <textarea class="fi" id="adm-prompt-${r.role}" rows="4" style="font-size:var(--font-size-xs);font-family:inherit;resize:vertical">${promptText}</textarea>
+      </div>`;
+    });
+  }
+  container.innerHTML = html;
+}
+
+async function admSavePrompt(role) {
+  const ta     = document.getElementById('adm-prompt-' + role);
+  const prompt = ta ? ta.value.trim() : '';
+  if (!prompt) { document.getElementById('adm-status').textContent = 'PROMPT CANNOT BE EMPTY'; return; }
+  if (!confirm('Save new prompt for ' + role.toUpperCase() + '? This will be used for all future requests on this role.')) return;
+  try {
+    const res = await fetch('/api/admin/prompt/' + role, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ prompt }),
+    });
+    const d = await res.json();
+    if (d.ok) {
+      document.getElementById('adm-status').textContent = role.toUpperCase() + ' PROMPT SAVED';
+    } else {
+      document.getElementById('adm-status').textContent = 'ERROR: ' + (d.error || 'failed');
+    }
+  } catch(e) {
+    document.getElementById('adm-status').textContent = 'ERROR: ' + e.message;
+  }
+}
+
+async function admResetPrompt(role) {
+  if (!confirm('Reset ' + role.toUpperCase() + ' prompt to hardcoded default? This removes any custom prompt.')) return;
+  if (!confirm('CONFIRM: reset ' + role.toUpperCase() + ' prompt? This cannot be undone without re-saving.')) return;
+  try {
+    await fetch('/api/admin/reset/prompt/' + role, { method: 'POST' });
+    document.getElementById('adm-status').textContent = role.toUpperCase() + ' PROMPT RESET TO DEFAULT';
+    await admLoad();
+  } catch(e) {
+    document.getElementById('adm-status').textContent = 'ERROR: ' + e.message;
+  }
+}
+
+async function admSetOllamaUrl() {
+  const url = document.getElementById('adm-ollama-url').value.trim();
+  if (!url) return;
+  const res = await fetch('/api/admin/ollama/url', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ url }),
+  });
+  const d = await res.json();
+  document.getElementById('adm-status').textContent = d.ok ? 'OLLAMA URL SET: ' + url : 'ERROR: ' + d.error;
+}
+
+async function admDiscoverOllama() {
+  const resultDiv = document.getElementById('adm-ollama-result');
+  resultDiv.innerHTML = '<span style="color:var(--cyan);animation:blink 1s step-end infinite">&#9608; DISCOVERING...</span>';
+  try {
+    const res  = await fetch('/api/admin/ollama/models');
+    const data = await res.json();
+    if (!data.ok || !data.models.length) {
+      resultDiv.innerHTML = '<span style="color:var(--muted)">NO MODELS FOUND — is Ollama running at ' + (data.base_url || 'localhost:11434') + '?</span>'
+        + (data.error ? '<br><span style="color:var(--red);font-size:var(--font-size-xs)">' + data.error + '</span>' : '');
+      document.getElementById('adm-ollama-assign').style.display = 'none';
+      return;
+    }
+    let html = '<span style="color:var(--green);font-size:var(--font-size-sm)">FOUND ' + data.models.length + ' MODEL(S) AT ' + data.base_url + ':</span>';
+    data.models.forEach(m => {
+      html += '<div style="font-size:var(--font-size-xs);color:var(--text);padding:1px 0">&#9642; ' + m + '</div>';
+    });
+    resultDiv.innerHTML = html;
+    const modelSel = document.getElementById('adm-oll-model');
+    modelSel.innerHTML = data.models.map(m => `<option value="${m}">${m}</option>`).join('');
+    const roleSel = document.getElementById('adm-oll-role');
+    if (_admData) {
+      roleSel.innerHTML = _admData.roles.map(r => `<option value="${r.role}">${r.role}</option>`).join('');
+    }
+    document.getElementById('adm-ollama-assign').style.display = 'flex';
+  } catch(e) {
+    resultDiv.innerHTML = '<span style="color:var(--red)">ERROR: ' + e.message + '</span>';
+  }
+}
+
+async function admOllamaAssign() {
+  const model_id = document.getElementById('adm-oll-model').value;
+  const role     = document.getElementById('adm-oll-role').value;
+  const alias    = document.getElementById('adm-oll-alias').value.trim() || model_id.split(':')[0];
+  if (!model_id || !role) return;
+  try {
+    const res = await fetch('/api/admin/ollama/assign', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ model_id, role, alias }),
+    });
+    const d = await res.json();
+    if (d.ok) {
+      document.getElementById('adm-status').textContent = role.toUpperCase() + ' → ollama_local/' + alias + ' (' + model_id + ')';
+      await admLoad();
+    } else {
+      document.getElementById('adm-status').textContent = 'ERROR: ' + (d.error || 'failed');
+    }
+  } catch(e) {
+    document.getElementById('adm-status').textContent = 'ERROR: ' + e.message;
+  }
+}
+
+function admRenderTemplates() {
+  const list  = document.getElementById('adm-tpl-list');
+  const empty = document.getElementById('adm-tpl-empty');
+  if (!_admData) return;
+  const tpls = _admData.templates || [];
+  empty.style.display = tpls.length ? 'none' : '';
+  if (!tpls.length) { list.innerHTML = ''; return; }
+  list.innerHTML = tpls.map(name =>
+    `<div style="display:flex;gap:6px;align-items:center">
+      <span style="flex:1;font-size:var(--font-size-sm);color:var(--text)">${name}</span>
+      <button class="btn" style="font-size:var(--font-size-xs);padding:3px 10px" onclick="admLoadTemplate('${name}')">LOAD</button>
+      <button class="btn" style="font-size:var(--font-size-xs);padding:3px 10px;opacity:0.6" onclick="admDeleteTemplate('${name}')">DEL</button>
+    </div>`
+  ).join('');
+}
+
+async function admSaveTemplate() {
+  const name = document.getElementById('adm-tpl-name').value.trim();
+  if (!name) { document.getElementById('adm-status').textContent = 'ENTER A TEMPLATE NAME'; return; }
+  const res = await fetch('/api/admin/config/template', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ name }),
+  });
+  const d = await res.json();
+  if (d.ok) {
+    document.getElementById('adm-status').textContent = 'TEMPLATE SAVED: ' + name;
+    document.getElementById('adm-tpl-name').value = '';
+    if (_admData) { _admData.templates = [...(_admData.templates || []).filter(t => t !== name), name]; admRenderTemplates(); }
+  }
+}
+
+async function admLoadTemplate(name) {
+  if (!confirm('Load template "' + name + '"? This replaces ALL current role and prompt overrides.')) return;
+  if (!confirm('CONFIRM: load "' + name + '"? Current overrides will be replaced.')) return;
+  const res = await fetch('/api/admin/config/load/' + encodeURIComponent(name), { method: 'POST' });
+  const d   = await res.json();
+  if (d.ok) {
+    document.getElementById('adm-status').textContent = 'TEMPLATE LOADED: ' + name;
+    await admLoad();
+  } else {
+    document.getElementById('adm-status').textContent = 'ERROR: ' + (d.error || 'not found');
+  }
+}
+
+async function admDeleteTemplate(name) {
+  if (!confirm('Delete template "' + name + '"?')) return;
+  const res = await fetch('/api/admin/config/template/' + encodeURIComponent(name), { method: 'DELETE' });
+  if (res.ok) {
+    document.getElementById('adm-status').textContent = 'TEMPLATE DELETED: ' + name;
+    if (_admData) { _admData.templates = (_admData.templates || []).filter(t => t !== name); admRenderTemplates(); }
   }
 }
 </script>
