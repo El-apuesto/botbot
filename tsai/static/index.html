@@ -16,6 +16,7 @@
 <meta name="twitter:description" content="AI engine active.">
 <meta name="twitter:image" content="{{ og_url }}/static/send_btn.jpg">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; border: none !important; outline: none !important; }
 
@@ -556,7 +557,32 @@ textarea.fi { resize: vertical; min-height: 58px; line-height: 1.7; }
 .turn { display: flex; flex-direction: row; flex-wrap: wrap; gap: 0 6px; align-items: baseline; animation: fadeInUp .15s ease both; }
 .turn-who { font-size: var(--font-size-base); color: var(--cyan); letter-spacing: 1px; flex-shrink: 0; text-shadow: 0 0 6px var(--cyan); white-space: nowrap; font-weight: 700; }
 .turn-who::after { content: ' ►'; margin-left: 2px; opacity: 0.7; }
-.turn-body { font-size: var(--font-size-base); color: var(--neon-bright); line-height: 1.65; white-space: pre-wrap; overflow-wrap: break-word; word-break: normal; flex: 1; min-width: 0; text-shadow: 0 0 4px rgba(200,160,255,0.25); }
+.turn-body { font-size: var(--font-size-base); color: var(--neon-bright); line-height: 1.65; white-space: normal; overflow-wrap: break-word; word-break: break-word; flex: 1; min-width: 0; text-shadow: 0 0 4px rgba(200,160,255,0.25); }
+.turn-body p { margin: 0 0 .6em; }
+.turn-body p:last-child { margin-bottom: 0; }
+.turn-body h1,.turn-body h2,.turn-body h3,.turn-body h4 { color: var(--cyan); letter-spacing: 1px; margin: .8em 0 .3em; font-family: var(--font); }
+.turn-body ul,.turn-body ol { padding-left: 1.4em; margin: .4em 0 .6em; }
+.turn-body li { margin-bottom: .2em; }
+.turn-body code { font-family: monospace; background: rgba(187,68,255,.12); color: var(--cyan); padding: 1px 5px; font-size: .92em; }
+.turn-body pre { background: #0d001a; padding: 10px 12px; overflow-x: auto; margin: .6em 0; }
+.turn-body pre code { background: none; padding: 0; color: var(--neon); font-size: var(--font-size-sm); white-space: pre; }
+.turn-body blockquote { border-left: 3px solid var(--cyan); padding-left: 10px; color: var(--muted); margin: .4em 0; }
+.turn-body hr { opacity: .2; margin: .5em 0; }
+.turn-body strong { color: var(--neon); }
+.turn-body em { color: var(--text); }
+.turn-body a { color: var(--cyan); }
+.msg-body p { margin: 0 0 .5em; }
+.msg-body p:last-child { margin-bottom: 0; }
+.msg-body h1,.msg-body h2,.msg-body h3,.msg-body h4 { color: var(--cyan); letter-spacing: 1px; margin: .7em 0 .3em; font-family: var(--font); }
+.msg-body ul,.msg-body ol { padding-left: 1.4em; margin: .3em 0 .5em; }
+.msg-body li { margin-bottom: .2em; }
+.msg-body code { font-family: monospace; background: rgba(187,68,255,.12); color: var(--cyan); padding: 1px 5px; font-size: .92em; }
+.msg-body pre { background: #0d001a; padding: 10px 12px; overflow-x: auto; margin: .5em 0; }
+.msg-body pre code { background: none; padding: 0; color: var(--neon); font-size: var(--font-size-sm); white-space: pre; }
+.msg-body blockquote { border-left: 3px solid var(--cyan); padding-left: 10px; color: var(--muted); margin: .4em 0; }
+.msg-body strong { color: var(--neon); }
+.msg-body em { color: var(--text); }
+.msg-body a { color: var(--cyan); }
 @media (min-width: 700px) { .turn-who { font-size: var(--font-size-lg); } .turn-body { font-size: var(--font-size-lg); } }
 
 /* ── ACTION ROW ── */
@@ -2104,7 +2130,7 @@ async function continueChat() {
         try {
           const d = JSON.parse(line.slice(5).trim());
           if (d.done) break;
-          if (d.text) { added += d.text; _lastFullText += d.text; body.textContent = _lastFullText; }
+          if (d.text) { added += d.text; _lastFullText += d.text; body.innerHTML = renderMd(_lastFullText); }
         } catch {}
       }
     }
@@ -2389,13 +2415,23 @@ function applyBot(b) {
 /* ─────────────────────────────────────────
    MESSAGES
 ───────────────────────────────────────── */
+/* ─── MARKDOWN RENDERER ─────────────────────────────────────────────────────── */
+function renderMd(txt) {
+  if (!txt) return '';
+  if (typeof marked === 'undefined') {
+    return txt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  }
+  marked.use({ breaks: true, gfm: true });
+  return marked.parse(txt);
+}
+
 function addMsg(who, text, typing) {
   const box  = document.getElementById('msgs');
   const d    = document.createElement('div'); d.className = 'msg';
   const name = document.createElement('div'); name.className = 'msg-who'; name.textContent = who;
   const body = document.createElement('div');
   body.className = 'msg-body' + (typing ? ' typing' : '');
-  body.textContent = text || '';
+  if (text) body.innerHTML = renderMd(text);
   d.appendChild(name); d.appendChild(body); box.appendChild(d);
   d.scrollIntoView({ block: 'start', behavior: 'smooth' });
   return body;
@@ -2451,7 +2487,7 @@ async function send() {
           const d = JSON.parse(line.slice(5).trim());
           if (d.done) break;
           if (d.error) { body.textContent = '[ERROR] ' + d.error; body.classList.remove('typing'); break; }
-          if (d.text) { full += d.text; body.textContent = full; body.classList.remove('typing'); }
+          if (d.text) { full += d.text; body.innerHTML = renderMd(full); body.classList.remove('typing'); }
         } catch {}
       }
     }
@@ -2524,7 +2560,7 @@ function clearFile() {
 ───────────────────────────────────────── */
 async function streamSession(url, body, outEl) {
   outEl.innerHTML = '';
-  let curName = null, curBody = null;
+  let curName = null, curBody = null, curRaw = '';
   let sseBuffer = '';
   const allTurns = [];
 
@@ -2543,14 +2579,14 @@ async function streamSession(url, body, outEl) {
   const flushTurn = () => {
     if (curName && curBody) {
       curBody.classList.remove('typing');
-      const txt = curBody.textContent.trim();
+      const txt = curRaw.trim();
       if (txt) allTurns.push({ speaker: curName, text: txt });
     }
   };
 
   const newTurn = name => {
     flushTurn();
-    curName = name;
+    curName = name; curRaw = '';
     const turn = document.createElement('div'); turn.className = 'turn';
     const who  = document.createElement('div'); who.className = 'turn-who'; who.textContent = name;
     curBody    = document.createElement('div'); curBody.className = 'turn-body typing';
@@ -2594,7 +2630,8 @@ async function streamSession(url, body, outEl) {
         }
       } else {
         if (curBody) {
-          curBody.textContent += chunk;
+          curRaw += chunk;
+          curBody.innerHTML = renderMd(curRaw);
           curBody.classList.remove('typing');
         }
       }
@@ -2907,7 +2944,7 @@ async function _pollBuilderJob(jobId, out, isArch, prefillTask) {
         const newChunks = data.chunks.slice(lastCount);
         lastCount = data.chunks.length;
         newChunks.forEach(chunk => {
-          if (chunk) { curBody.textContent += chunk; curBody.classList.remove('typing'); }
+          if (chunk) { curBody._raw = (curBody._raw||'') + chunk; curBody.innerHTML = renderMd(curBody._raw); curBody.classList.remove('typing'); }
         });
         if (lastCount > 0) curBody.scrollIntoView({ block: 'end', behavior: 'smooth' });
 
@@ -2915,7 +2952,7 @@ async function _pollBuilderJob(jobId, out, isArch, prefillTask) {
           clearInterval(poll);
           _clearBuilderJob();
           curBody.classList.remove('typing');
-          const txt = curBody.textContent.trim();
+          const txt = (curBody._raw || '').trim();
           const turns = txt ? [{ speaker: 'BUILDER', text: txt }] : [];
           if (turns.length) {
             const rawTask = prefillTask || document.getElementById('builder-input').value.trim();
@@ -2933,7 +2970,8 @@ async function _pollBuilderJob(jobId, out, isArch, prefillTask) {
           clearInterval(poll);
           _clearBuilderJob();
           curBody.classList.remove('typing');
-          curBody.textContent += '\n[ERROR] ' + data.error;
+          curBody._raw = (curBody._raw||'') + '\n[ERROR] ' + data.error;
+          curBody.innerHTML = renderMd(curBody._raw);
           resolve([]);
         }
       } catch(e) {
@@ -3007,7 +3045,8 @@ async function buildsLoad(filename, task) {
     const who  = document.createElement('div'); who.className  = 'turn-who';
     who.textContent = data.role === 'builder_uncensored' ? 'SHADOW BUILDER' : 'BUILDER';
     const body = document.createElement('div'); body.className = 'turn-body';
-    body.textContent = data.output || '';
+    body._raw = data.output || '';
+    body.innerHTML = renderMd(data.output || '');
     turn.appendChild(who); turn.appendChild(body);
     out.appendChild(turn);
     const fullTxt = data.output || '';
