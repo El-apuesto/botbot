@@ -1016,17 +1016,17 @@ audio { width: 100%; margin-top: 4px; }
       <div id="file-hint"></div>
     </div>
 
-    <!-- [2] COMMITTEES — MISSIONS / COMMITTEE BUILDER / BOARDROOM -->
+    <!-- [2] COMMITTEES — COMMITTEE BUILDER / GUERRILLA -->
     <div class="panel" id="panel-projects">
       <!-- sub-tabs -->
       <div class="lab-tab-row">
-        <button class="lab-tab active" id="ptab-missions-btn" onclick="switchProjectsTab('missions',this)">MISSIONS</button>
-        <button class="lab-tab" id="ptab-committees-btn" onclick="switchProjectsTab('committees',this)">COMMITTEE</button>
-        <button class="lab-tab" id="ptab-board-btn" onclick="menuNav('board')">BOARD →</button>
+        <button class="lab-tab active" id="ptab-committees-btn" onclick="switchProjectsTab('committees',this)">COMMITTEE</button>
+        <button class="lab-tab" id="ptab-guerrilla-btn" onclick="switchProjectsTab('guerrilla',this)">GUERRILLA</button>
+        <button class="lab-tab" id="ptab-missions-btn" onclick="switchProjectsTab('missions',this)">MISSIONS</button>
       </div>
 
       <!-- MISSIONS tab -->
-      <div id="ptab-missions" class="panel-scroll" style="padding:10px 12px">
+      <div id="ptab-missions" class="panel-scroll" style="padding:10px 12px;display:none">
         <div class="fg" style="margin-bottom:4px">
           <span class="fl" style="color:var(--neon)">AUTONOMOUS RESEARCH MISSIONS</span>
         </div>
@@ -1083,7 +1083,7 @@ audio { width: 100%; margin-top: 4px; }
       </div>
 
       <!-- COMMITTEES tab -->
-      <div id="ptab-committees" class="panel-scroll" style="padding:10px 12px;display:none">
+      <div id="ptab-committees" class="panel-scroll" style="padding:10px 12px">
         <div class="fg" style="margin-bottom:4px">
           <span class="fl" style="color:var(--neon)">COMMITTEE BUILDER</span>
         </div>
