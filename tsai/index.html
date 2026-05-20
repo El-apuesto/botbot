@@ -113,8 +113,8 @@ body::before {
   width: 100%;
   height: auto;
   display: block;
-  mix-blend-mode: screen;
-  filter: brightness(1.8);
+  position: relative;
+  z-index: 0;
 }
 
 /* BBS system info line — sits above the frame */
@@ -695,16 +695,17 @@ audio { width: 100%; margin-top: 4px; }
         <div class="menu-dropdown" id="menu-dropdown">
           <button class="menu-item active" data-tab="home"      onclick="menuNav('home')"><span class="nav-num">[1]</span> HOME</button>
           <button class="menu-item" data-tab="projects"         onclick="menuNav('projects')"><span class="nav-num">[2]</span> COMMITTEES</button>
-          <button class="menu-item" data-tab="board"            onclick="menuNav('board')"><span class="nav-num">[3]</span> BOARDROOM</button>
-          <button class="menu-item" data-tab="lab-video"        onclick="menuNav('lab-video')"><span class="nav-num">[4]</span> VIDEO LAB</button>
-          <button class="menu-item" data-tab="lab-write"        onclick="menuNav('lab-write')"><span class="nav-num">[5]</span> WRITE LAB</button>
-          <button class="menu-item" data-tab="lab-code"         onclick="menuNav('lab-code')"><span class="nav-num">[6]</span> CODE LAB</button>
+          <button class="menu-item" data-tab="advisors"         onclick="menuNavAdv('boardroom')"><span class="nav-num">[3]</span> BOARDROOM</button>
+          <button class="menu-item" data-tab="lab"              onclick="menuNavLab('video')"><span class="nav-num">[4]</span> VIDEO LAB</button>
+          <button class="menu-item" data-tab="lab"              onclick="menuNavLab('write')"><span class="nav-num">[5]</span> WRITE LAB</button>
+          <button class="menu-item" data-tab="lab"              onclick="menuNavLab('code')"><span class="nav-num">[6]</span> CODE LAB</button>
           <button class="menu-item" data-tab="social"           onclick="menuNav('social')"><span class="nav-num">[7]</span> SOCIAL</button>
-          <button class="menu-item" data-tab="studio"           onclick="menuNav('studio')"><span class="nav-num">[8]</span> PODCASTS</button>
-          <button class="menu-item" data-tab="brainstorm"       onclick="menuNav('brainstorm')"><span class="nav-num">[9]</span> BRAINSTORM</button>
+          <button class="menu-item" data-tab="studio"           onclick="menuNavStudio('podcast')"><span class="nav-num">[8]</span> PODCASTS</button>
+          <button class="menu-item" data-tab="studio"           onclick="menuNavStudio('brainstorm')"><span class="nav-num">[9]</span> BRAINSTORM</button>
           <button class="menu-item" data-tab="advisors"         onclick="menuNav('advisors')"><span class="nav-num">[10]</span> LEGAL/MKT</button>
-          <button class="menu-item" data-tab="settings"         onclick="menuNav('settings')"><span class="nav-num">[11]</span> SETTINGS</button>
-          <button class="menu-item" data-tab="archive"          onclick="menuNav('archive')"><span class="nav-num">[12]</span> ARCHIVE</button>
+          <button class="menu-item" data-tab="gorilla"          onclick="menuNav('gorilla')"><span class="nav-num">[11]</span> GUERRILLA</button>
+          <button class="menu-item" data-tab="settings"         onclick="menuNav('settings')"><span class="nav-num">[12]</span> SETTINGS</button>
+          <button class="menu-item" data-tab="archive"          onclick="menuNav('archive')"><span class="nav-num">[13]</span> ARCHIVE</button>
           <span class="menu-user">{{ session.get('username', '') | upper }}&nbsp;<a href="/logout" style="color:var(--red);text-decoration:none;font-family:var(--font-head);font-size:11px;letter-spacing:.04em">[ EXIT ]</a></span>
         </div>
       </div>
@@ -1925,6 +1926,24 @@ function toggleMenu(e) {
 
 function menuNav(name) {
   switchTab(name, null);
+  document.getElementById('menu-dropdown').classList.remove('open');
+}
+
+function menuNavLab(sub) {
+  switchTab('lab', null);
+  switchLab(sub, document.querySelector(`#panel-lab .lab-tab[onclick*="${sub}"]`));
+  document.getElementById('menu-dropdown').classList.remove('open');
+}
+
+function menuNavStudio(sub) {
+  switchTab('studio', null);
+  switchStudio(sub, document.querySelector(`#panel-studio .lab-tab[onclick*="${sub}"]`));
+  document.getElementById('menu-dropdown').classList.remove('open');
+}
+
+function menuNavAdv(sub) {
+  switchTab('advisors', null);
+  switchAdvisors(sub, document.querySelector(`#panel-advisors .lab-tab[onclick*="${sub}"]`));
   document.getElementById('menu-dropdown').classList.remove('open');
 }
 
