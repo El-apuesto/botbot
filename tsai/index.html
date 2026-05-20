@@ -78,21 +78,20 @@ body::before {
 /* ── APP GRID ── */
 .app {
   display: grid;
-  grid-template-rows: 0 1fr auto auto;
+  grid-template-rows: 16vh 1fr auto auto;
   height: 100vh;
   height: 100dvh;
   max-width: 900px;
   margin: 0 auto;
   padding: 0 10px;
   position: relative;
-  z-index: 1;
 }
+/* Desktop: collapse banner row — image moves to fixed full background */
 @media (min-width: 700px) {
-  .app { grid-template-rows: 0 1fr auto auto; }
+  .app { grid-template-rows: 0 1fr auto auto; z-index: 1; }
 }
 @media (max-width: 600px) {
   .app { padding: 0 4px; }
-  .app { grid-template-rows: 0 1fr auto auto; }
 }
 
 /* ── HEADER ── */
@@ -109,15 +108,19 @@ body::before {
 .header-right { display: flex; flex-direction: column; gap: 0; }
 .logo { display: none; }
 
-/* ── HEADER CORNER BUTTONS (fixed top-left) ── */
+/* ── HEADER CORNER BUTTONS ── */
 #header-btns {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   z-index: 9999;
   display: flex;
   align-items: center;
   gap: 2px;
+}
+/* Desktop: escape collapsed header via fixed positioning */
+@media (min-width: 700px) {
+  #header-btns { position: fixed; }
 }
 #header-btns button {
   background: rgba(187,68,255,0.88);
@@ -131,26 +134,39 @@ body::before {
 }
 #header-btns button:hover { background: var(--cyan); }
 
-/* ── BANNER — full-viewport fixed background ── */
+/* ── BANNER — mobile: top hero row; desktop: full-viewport fixed bg ── */
 #app-banner {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
-  pointer-events: none;
+  position: relative;
+  padding: 0;
 }
 #app-banner img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 20%;
+  object-position: center 8%;
   display: block;
 }
-/* TWIN CHAT corner label — fixed bottom-right */
+/* Desktop: banner becomes fixed full-screen watermark background */
+@media (min-width: 700px) {
+  #app-banner {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    width: auto; height: auto;
+    flex: none; min-height: 0;
+  }
+  #app-banner img { object-position: center 20%; }
+}
+/* TWIN CHAT corner label */
 #banner-label {
-  position: fixed;
-  bottom: 46px;
-  right: 10px;
+  position: absolute;
+  bottom: 4px;
+  right: 6px;
   font-family: var(--font-head);
   font-size: 13px;
   font-weight: 700;
@@ -159,8 +175,15 @@ body::before {
   text-shadow: 0 0 12px var(--cyan), 0 0 4px #fff;
   pointer-events: none;
   line-height: 1;
-  z-index: 9990;
-  opacity: 0.75;
+}
+@media (min-width: 700px) {
+  #banner-label {
+    position: fixed;
+    bottom: 46px;
+    right: 10px;
+    z-index: 9990;
+    opacity: 0.75;
+  }
 }
 
 /* ── PIPELINE POPUP OVERLAY ── */
@@ -226,7 +249,7 @@ body::before {
 /* ── TERMINAL — clean full rectangle ── */
 .terminal {
   border: 2px solid var(--border);
-  background: rgba(4, 0, 12, 0.72);
+  background: #000;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -264,7 +287,7 @@ body::before {
   justify-content: space-between;
   padding: 4px 10px;
   border-bottom: 1px solid var(--border);
-  background: rgba(4, 0, 12, 0.82);
+  background: #000;
   flex-shrink: 0;
   min-height: 34px;
   gap: 8px;
@@ -345,7 +368,7 @@ body::before {
   padding: 7px 10px;
   border: 2px solid var(--border);
   border-top: none;
-  background: rgba(4, 0, 12, 0.88);
+  background: #000;
   flex-shrink: 0;
   box-shadow: 0 4px 20px var(--cyan-glow);
 }
@@ -720,7 +743,7 @@ audio { width: 100%; margin-top: 4px; }
   flex-wrap: nowrap;
   gap: 0;
   flex-shrink: 0;
-  background: rgba(4, 0, 12, 0.88);
+  background: #000;
   border-top: 2px solid var(--border);
   padding: 0;
   font-family: var(--font-head);
@@ -813,7 +836,8 @@ audio { width: 100%; margin-top: 4px; }
 .deploy-row .fi { flex: 1; min-width: 0; }
 
 /* ── DROPDOWN MENU ── */
-.menu-wrap { position: fixed; top: 0; right: 0; z-index: 9999; }
+.menu-wrap { position: absolute; top: 0; right: 0; z-index: 9999; }
+@media (min-width: 700px) { .menu-wrap { position: fixed; } }
 .menu-toggle {
   background: rgba(187,68,255,0.88);
   color: #ffffff;
@@ -963,6 +987,14 @@ audio { width: 100%; margin-top: 4px; }
   color: var(--muted);
   margin-left: 6px;
   font-size: 7px;
+}
+
+/* ── DESKTOP GLASS EFFECT — semi-transparent panels over full-bg banner ── */
+@media (min-width: 700px) {
+  .terminal   { background: rgba(4, 0, 12, 0.72); }
+  .bot-strip  { background: rgba(4, 0, 12, 0.82); }
+  .input-row  { background: rgba(4, 0, 12, 0.88); }
+  .nav        { background: rgba(4, 0, 12, 0.88); }
 }
 
 /* ── NO BORDERS — user override ── */
