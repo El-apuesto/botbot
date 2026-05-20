@@ -593,63 +593,61 @@ audio { width: 100%; margin-top: 4px; }
 .gallery-row-meta { font-size: var(--font-size-sm); color: var(--neon); }
 
 /* ── NAV — BBS frame bottom ╚══[1]══╪══[2]══╝ ── */
-.nav {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0;
-  flex-shrink: 0;
-  background: #000;
-  border-top: 2px solid var(--border);
-  padding: 4px 0 4px;
+/* ── DROPDOWN MENU ── */
+.menu-wrap { position: absolute; top: 0; right: 0; z-index: 9999; }
+.menu-toggle {
+  background: rgba(187,68,255,0.88);
+  color: #ffffff;
   font-family: var(--font-head);
+  font-size: 10px;
+  letter-spacing: .12em;
+  cursor: pointer;
+  padding: 3px 8px;
+  border: none;
+  text-shadow: none;
+  box-shadow: none;
+  transition: background .15s;
 }
-.nav::before { content: none; }
-.nav::after  { content: none; }
-.nav-btn {
+.menu-toggle:hover { background: var(--cyan); }
+.menu-dropdown {
+  display: none;
+  position: absolute;
+  right: 0;
+  left: auto;
+  top: calc(100% + 2px);
+  background: rgba(8,0,15,.97);
+  backdrop-filter: blur(10px);
+  min-width: 270px;
+  flex-direction: column;
+  box-shadow: 0 0 40px var(--cyan-glow), 0 0 2px var(--cyan);
+}
+.menu-dropdown.open { display: flex; }
+.menu-item {
   background: none;
   border: none;
-  border-right: 1px solid var(--purple);
-  color: var(--neon);
+  color: var(--text);
   font-family: var(--font-head);
-  font-size: 8px;
-  letter-spacing: 0.02em;
+  font-size: 13px;
+  text-align: left;
   cursor: pointer;
-  padding: 5px 0;
-  width: 25%;
-  text-align: center;
-  transition: color .1s, text-shadow .1s, background .1s;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  padding: 11px 18px;
+  letter-spacing: .06em;
+  transition: color .1s, background .1s;
 }
-.nav-btn:nth-child(5n) { border-right: none; }
-.nav-btn + .nav-btn::before { content: none; }
-.nav-btn .nav-num { color: var(--purple); margin-right: 2px; }
-.nav-btn:hover, .nav-btn.active {
+.menu-item:hover, .menu-item.active {
   color: var(--neon-bright);
-  background: var(--purple-dark);
-  text-shadow: 0 0 8px var(--purple);
+  background: rgba(187,68,255,0.18);
+  text-shadow: 0 0 10px var(--cyan);
 }
-.nav-btn.active { border-bottom: 2px solid var(--purple); }
-.nav-btn.active .nav-num { color: var(--neon-bright); }
-.nav-user {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--neon);
-  white-space: nowrap;
-  margin-left: auto;
-  padding: 0 8px;
-  letter-spacing: 0.05em;
+.menu-item .nav-num { color: var(--yellow); margin-right: 10px; }
+.menu-user {
+  font-family: var(--font-head);
+  font-size: 11px;
+  color: var(--muted);
+  padding: 11px 18px;
+  display: block;
+  letter-spacing: .04em;
 }
-.nav-logout {
-  color: #cc4488;
-  text-decoration: none;
-  font-size: 12px;
-  font-weight: 700;
-}
-.nav-logout:hover { color: var(--red); }
 
 /* ── MOBILE ── */
 @media (max-width: 600px) {
@@ -664,14 +662,6 @@ audio { width: 100%; margin-top: 4px; }
   #app-banner { height: 68px; overflow: hidden; }
   #app-banner picture { display: block; width: 100%; height: 100%; }
   #app-banner img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
-
-  /* hide username/exit — no room with tabs */
-  .nav-user { display: none; }
-
-  /* two-row nav — 4 across each row, tighter on mobile */
-  .nav { padding: 3px 0 env(safe-area-inset-bottom, 3px); }
-  .nav-btn { font-size: 7px; padding: 6px 0; width: 25%; }
-  .nav-btn .nav-num { display: none; }
 
   /* tighten app padding */
   .app { padding: 0 2px; }
@@ -698,11 +688,29 @@ audio { width: 100%; margin-top: 4px; }
 
   <!-- ═══ HEADER ═══ -->
   <div class="header">
-    <div id="app-banner">
+    <div id="app-banner" style="position:relative">
       <picture>
         <source media="(max-width: 600px)" srcset="/static/header_mobile2.jpeg">
         <img src="/static/header_mobile.JPEG" alt="Twin Shadow">
       </picture>
+      <div class="menu-wrap" id="menu-wrap">
+        <button class="menu-toggle" id="menu-toggle" onclick="toggleMenu(event)">[ ≡ MENU ]</button>
+        <div class="menu-dropdown" id="menu-dropdown">
+          <button class="menu-item active" data-tab="home"      onclick="menuNav('home')"><span class="nav-num">[1]</span> HOME</button>
+          <button class="menu-item" data-tab="projects"         onclick="menuNav('projects')"><span class="nav-num">[2]</span> COMMITTEES</button>
+          <button class="menu-item" data-tab="board"            onclick="menuNav('board')"><span class="nav-num">[3]</span> BOARDROOM</button>
+          <button class="menu-item" data-tab="lab-video"        onclick="menuNav('lab-video')"><span class="nav-num">[4]</span> VIDEO LAB</button>
+          <button class="menu-item" data-tab="lab-write"        onclick="menuNav('lab-write')"><span class="nav-num">[5]</span> WRITE LAB</button>
+          <button class="menu-item" data-tab="lab-code"         onclick="menuNav('lab-code')"><span class="nav-num">[6]</span> CODE LAB</button>
+          <button class="menu-item" data-tab="social"           onclick="menuNav('social')"><span class="nav-num">[7]</span> SOCIAL</button>
+          <button class="menu-item" data-tab="studio"           onclick="menuNav('studio')"><span class="nav-num">[8]</span> PODCASTS</button>
+          <button class="menu-item" data-tab="brainstorm"       onclick="menuNav('brainstorm')"><span class="nav-num">[9]</span> BRAINSTORM</button>
+          <button class="menu-item" data-tab="advisors"         onclick="menuNav('advisors')"><span class="nav-num">[10]</span> LEGAL/MKT</button>
+          <button class="menu-item" data-tab="settings"         onclick="menuNav('settings')"><span class="nav-num">[11]</span> SETTINGS</button>
+          <button class="menu-item" data-tab="archive"          onclick="menuNav('archive')"><span class="nav-num">[12]</span> ARCHIVE</button>
+          <span class="menu-user">{{ session.get('username', '') | upper }}&nbsp;<a href="/logout" style="color:var(--red);text-decoration:none;font-family:var(--font-head);font-size:11px;letter-spacing:.04em">[ EXIT ]</a></span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1671,19 +1679,6 @@ audio { width: 100%; margin-top: 4px; }
     <button id="send-btn" onclick="send()"><img src="/static/send_btn_nobg.png" alt="Send"></button>
   </div>
 
-  <!-- ═══ NAV ═══ -->
-  <nav class="nav">
-    <button class="nav-btn active" onclick="switchTab('home', this)"><span class="nav-num">[1]</span>HOME</button>
-    <button class="nav-btn" onclick="switchTab('projects', this)"><span class="nav-num">[2]</span>PROJECTS</button>
-    <button class="nav-btn" onclick="switchTab('lab', this)"><span class="nav-num">[3]</span>LABS</button>
-    <button class="nav-btn" onclick="switchTab('studio', this)"><span class="nav-num">[4]</span>STUDIO</button>
-    <button class="nav-btn" onclick="switchTab('advisors', this)"><span class="nav-num">[5]</span>ADVISE</button>
-    <button class="nav-btn" onclick="switchTab('social', this)"><span class="nav-num">[6]</span>SOCIAL</button>
-    <button class="nav-btn" onclick="switchTab('settings', this)"><span class="nav-num">[7]</span>SETTINGS</button>
-    <button class="nav-btn" onclick="switchTab('gorilla', this)"><span class="nav-num">[8]</span>GUERRILLA</button>
-    <button class="nav-btn" onclick="switchTab('archive', this)"><span class="nav-num">[9]</span>ARCHIVE</button>
-    <span class="nav-user" style="width:100%;order:99;text-align:right;padding:2px 8px;font-size:7px">{{ session.get('username', '') | upper }}&nbsp;<a class="nav-logout" href="/logout">[ EXIT ]</a></span>
-  </nav>
 
 </div><!-- /app -->
 
@@ -1897,14 +1892,34 @@ const _labConcepts = {};
 ───────────────────────────────────────── */
 function switchTab(name, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('panel-' + name).classList.add('active');
-  if (btn) btn.classList.add('active');
+  document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
+  const panel = document.getElementById('panel-' + name);
+  if (panel) panel.classList.add('active');
+  const menuItem = document.querySelector(`.menu-item[data-tab="${name}"]`);
+  if (menuItem) menuItem.classList.add('active');
   if (name === 'settings') { loadAudioGallery(); loadTranscripts(); }
   if (name === 'projects') { loadMissions(); loadPipeline(); }
   if (name === 'social')   { loadSocialJobs(); }
   if (name === 'archive')  { loadArchive(); }
 }
+
+function toggleMenu(e) {
+  if (e) e.stopPropagation();
+  document.getElementById('menu-dropdown').classList.toggle('open');
+}
+
+function menuNav(name) {
+  switchTab(name, null);
+  document.getElementById('menu-dropdown').classList.remove('open');
+}
+
+document.addEventListener('click', function(e) {
+  const wrap = document.getElementById('menu-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    const dd = document.getElementById('menu-dropdown');
+    if (dd) dd.classList.remove('open');
+  }
+});
 
 function switchLab(name, btn) {
   ['video','write','code'].forEach(t => {
