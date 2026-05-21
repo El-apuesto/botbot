@@ -1293,6 +1293,14 @@ def register_routes(app: Flask):
         files = [f.name for f in sorted(_AUDIO_DIR.iterdir()) if f.suffix == ".mp3"]
         return jsonify(files)
 
+    @app.route("/api/renders/list")
+    @_login_required
+    def api_renders_list():
+        renders_dir = Path(__file__).parent / "renders"
+        renders_dir.mkdir(exist_ok=True)
+        files = [f.name for f in sorted(renders_dir.iterdir()) if f.suffix in (".mp4", ".webm", ".mov")]
+        return jsonify(files)
+
     @app.route("/api/transcripts/list")
     @_login_required
     def api_transcripts_list():

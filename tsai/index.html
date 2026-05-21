@@ -42,6 +42,7 @@
   --font-size-sm:   22px;
   --font-size-lg:   32px;
   --font-size-xl:   36px;
+  --font-size-xs:   14px;
 }
 
 html, body {
@@ -2495,19 +2496,32 @@ function _gaugeArc(pct, color) {
 }
 
 function renderDashGauges(gauges) {
-  const COLORS = ['#bb44ff','#bb44ff','#ffffff','#eebbff','#ff00ff','#ffff00','#00ff41','#44aaff'];
+  const COLORS = ['#bb44ff','#dd66ff','#ffffff','#eebbff','#ff00ff','#ffff00','#00ff41','#44aaff'];
+  const GAUGE_MAX = 20;   // absolute scale per gauge — 20 sessions = full arc
+  const MIN_PCT   = 0.04; // always show a tiny sliver of fill for visibility
   const row = document.getElementById('dash-gauge-row');
   if (!row) return;
-  const max = Math.max(...gauges.map(g => g.val), 1);
+  const allZero = gauges.every(g => g.val === 0);
   row.innerHTML = gauges.map((g, i) => {
-    const pct = g.val / max;
-    const col = COLORS[i % COLORS.length];
+    const rawPct = g.val / GAUGE_MAX;
+    const pct    = g.val > 0 ? Math.max(MIN_PCT, Math.min(1, rawPct)) : 0;
+    const col    = COLORS[i % COLORS.length];
+    const dimCol = allZero ? 'var(--muted)' : col;
     return `<div class="dash-gauge">
       ${_gaugeArc(pct, col)}
-      <div class="dash-gauge-val" style="color:${col};text-shadow:0 0 16px ${col}">${g.val}</div>
-      <div class="dash-gauge-label">${g.label}</div>
+      <div class="dash-gauge-val" style="color:${dimCol};text-shadow:0 0 16px ${dimCol}">${g.val}</div>
+      <div class="dash-gauge-label" style="color:${allZero ? 'rgba(85,51,119,0.6)' : ''}">${g.label}</div>
     </div>`;
   }).join('');
+  if (allZero) {
+    const hint = document.createElement('div');
+    hint.style.cssText = 'position:absolute;bottom:6px;left:0;right:0;text-align:center;font-family:var(--font-head);font-size:7px;letter-spacing:.12em;color:var(--muted);pointer-events:none';
+    hint.textContent = '— START A SESSION TO SEE LIVE STATS —';
+    row.style.position = 'relative';
+    row.appendChild(hint);
+  } else {
+    row.style.position = '';
+  }
 }
 
 function _setBar(fillId, cntId, val, max) {
@@ -2554,8 +2568,10 @@ async function loadDashStats() {
       { label: 'WRITE LAB',  val: stories.length },
     ]);
 
+    const rendR  = await fetch('/api/renders/list').then(r => r.json()).catch(() => []);
+    const renders = Array.isArray(rendR) ? rendR : [];
     _setBar('db-fill-audio',  'db-cnt-audio',  audio.length,    20);
-    _setBar('db-fill-renders','db-cnt-renders', 0,               1);
+    _setBar('db-fill-renders','db-cnt-renders', renders.length,  10);
     _setBar('db-fill-jobs',   'db-cnt-jobs',    jobs.length,     10);
     _setBar('db-fill-miss',   'db-cnt-miss',    missions.length, 20);
 
