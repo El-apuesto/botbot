@@ -14,7 +14,7 @@
       background: #000;
       font-family: 'VT323', monospace;
       cursor: crosshair;
-      color: #00cccc;
+      color: #cc88ff;
     }
 
     body::before {
@@ -38,20 +38,6 @@
       z-index: 1;
     }
 
-    .logo-wrap {
-      width: 100%;
-      max-width: 420px;
-      padding: 16px 0 0;
-      display: flex;
-      justify-content: center;
-    }
-    .logo-wrap img {
-      width: 80%;
-      max-width: 320px;
-      height: auto;
-      filter: drop-shadow(0 0 16px #00cccc) drop-shadow(0 0 32px #006655) brightness(3) contrast(1.2);
-    }
-
     .figure-wrap {
       width: 100%;
       max-width: 460px;
@@ -67,7 +53,6 @@
       object-fit: cover;
       object-position: center top;
       display: block;
-      filter: brightness(1.1) saturate(1.1);
     }
 
     .form-area {
@@ -79,17 +64,25 @@
       margin-top: 10px;
     }
 
+    .section-label {
+      font-size: 20px;
+      color: #bb44ff;
+      letter-spacing: 3px;
+      padding: 4px 0 6px;
+      text-shadow: 0 0 10px #5500aa;
+    }
+
     .field-wrap {
       position: relative;
       display: flex;
       align-items: center;
-      border: 2px solid #008888;
+      border: 2px solid #5500aa;
       background: #000;
       overflow: hidden;
     }
     .field-wrap:focus-within {
-      border-color: #00cccc;
-      box-shadow: 0 0 12px rgba(0,200,200,0.4);
+      border-color: #bb44ff;
+      box-shadow: 0 0 12px rgba(187,68,255,0.4);
     }
 
     .field-input {
@@ -97,59 +90,75 @@
       background: transparent;
       border: none;
       outline: none;
-      color: #00cccc;
+      color: #bb44ff;
       font-family: 'VT323', monospace;
       font-size: 26px;
       padding: 10px 14px;
       letter-spacing: 2px;
-      caret-color: #00cccc;
+      caret-color: #bb44ff;
       width: 100%;
     }
     .field-input::placeholder {
-      color: #00cccc;
+      color: #bb44ff;
       opacity: 1;
-      text-shadow: 0 0 6px #008888;
+      text-shadow: 0 0 6px #5500aa;
     }
 
     @keyframes blink-cur { 0%,100%{opacity:1} 50%{opacity:0} }
     .field-cursor {
       display: none;
-      color: #ccffee;
+      color: #eebbff;
       font-size: 24px;
       animation: blink-cur 0.65s step-end infinite;
       padding-right: 10px;
       flex-shrink: 0;
-      text-shadow: 0 0 8px #00cccc;
+      text-shadow: 0 0 8px #bb44ff;
     }
     .field-input:focus:placeholder-shown ~ .field-cursor { display: inline; }
     .field-input:focus:placeholder-shown { caret-color: transparent; }
     .field-input:focus::placeholder { color: transparent; }
 
-    .section-label {
-      font-size: 18px;
-      color: #006655;
+    .hint {
+      font-size: 16px;
+      color: #553377;
+      padding: 0 2px;
+      letter-spacing: 1px;
+    }
+
+    .invite-wrap {
+      background: rgba(187,68,255,0.06);
+      border: 1px solid #5500aa;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .invite-label {
+      font-size: 15px;
+      color: #553377;
       letter-spacing: 2px;
-      padding: 4px 0 2px;
+      text-transform: uppercase;
     }
 
     .register-btn {
       width: 100%;
-      border: 2px solid #008888;
-      background: rgba(0,30,30,0.25);
-      color: #ccffee;
+      border: 2px solid #5500aa;
+      background: rgba(26,0,50,0.25);
+      color: #eebbff;
       font-family: 'VT323', monospace;
       font-size: 30px;
       padding: 10px;
       cursor: pointer;
       letter-spacing: 6px;
-      text-shadow: 0 0 12px #00cccc;
-      box-shadow: 0 0 14px rgba(0,200,200,0.25);
+      text-shadow: 0 0 12px #bb44ff;
+      box-shadow: 0 0 14px rgba(187,68,255,0.25);
       transition: background .15s, box-shadow .15s, border-color .15s;
+      margin-top: 4px;
     }
     .register-btn:hover {
-      background: rgba(0,80,80,0.45);
-      border-color: #00cccc;
-      box-shadow: 0 0 28px rgba(0,200,200,0.55);
+      background: rgba(80,0,130,0.45);
+      border-color: #bb44ff;
+      box-shadow: 0 0 28px rgba(187,68,255,0.55);
     }
 
     .err-msg {
@@ -157,12 +166,14 @@
       font-size: 20px;
       letter-spacing: 1px;
       text-align: center;
+      padding: 4px 0;
     }
     .ok-msg {
-      color: #44ffaa;
+      color: #00ff41;
       font-size: 20px;
       letter-spacing: 1px;
       text-align: center;
+      padding: 4px 0;
     }
 
     .extras {
@@ -172,15 +183,15 @@
       width: 100%;
       max-width: 380px;
       font-size: 20px;
-      color: #006655;
+      color: #553377;
       margin-top: 6px;
     }
     .extras a {
-      color: #00ffaa;
+      color: #bb44ff;
       text-decoration: underline;
       cursor: pointer;
     }
-    .extras a:hover { color: #ccffee; }
+    .extras a:hover { color: #eebbff; }
 
     .footer {
       margin-top: auto;
@@ -189,23 +200,14 @@
       max-width: 460px;
       text-align: center;
       font-size: 15px;
-      color: #006655;
-      border-top: 1px solid #003333;
-    }
-    .footer a { color: #006655; text-decoration: none; }
-    .footer a:hover { color: #00cccc; }
-
-    .hint {
-      font-size: 16px;
       color: #553377;
-      padding: 0 2px;
+      border-top: 1px solid #1a0033;
     }
+    .footer a { color: #553377; text-decoration: none; }
+    .footer a:hover { color: #bb44ff; }
 
     @media (min-width: 700px) {
-      html, body {
-        height: 100%;
-        overflow: hidden;
-      }
+      html, body { height: 100%; overflow: hidden; }
       body {
         background-image: url('/static/desk_bg_login.jpeg');
         background-size: cover;
@@ -220,7 +222,6 @@
         padding: 0;
       }
       .figure-wrap { display: none; }
-      .logo-wrap   { display: none; }
       .form-col {
         display: flex;
         flex-direction: column;
@@ -229,24 +230,17 @@
         width: 46%;
         min-height: 100vh;
         padding: 40px 48px;
-        background: rgba(0,8,8,0.88);
+        background: rgba(5,0,15,0.88);
         backdrop-filter: blur(2px);
-        border-left: 1px solid #008888;
+        border-left: 1px solid #5500aa;
         overflow-y: auto;
       }
-      .form-area {
-        max-width: 360px;
-        width: 100%;
-      }
-      .extras {
-        max-width: 360px;
-        width: 100%;
-        margin-top: 8px;
-      }
+      .form-area { max-width: 360px; width: 100%; }
+      .extras { max-width: 360px; width: 100%; margin-top: 8px; }
       .footer {
         max-width: 360px;
         width: 100%;
-        border-top: 1px solid #003333;
+        border-top: 1px solid #1a0033;
         padding-top: 12px;
         margin-top: 24px;
       }
@@ -263,25 +257,42 @@
   <div class="form-col">
 
     <form class="form-area" method="POST" action="/register">
-      <input type="hidden" name="invite_code" value="{{ invite_code or '' }}">
 
       <div class="section-label">CREATE ACCOUNT</div>
 
       <div class="field-wrap">
-        <input class="field-input" type="text" name="username" placeholder="USERNAME" autocomplete="username" autofocus value="{{ request.form.get('username', '') }}">
+        <input class="field-input" type="text" name="username" placeholder="USERNAME"
+               autocomplete="username" autofocus
+               value="{{ request.form.get('username', '') }}">
         <span class="field-cursor">█</span>
       </div>
-      <div class="hint">3+ chars, letters / numbers / _ -</div>
+      <div class="hint">3+ chars · letters / numbers / _ -</div>
 
       <div class="field-wrap">
-        <input class="field-input" type="password" name="password" placeholder="PASSWORD" autocomplete="new-password">
+        <input class="field-input" type="password" name="password"
+               placeholder="PASSWORD" autocomplete="new-password">
         <span class="field-cursor">█</span>
       </div>
       <div class="hint">Minimum 6 characters</div>
 
       <div class="field-wrap">
-        <input class="field-input" type="password" name="confirm" placeholder="CONFIRM PASSWORD" autocomplete="new-password">
+        <input class="field-input" type="password" name="confirm"
+               placeholder="CONFIRM PASSWORD" autocomplete="new-password">
         <span class="field-cursor">█</span>
+      </div>
+
+      <!-- INVITE CODE — always visible so users can type it in -->
+      <div class="invite-wrap">
+        <div class="invite-label">&#9670; INVITE CODE REQUIRED</div>
+        <div class="field-wrap" style="border:none">
+          <input class="field-input" type="text" name="invite_code"
+                 placeholder="PASTE INVITE CODE HERE"
+                 autocomplete="off" spellcheck="false"
+                 value="{{ invite_code or '' }}"
+                 style="font-size:22px;letter-spacing:3px">
+          <span class="field-cursor">█</span>
+        </div>
+        <div class="hint" style="font-size:14px">Get your code from an admin or existing member</div>
       </div>
 
       {% if error %}
