@@ -652,8 +652,10 @@ async def _replicate_generate(prompt: str, image_url: str | None = None) -> str:
 
 
 async def run_video(task: dict) -> dict:
-    prompt    = task["input"].get("prompt", "")
-    image_url = task["input"].get("image_url")
+    # Accept both flat {"prompt":...} and wrapped {"input":{"prompt":...}} shapes
+    _inp      = task.get("input", task)
+    prompt    = _inp.get("prompt", "")
+    image_url = _inp.get("image_url")
     errors: dict = {}
 
     # Build provider list — FAL first (fastest), Replicate second, HuggingFace last
