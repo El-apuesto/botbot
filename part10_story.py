@@ -26,6 +26,30 @@ from part2_router import call_task, call_task_with_fallback
 log = logging.getLogger("tsai.story")
 
 
+def _norm_list(val) -> list:
+    """Normalize any AI-returned value to a plain Python list.
+
+    AI models sometimes return list fields as:
+      - A proper list  → use as-is
+      - A dict         → if it looks like a single item (has 'name' key), wrap it;
+                         otherwise return the dict's values as a list
+      - A string       → split on comma and strip whitespace
+      - None / missing → empty list
+    """
+    if val is None:
+        return []
+    if isinstance(val, list):
+        return val
+    if isinstance(val, dict):
+        if "name" in val or "title" in val:
+            return [val]
+        return list(val.values())
+    if isinstance(val, str):
+        parts = [p.strip() for p in val.split(",") if p.strip()]
+        return parts if parts else []
+    return []
+
+
 # ---------------------------------------------------------------------------
 # STORY BIBLE
 # ---------------------------------------------------------------------------
@@ -138,12 +162,12 @@ World/Character Rules (never break these):
             genre=d.get("genre", ""),
             tone=d.get("tone", ""),
             logline=d.get("logline", ""),
-            characters=d.get("characters", []),
+            characters=_norm_list(d.get("characters")),
             setting=d.get("setting", ""),
             central_conflict=d.get("central_conflict", ""),
-            themes=d.get("themes", []),
-            unresolved_threads=d.get("unresolved_threads", []),
-            rules=d.get("rules", []),
+            themes=_norm_list(d.get("themes")),
+            unresolved_threads=_norm_list(d.get("unresolved_threads")),
+            rules=_norm_list(d.get("rules")),
         )
 
 

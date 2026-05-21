@@ -5986,6 +5986,17 @@ async function bibleComplete() {
   }
 }
 
+function _bibleArr(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') return val.split(',').map(s => s.trim()).filter(Boolean);
+  if (typeof val === 'object') {
+    if ('name' in val || 'title' in val) return [val];
+    return Object.values(val);
+  }
+  return [];
+}
+
 function showBiblePreview(bible) {
   const box = document.getElementById('bible-preview-box');
   const pre = document.getElementById('bible-preview');
@@ -5996,8 +6007,8 @@ function showBiblePreview(bible) {
     `LOGLINE:  ${bible.logline || '—'}`,
     `SETTING:  ${bible.setting || '—'}`,
     `CONFLICT: ${bible.central_conflict || '—'}`,
-    `THEMES:   ${(bible.themes || []).join(', ') || '—'}`,
-    `CHARS:    ${(bible.characters || []).map(c => c.name || c).join(', ') || '—'}`,
+    `THEMES:   ${_bibleArr(bible.themes).join(', ') || '—'}`,
+    `CHARS:    ${_bibleArr(bible.characters).map(c => c.name || c).join(', ') || '—'}`,
   ];
   pre.textContent = lines.join('\n');
   box.style.display = 'block';
