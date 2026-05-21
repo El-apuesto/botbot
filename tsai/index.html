@@ -323,30 +323,35 @@ body::before {
 #msgs::-webkit-scrollbar { width: 3px; }
 #msgs::-webkit-scrollbar-thumb { background: var(--cyan-dim); }
 
-/* BBS-style: inline prefix `NAME > text` on one line when possible */
-.msg { display: flex; flex-direction: row; flex-wrap: wrap; gap: 0 6px; align-items: baseline; animation: fadeInUp .15s ease both; }
+/* BBS-style: label above message on mobile, inline on desktop */
+.msg { display: flex; flex-direction: column; gap: 1px; animation: fadeInUp .15s ease both; margin-bottom: 2px; }
 .msg-who {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-sm);
   color: var(--cyan);
-  letter-spacing: 1px;
+  letter-spacing: .06em;
   flex-shrink: 0;
   text-shadow: 0 0 6px var(--cyan);
   white-space: nowrap;
   font-weight: 700;
+  line-height: 1.2;
 }
 .msg-who::after { content: ' ►'; margin-left: 2px; opacity: 0.7; }
 .msg-body {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   color: var(--neon-bright);
-  line-height: 1.6;
+  line-height: 1.55;
   overflow-wrap: break-word;
   word-break: break-word;
   white-space: normal;
-  flex: 1;
-  min-width: 0;
+  width: 100%;
   text-shadow: 0 0 4px rgba(200,160,255,0.3);
 }
-@media (min-width: 700px) { .msg-who { font-size: var(--font-size-xl); } .msg-body { font-size: var(--font-size-xl); line-height: 1.65; } }
+/* Desktop: keep inline label + text on one row */
+@media (min-width: 700px) {
+  .msg { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
+  .msg-who { font-size: var(--font-size-lg); }
+  .msg-body { font-size: var(--font-size-lg); line-height: 1.65; flex: 1; min-width: 0; width: auto; }
+}
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 .typing::after { content: '█'; animation: blink .7s step-end infinite; color: var(--cyan); }
 @keyframes fadeInUp { from { opacity:0; transform:translateY(2px); } to { opacity:1; transform:translateY(0); } }
