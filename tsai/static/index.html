@@ -2190,6 +2190,13 @@ audio { width: 100%; margin-top: 4px; }
 
     <hr class="dash-divider">
 
+    <!-- ── RECENT BUILDS ── -->
+    <div class="dash-block-title" style="margin-bottom:8px">█ RECENT BUILDS</div>
+    <div id="dash-builds-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px"></div>
+    <p id="dash-builds-empty" class="ph-text" style="display:none">NO BUILDS YET — USE CODE LAB TO BUILD.</p>
+
+    <hr class="dash-divider">
+
     <!-- ── BUILD QUEUE ── -->
     <div class="dash-block-title" style="margin-bottom:8px">█ BUILD QUEUE</div>
     <div class="fg">
@@ -2305,6 +2312,60 @@ async function speakText(text, voice) {
     spk.onclick = () => { audio.play(); spk.textContent = '[ ■ STOP ]'; spk.onclick = () => { audio.pause(); audio.currentTime = 0; spk.textContent = '[ ▶ PLAY ]'; spk.onclick = () => { audio.play(); }; }; };
     document.getElementById('msgs').lastElementChild?.appendChild(spk);
   } catch(e) { console.warn('TTS failed:', e); }
+}
+
+function _addOrchButtons(parentEl, userMsg, response) {
+  const lc  = (userMsg + ' ' + response).toLowerCase();
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;flex-wrap:wrap;gap:5px;margin-top:6px';
+
+  const mkBtn = (label, fn) => {
+    const b = document.createElement('button');
+    b.className = 'btn';
+    b.style.cssText = 'font-size:var(--font-size-xs);padding:2px 8px;letter-spacing:.05em';
+    b.textContent = label;
+    b.onclick = fn;
+    row.appendChild(b);
+  };
+
+  const hasCode    = /```[\s\S]*?```/.test(response);
+  const wantsBuild = /\b(build|create|write|script|code|function|program|implement|generate (a |the )?(code|script|function|class|module|api))\b/.test(lc);
+  const wantsBoard = /\b(analyz|strateg|board|committee|research|assess|evaluat|decision|plan|review|report)\b/.test(lc);
+  const wantsStorm = /\b(brainstorm|ideas?|concepts?|creative|riff|explore|possibilit)\b/.test(lc);
+  const wantsVideo = /\b(video|film|clip|scene|animat|visual|storyboard)\b/.test(lc);
+  const wantsPod   = /\b(podcast|episode|show|cast|interview|dialogue|conversation)\b/.test(lc);
+
+  if (hasCode || wantsBuild) {
+    mkBtn('[ → CODE LAB ]', () => {
+      document.getElementById('builder-input').value = userMsg;
+      switchTab('lab-code', null);
+      document.getElementById('builder-input').focus();
+    });
+  }
+  if (wantsBoard) {
+    mkBtn('[ → BOARDROOM ]', () => {
+      const el = document.getElementById('boardroom-topic');
+      if (el) el.value = userMsg.slice(0, 200);
+      switchTab('boardroom', null);
+      if (el) el.focus();
+    });
+  }
+  if (wantsStorm) {
+    mkBtn('[ → BRAINSTORM ]', () => {
+      const el = document.getElementById('brainstorm-topic');
+      if (el) el.value = userMsg.slice(0, 200);
+      switchTab('brainstorm', null);
+      if (el) el.focus();
+    });
+  }
+  if (wantsVideo) {
+    mkBtn('[ → VIDEO LAB ]', () => { window.location.href = '/lab'; });
+  }
+  if (wantsPod) {
+    mkBtn('[ → PODCASTS ]', () => { switchTab('podcasts', null); });
+  }
+
+  if (row.children.length > 0) parentEl.appendChild(row);
 }
 
 function _showContinueBtn() {
@@ -2431,7 +2492,54 @@ function openPipelineDash() {
   document.getElementById('pipeline-overlay').classList.add('open');
   loadPipeline();
   loadDashStats();
+  loadBuildsPreview();
   _dashClock();
+}
+
+async function loadBuildsPreview() {
+  const list  = document.getElementById('dash-builds-list');
+  const empty = document.getElementById('dash-builds-empty');
+  if (!list) return;
+  try {
+    const builds = await fetch('/api/builder/builds').then(r => r.json()).catch(() => []);
+    list.innerHTML = '';
+    if (!builds || !builds.length) {
+      empty.style.display = '';
+      return;
+    }
+    empty.style.display = 'none';
+    builds.slice(0, 8).forEach(b => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:8px;align-items:center;padding:5px 8px;background:rgba(187,68,255,0.06);cursor:pointer';
+      row.title = b.task || '(no description)';
+      const ts   = b.ts ? b.ts.replace(/(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})/, '$1-$2-$3 $4:$5') : '';
+      const err  = b.error ? '<span style="color:var(--red);font-size:9px">⚠ ERROR</span>' : '';
+      const role = b.role === 'builder_uncensored' ? 'UNCS' : (b.role || 'BUILDER').replace('builder_','').toUpperCase();
+      row.innerHTML =
+        `<span style="font-family:var(--font-head);font-size:8px;color:var(--yellow);white-space:nowrap">${role}</span>` +
+        `<span style="flex:1;font-size:var(--font-size-sm);color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(b.task || '(untitled)')}</span>` +
+        `${err}<span style="font-size:9px;color:var(--muted);white-space:nowrap;font-family:var(--font-head)">${ts}</span>` +
+        `<button class="btn" style="font-size:9px;padding:2px 7px;flex-shrink:0" onclick="loadBuildIntoEditor('${b.file}',event)">VIEW</button>`;
+      list.appendChild(row);
+    });
+  } catch(e) {
+    list.innerHTML = `<div style="color:var(--muted);font-size:var(--font-size-sm)">Error loading builds: ${e.message}</div>`;
+  }
+}
+
+async function loadBuildIntoEditor(file, e) {
+  if (e) e.stopPropagation();
+  try {
+    const data = await fetch('/api/builder/builds/' + file).then(r => r.json());
+    if (!data.output) return;
+    document.getElementById('pipeline-overlay').classList.remove('open');
+    switchTab('lab-code', null);
+    const out = document.getElementById('builder-out');
+    if (out) { out.innerHTML = renderMd(data.output); out._raw = data.output; }
+    if (data.task) document.getElementById('builder-input').value = data.task;
+    _showBuilderDownload(data.output, data.task || '');
+    document.getElementById('builder-deploy-row').style.display = 'flex';
+  } catch(e2) { console.warn('loadBuildIntoEditor error:', e2); }
 }
 
 function _bbsBar(n, max, width) {
@@ -2801,19 +2909,7 @@ async function send() {
       history.push({ role: 'assistant', content: full });
       dbSaveTurn(bot, 'assistant', full);
 
-      if (/```[\s\S]*?```/.test(full)) {
-        const btn = document.createElement('button');
-        btn.className = 'btn';
-        btn.style.cssText = 'font-size:var(--font-size-sm);padding:2px 8px;margin-top:6px;display:inline-block;margin-right:6px';
-        btn.textContent = '[ \u2192 CODE LAB ]';
-        const capturedMsg = msg;
-        btn.onclick = () => {
-          document.getElementById('builder-input').value = capturedMsg;
-          switchTab('lab-code', document.querySelector('.nav-btn[onclick*="lab-code"]'));
-          document.getElementById('builder-input').focus();
-        };
-        body.parentElement.appendChild(btn);
-      }
+      _addOrchButtons(body.parentElement, msg, full);
 
       if (!_looksComplete(full)) _showContinueBtn();
 
@@ -3629,8 +3725,6 @@ async function _pollProjectJob(jobId, out, rawTask) {
     }, 2000);
   });
 }
-
-function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function _projectBuildDownload(files, task) {
   if (!files.length) return;
