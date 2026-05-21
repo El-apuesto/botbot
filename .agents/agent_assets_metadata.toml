@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "K6sAtD1juWd3jj3qXp9En"
+uri = "file://MANUAL.md"
+type = "text"
+title = "Twin Shadow — Complete System Manual"
