@@ -481,7 +481,21 @@ async def lab_generate_image(prompt: str, style: str = "", reference_frame_path:
     else:
         print("[IMAGE] GROK_API_KEY not set — skipping Grok Aurora")
 
-    # ── 3. HuggingFace FLUX.1-schnell ─────────────────────────────────────────
+    # ── 3. Replicate flux-schnell (free credits) ───────────────────────────────
+    if os.environ.get("REPLICATE_API_TOKEN", ""):
+        try:
+            url = await _replicate_image(full_prompt[:500])
+            if url:
+                print(f"[IMAGE] Replicate OK — {url[:60]}")
+                return {"url": url, "local_path": None, "provider": "replicate"}
+            errors["replicate"] = "no url returned"
+        except Exception as e:
+            errors["replicate"] = str(e)
+            print(f"[IMAGE] Replicate failed: {e}")
+    else:
+        print("[IMAGE] REPLICATE_API_TOKEN not set — skipping Replicate")
+
+    # ── 4. HuggingFace FLUX.1-schnell ─────────────────────────────────────────
     hf_key = os.environ.get("HUGGINGFACE_API_KEY", "") or os.environ.get("HF_TOKEN", "")
     if hf_key:
         try:
@@ -503,13 +517,13 @@ async def lab_generate_image(prompt: str, style: str = "", reference_frame_path:
     else:
         print("[IMAGE] HUGGINGFACE_API_KEY not set — skipping HuggingFace")
 
-    # ── 4. AIML (key rotation ×3, model cascade) ──────────────────────────────
+    # ── 5. AIML (key rotation ×3, model cascade) ──────────────────────────────
     import json as _json
     aiml_keys = [
         v for k in ("AIML_API_KEY_1", "AIML_API_KEY_2", "AIML_API_KEY_3")
         if (v := os.environ.get(k, ""))
     ]
-    _aiml_models = ["flux-schnell", "dall-e-2", "stable-diffusion-xl-base-1.0"]
+    _aiml_models = ["flux/schnell", "flux/dev", "dall-e-2"]
     if aiml_keys:
         import asyncio as _asyncio2
         _loop2 = _asyncio2.get_event_loop()
@@ -588,6 +602,23 @@ async def _fal_generate(prompt: str, model: str = "fal-ai/wan-2.1", image_url: s
     if "images" in result:
         return result["images"][0]["url"]
     return str(result)
+
+
+async def _replicate_image(prompt: str) -> str:
+    """Generate image via Replicate flux-schnell — returns a URL string."""
+    import asyncio, replicate as _rep
+    token = "".join(c for c in os.environ.get("REPLICATE_API_TOKEN", "") if ord(c) < 128).strip()
+    client = _rep.Client(api_token=token)
+    loop   = asyncio.get_event_loop()
+    output = await loop.run_in_executor(
+        None,
+        lambda: client.run(
+            "black-forest-labs/flux-schnell",
+            input={"prompt": prompt, "num_outputs": 1, "aspect_ratio": "16:9"},
+        ),
+    )
+    first = output[0] if isinstance(output, (list, tuple)) else output
+    return str(first.url) if hasattr(first, "url") else str(first)
 
 
 async def _hf_generate(prompt: str) -> str:
@@ -761,30 +792,43 @@ def _grok_client() -> AsyncOpenAI:
 
 async def grok_imagine(prompt: str, n: int = 1) -> list[str]:
     """Direct HTTP to xAI image API — avoids AsyncOpenAI asyncio.Lock conflicts."""
-    import json as _json, asyncio as _asyncio
+    import json as _json, asyncio as _asyncio, urllib.error as _ue
     key = os.environ.get("GROK_API_KEY", "")
     if not key:
         return []
-    body = _json.dumps({
-        "model":  "aurora",
-        "prompt": prompt,
-        "n":      n,
-    }).encode()
-    req = urllib.request.Request(
-        "https://api.x.ai/v1/images/generations",
-        data=body,
-        headers={
-            "Authorization": f"Bearer {key}",
-            "Content-Type":  "application/json",
-        },
-        method="POST",
-    )
-    loop = _asyncio.get_event_loop()
-    data = await loop.run_in_executor(
-        None,
-        lambda: _json.loads(urllib.request.urlopen(req, timeout=60).read()),
-    )
-    return [img["url"] for img in data.get("data", [])]
+    # Try aurora first, fall back to grok-2-image-1212
+    for model_name in ("grok-2-image-1212", "aurora"):
+        body = _json.dumps({
+            "model":  model_name,
+            "prompt": prompt,
+            "n":      n,
+        }).encode()
+        req = urllib.request.Request(
+            "https://api.x.ai/v1/images/generations",
+            data=body,
+            headers={
+                "Authorization": f"Bearer {key}",
+                "Content-Type":  "application/json",
+            },
+            method="POST",
+        )
+        loop = _asyncio.get_event_loop()
+        def _call(r=req, m=model_name):
+            try:
+                return _json.loads(urllib.request.urlopen(r, timeout=90).read())
+            except _ue.HTTPError as he:
+                err_body = he.read().decode("utf-8", errors="replace")[:500]
+                raise RuntimeError(f"Grok Aurora HTTP {he.code} [{m}]: {err_body}")
+        try:
+            data = await loop.run_in_executor(None, _call)
+            urls = [img["url"] for img in data.get("data", [])]
+            if urls:
+                print(f"[IMAGE] Grok Aurora OK ({model_name}) — {len(urls)} image(s)")
+                return urls
+            print(f"[IMAGE] Grok {model_name} returned no data: {str(data)[:200]}")
+        except Exception as e:
+            print(f"[IMAGE] Grok {model_name} failed: {e}")
+    return []
 
 
 async def grok_direct(prompt: str) -> str:
