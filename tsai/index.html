@@ -1289,6 +1289,11 @@ audio { width: 100%; margin-top: 4px; }
           <a id="boardroom-export-btn" class="action-link" style="display:none" download="boardroom_transcript.txt">[ EXPORT ]</a>
           <a id="boardroom-mp3-btn"   class="action-link" style="display:none" download="boardroom_audio.mp3">[ DL MP3 ]</a>
           <button class="btn" id="boardroom-lab-btn" style="display:none" onclick="sendToVideoLab('boardroom')">[ SEND TO VIDEO LAB ]</button>
+          <button class="btn" id="boardroom-img-btn" onclick="generatePanelImage('boardroom')">[ GENERATE IMAGE ]</button>
+        </div>
+        <div id="boardroom-img-wrap" style="display:none;margin:6px 0">
+          <img id="boardroom-img" style="width:100%;max-width:520px;display:block;border:1px solid var(--cyan-dim)" alt="">
+          <div id="boardroom-img-status" style="font-size:var(--font-size-sm);color:var(--muted);padding:3px 0"></div>
         </div>
         <div class="steer-box" id="boardroom-steer-row">
           <span class="fl" id="boardroom-steer-label">ROUND COMPLETE — STEER NEXT ROUND (OPTIONAL)</span>
@@ -1339,6 +1344,11 @@ audio { width: 100%; margin-top: 4px; }
             <div class="action-row" style="flex-wrap:wrap">
               <button class="btn" id="bible-complete-btn" onclick="bibleComplete()">[ AUTO-COMPLETE BIBLE ]</button>
               <button class="btn" id="bible-generate-btn" onclick="studioGenerate()" style="display:none">[ GENERATE STORY ]</button>
+              <button class="btn" id="write-img-btn" onclick="generatePanelImage('write')">[ GENERATE COVER ART ]</button>
+            </div>
+            <div id="write-img-wrap" style="display:none;margin:6px 0">
+              <img id="write-img" style="width:100%;max-width:520px;display:block;border:1px solid var(--cyan-dim)" alt="">
+              <div id="write-img-status" style="font-size:var(--font-size-sm);color:var(--muted);padding:3px 0"></div>
             </div>
             <div class="fg" id="bible-preview-box" style="display:none">
               <span class="fl">STORY BIBLE</span>
@@ -3036,6 +3046,65 @@ async function streamSession(url, body, outEl) {
 
   flushTurn();
   return allTurns;
+}
+
+/* ─────────────────────────────────────────
+   PANEL IMAGE GENERATION
+───────────────────────────────────────── */
+async function generatePanelImage(panel) {
+  let prompt = '', imgEl, wrapEl, statusEl, btnEl;
+
+  if (panel === 'boardroom') {
+    prompt   = (document.getElementById('boardroom-topic').value || '').trim()
+             || document.getElementById('boardroom-out').textContent.slice(0, 300).trim();
+    imgEl    = document.getElementById('boardroom-img');
+    wrapEl   = document.getElementById('boardroom-img-wrap');
+    statusEl = document.getElementById('boardroom-img-status');
+    btnEl    = document.getElementById('boardroom-img-btn');
+  } else if (panel === 'write') {
+    const b  = (typeof ST !== 'undefined' && ST.bible) ? ST.bible : null;
+    prompt   = (b ? (b.logline || b.title || '') : '').trim()
+             || (document.getElementById('bible-input') || {}).value || '';
+    prompt   = prompt.trim() || 'dark occult fantasy cover art';
+    imgEl    = document.getElementById('write-img');
+    wrapEl   = document.getElementById('write-img-wrap');
+    statusEl = document.getElementById('write-img-status');
+    btnEl    = document.getElementById('write-img-btn');
+  }
+
+  if (!prompt) { alert('Add a topic first'); return; }
+
+  btnEl.disabled = true;
+  btnEl.textContent = '[ GENERATING... ]';
+  wrapEl.style.display = 'block';
+  imgEl.style.display  = 'none';
+  statusEl.textContent = '⚡ CALLING IMAGE API...';
+
+  try {
+    const res  = await fetch('/api/lab/image', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        description: prompt,
+        style: 'cinematic, dark fantasy, purple neon, occult aesthetic, high detail',
+      }),
+    });
+    const data = await res.json();
+    if (data.error) {
+      statusEl.textContent = '✗ ' + data.error;
+    } else if (data.url) {
+      imgEl.onload = () => { imgEl.style.display = 'block'; };
+      imgEl.src = data.url;
+      statusEl.textContent = '✓ ' + (data.provider || 'fal').toUpperCase();
+    } else {
+      statusEl.textContent = '✗ No image returned';
+    }
+  } catch(e) {
+    statusEl.textContent = '✗ ' + e.message;
+  } finally {
+    btnEl.disabled = false;
+    btnEl.textContent = panel === 'boardroom' ? '[ GENERATE IMAGE ]' : '[ GENERATE COVER ART ]';
+  }
 }
 
 /* ─────────────────────────────────────────

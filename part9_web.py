@@ -789,9 +789,18 @@ def register_routes(app: Flask):
             if text.count("```") % 2 == 1:
                 return True
             s = text.rstrip()
-            for marker in ("...", "…", "[continues", "[truncated", "# TODO", "// TODO"):
-                if s.endswith(marker):
+            tail = s[-300:]
+            for marker in (
+                "...", "…", "[continues", "[truncated", "[cont",
+                "# TODO", "// TODO", "# rest of", "# remaining",
+                "# implementation", "# add more", "# complete this",
+                "# ...", "# etc", "// ...",
+            ):
+                if marker in tail:
                     return True
+            last_line = s.split('\n')[-1].rstrip()
+            if last_line.endswith((':', ',', '(', '{', '[')):
+                return True
             return False
 
         def _run():
@@ -1007,9 +1016,18 @@ def register_routes(app: Flask):
             if text.count("```") % 2 == 1:
                 return True
             s = text.rstrip()
-            for marker in ("...", "…", "[continues", "[truncated", "# TODO", "// TODO"):
-                if s.endswith(marker):
+            tail = s[-300:]
+            for marker in (
+                "...", "…", "[continues", "[truncated", "[cont",
+                "# TODO", "// TODO", "# rest of", "# remaining",
+                "# implementation", "# add more", "# complete this",
+                "# ...", "# etc", "// ...",
+            ):
+                if marker in tail:
                     return True
+            last_line = s.split('\n')[-1].rstrip()
+            if last_line.endswith((':', ',', '(', '{', '[')):
+                return True
             return False
 
         def _run_cont():
