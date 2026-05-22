@@ -17,6 +17,21 @@
       color: #cc88ff;
     }
 
+    /* Mobile: pin art as full-page background so form floats over it */
+    @media (max-width: 699px) {
+      body {
+        background-image: url('/static/login_mobile.JPEG');
+        background-size: cover;
+        background-position: center top;
+        background-attachment: fixed;
+      }
+      .figure-wrap { display: none; }
+      .field-wrap   { background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(3px); }
+      .invite-wrap  { background: rgba(0, 0, 0, 0.35); }
+      .register-btn { background: rgba(26, 0, 50, 0.45); }
+      .section-label { text-shadow: 0 0 12px #bb44ff, 0 2px 8px #000; }
+    }
+
     body::before {
       content: '';
       position: fixed; inset: 0;
@@ -230,8 +245,8 @@
         width: 46%;
         min-height: 100vh;
         padding: 40px 48px;
-        background: rgba(5,0,15,0.88);
-        backdrop-filter: blur(2px);
+        background: rgba(5,0,15,0.62);
+        backdrop-filter: blur(4px);
         border-left: 1px solid #5500aa;
         overflow-y: auto;
       }
